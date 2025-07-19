@@ -69,6 +69,16 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       });
       return;
     }
+    // Only allow integer lots for stock
+    if (type === 'stock' && (!Number.isInteger(amountToSell) || String(sellAmount).includes(','))) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Peringatan',
+        message: 'Penjualan saham hanya diperbolehkan dalam satuan lot bulat (tidak boleh desimal atau koma).',
+        type: 'error'
+      });
+      return;
+    }
     
     if (amountToSell > currentAmount) {
       setConfirmModal({
@@ -413,8 +423,14 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             className="w-20 p-1 border bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 rounded text-right text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs"
                             value={sellAmount}
                             onChange={(e) => {
-                              // Hanya terima angka dan titik desimal
-                              const value = e.target.value.replace(/[^0-9.]/g, '');
+                              let value = e.target.value;
+                              if (type === 'stock') {
+                                // Only allow digits (no dot or comma)
+                                value = value.replace(/[^0-9]/g, '');
+                              } else {
+                                // For crypto, allow digits and dot
+                                value = value.replace(/[^0-9.]/g, '');
+                              }
                               setSellAmount(value);
                             }}
                           />
