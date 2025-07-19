@@ -1,10 +1,10 @@
 // AssetTable.js
 import { useState } from 'react';
-import { FiTrash2, FiArrowDown, FiArrowUp, FiTrendingUp, FiDollarSign } from 'react-icons/fi';
+import { FiArrowDown, FiArrowUp, FiTrendingUp, FiDollarSign } from 'react-icons/fi';
 import Modal from './Modal';
 import ErrorBoundary from './ErrorBoundary';
 
-export default function AssetTable({ assets, prices, exchangeRate, type, onUpdate, onDelete, onSell = () => {}, loading = false }) {
+export default function AssetTable({ assets, prices, exchangeRate, type, onUpdate, onSell = () => {}, loading = false }) {
   const [sellingIndex, setSellingIndex] = useState(null);
   const [sellAmount, setSellAmount] = useState('');
   const [confirmModal, setConfirmModal] = useState(null);
@@ -33,9 +33,15 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     // Use the same ticker format as calculateAssetValue
     let price;
     if (type === 'stock') {
-      const tickerKey = asset.currency === 'USD' ? `${asset.ticker}.US` : 
-                       asset.currency === 'IDR' ? `${asset.ticker}.JK` : 
-                       asset.ticker;
+      let tickerKey;
+      if (asset.currency === 'USD') {
+        tickerKey = `${asset.ticker}.US`;
+      } else if (asset.currency === 'IDR') {
+        tickerKey = `${asset.ticker}.JK`;
+      } else {
+        // Auto-detect: if ticker is 4 characters or less, assume IDX, otherwise US
+        tickerKey = asset.ticker.length <= 4 ? `${asset.ticker}.JK` : `${asset.ticker}.US`;
+      }
       price = prices[tickerKey];
     } else {
       price = prices[asset.symbol];
@@ -126,20 +132,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     }
   };
   
-  const handleDeleteConfirm = (index, asset) => {
-    const assetName = type === 'stock' ? asset.ticker : asset.symbol;
-    
-    setConfirmModal({
-      isOpen: true,
-      title: 'Konfirmasi Hapus',
-      message: `Anda yakin ingin menghapus ${assetName} dari portfolio Anda?`,
-      type: 'error',
-      onConfirm: () => {
-        onDelete(index);
-        setConfirmModal(null);
-      }
-    });
-  };
+
   
   const calculateAssetValue = (asset, currency, exchangeRate) => {
     if (asset.type === 'stock') {
@@ -239,22 +232,22 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 {type === 'stock' ? 'Saham' : 'Kripto'}
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Jumlah
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="hidden sm:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Harga
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Nilai IDR
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="hidden md:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Nilai USD
               </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Aksi
               </th>
             </tr>
@@ -267,7 +260,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
               
               return (
                 <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className={`flex-shrink-0 h-8 w-8 rounded-md flex items-center justify-center ${
                         type === 'stock' 
@@ -287,17 +280,21 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             {assetValue.error}
                           </span>
                         )}
+                        {/* Show price on mobile */}
+                        <div className="sm:hidden text-xs text-gray-500 dark:text-gray-400">
+                          {assetValue.price ? formatPrice(assetValue.price, asset.currency || 'IDR') : 'Tidak tersedia'}
+                        </div>
                       </div>
                     </div>
                   </td>
                   
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right">
                     {sellingIndex === index ? (
                       <input
                         type="number"
                         value={sellAmount}
                         onChange={(e) => setSellAmount(e.target.value)}
-                        className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        className="w-16 sm:w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         step={type === 'stock' ? '1' : '0.00000001'}
                         min="0"
                       />
@@ -308,7 +305,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     )}
                   </td>
                   
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex flex-col items-end">
                       <span className="text-sm text-gray-900 dark:text-white">
                         {assetValue.price ? formatPrice(assetValue.price, asset.currency || 'IDR') : 'Tidak tersedia'}
@@ -324,42 +321,36 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     </div>
                   </td>
                   
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right">
                     <span className="text-sm text-gray-900 dark:text-white">
                       {assetValue.valueIDR ? formatPrice(assetValue.valueIDR, 'IDR', true) : 'Tidak tersedia'}
                     </span>
                   </td>
                   
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-right">
                     <span className="text-sm text-gray-900 dark:text-white">
                       {assetValue.valueUSD ? formatPrice(assetValue.valueUSD, 'USD') : 'Tidak tersedia'}
                     </span>
                   </td>
                   
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-center">
                     {sellingIndex === index ? (
-                      <div className="flex space-x-2 justify-center">
+                      <div className="flex space-x-1 sm:space-x-2 justify-center">
                         <button
                           onClick={() => handleSaveSell(index, asset)}
-                          className="bg-green-600 p-1.5 rounded text-white hover:bg-green-700"
+                          className="bg-green-600 p-1 sm:p-1.5 rounded text-white hover:bg-green-700 text-xs sm:text-sm"
                         >
                           ✓
                         </button>
                         <button
                           onClick={handleCancelSell}
-                          className="bg-gray-500 dark:bg-gray-600 p-1.5 rounded text-white hover:bg-gray-600 dark:hover:bg-gray-700"
+                          className="bg-gray-500 dark:bg-gray-600 p-1 sm:p-1.5 rounded text-white hover:bg-gray-600 dark:hover:bg-gray-700 text-xs sm:text-sm"
                         >
                           ✕
                         </button>
                       </div>
                     ) : (
-                      <div className="flex space-x-2 justify-center">
-                        <button
-                          onClick={() => handleDeleteConfirm(index, asset)}
-                          className="bg-red-100 dark:bg-red-600/40 p-1.5 rounded text-red-600 dark:text-white hover:bg-red-200 dark:hover:bg-red-600"
-                        >
-                          <FiTrash2 className="h-3.5 w-3.5" />
-                        </button>
+                      <div className="flex justify-center">
                         <button
                           onClick={() => handleSellClick(index, asset)}
                           className="bg-amber-100 dark:bg-amber-600/40 px-2 py-1 rounded text-amber-600 dark:text-white hover:bg-amber-200 dark:hover:bg-amber-600 text-xs font-medium"

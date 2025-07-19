@@ -7,8 +7,6 @@ export default function Portfolio({
   assets, 
   onUpdateStock, 
   onUpdateCrypto, 
-  onDeleteStock, 
-  onDeleteCrypto,
   onAddAsset,
   onSellStock,
   onSellCrypto,
@@ -18,14 +16,16 @@ export default function Portfolio({
   lastExchangeRateUpdate: propLastExchangeRateUpdate,
   exchangeRateSource: propExchangeRateSource,
   exchangeRateError: propExchangeRateError,
-  loadingExchangeRate: propLoadingExchangeRate
+  loadingExchangeRate: propLoadingExchangeRate,
+  prices: propPrices,
+  exchangeRate: parentExchangeRate
 }) {
-  const [prices, setPrices] = useState({});
+  const [prices, setPrices] = useState(propPrices || {});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState('');
   const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
-  const [exchangeRate, setExchangeRate] = useState(propExchangeRate);
+  const [exchangeRate, setExchangeRate] = useState(parentExchangeRate || propExchangeRate);
   const [exchangeRateError, setExchangeRateError] = useState(propExchangeRateError || null);
   const [exchangeRateSource, setExchangeRateSource] = useState(propExchangeRateSource || '');
   const [lastExchangeRateUpdate, setLastExchangeRateUpdate] = useState(propLastExchangeRateUpdate || '');
@@ -55,13 +55,14 @@ export default function Portfolio({
 
   const fetchPrices = async () => {
     const stockTickers = assets.stocks.map(stock => {
-      // Use the same ticker format as when adding stocks
+      // Use the same ticker format as other components
       if (stock.currency === 'USD') {
         return `${stock.ticker}.US`;
       } else if (stock.currency === 'IDR') {
         return `${stock.ticker}.JK`;
       } else {
-        return stock.ticker;
+        // Auto-detect: if ticker is 4 characters or less, assume IDX, otherwise US
+        return stock.ticker.length <= 4 ? `${stock.ticker}.JK` : `${stock.ticker}.US`;
       }
     });
     const cryptoSymbols = assets.crypto.map(crypto => crypto.symbol);
@@ -112,16 +113,34 @@ export default function Portfolio({
     return () => clearInterval(interval);
   }, []);
 
+  // Update prices and exchangeRate when props change
+  useEffect(() => {
+    if (propPrices) {
+      setPrices(propPrices);
+    }
+  }, [propPrices]);
+
+  useEffect(() => {
+    if (parentExchangeRate) {
+      setExchangeRate(parentExchangeRate);
+    }
+  }, [parentExchangeRate]);
+
   // Separate useEffect for prices
   useEffect(() => {
-    // Fetch prices immediately on mount
-    fetchPrices();
-    
-    // Set up interval for auto-refresh
-    const interval = setInterval(fetchPrices, 5 * 60 * 1000); // Update every 5 minutes
+    // Only fetch prices if not provided by parent
+    if (!propPrices) {
+      fetchPrices();
+      
+      // Set up interval for auto-refresh
+      const interval = setInterval(fetchPrices, 5 * 60 * 1000); // Update every 5 minutes
 
-    return () => clearInterval(interval);
-  }, [assets, exchangeRate]);
+      return () => clearInterval(interval);
+    } else {
+      // If parent provides prices, just set loading to false
+      setLoading(false);
+    }
+  }, [assets, exchangeRate, propPrices]);
 
   const handleRefresh = () => {
     // Refresh both prices and exchange rate
@@ -166,8 +185,19 @@ export default function Portfolio({
       date: new Date().toISOString()
     };
     
-    if (prices && prices[asset.ticker]) {
-      const price = prices[asset.ticker];
+    // Use the same ticker format as calculateTotals
+    let tickerKey;
+    if (asset.currency === 'USD') {
+      tickerKey = `${asset.ticker}.US`;
+    } else if (asset.currency === 'IDR') {
+      tickerKey = `${asset.ticker}.JK`;
+    } else {
+      // Auto-detect: if ticker is 4 characters or less, assume IDX, otherwise US
+      tickerKey = asset.ticker.length <= 4 ? `${asset.ticker}.JK` : `${asset.ticker}.US`;
+    }
+    
+    if (prices && prices[tickerKey]) {
+      const price = prices[tickerKey];
       // For IDX stocks: 1 lot = 100 shares, for US stocks: fractional shares allowed
       const shareCount = price.currency === 'IDR' ? amountToSell * 100 : amountToSell;
       
@@ -199,21 +229,9 @@ export default function Portfolio({
       return;
     }
     
-    // Jumlah yang tersisa setelah penjualan
-    const remainingAmount = asset.lots - amountToSell;
-    
-    if (remainingAmount <= 0) {
-      // Jika menjual semua, sama dengan menghapus aset
-      onDeleteStock(index);
-    } else {
-      // Jika hanya menjual sebagian, update jumlah yang tersisa
-      const updatedAsset = { ...asset, lots: remainingAmount };
-      onUpdateStock(index, updatedAsset);
-    }
-    
     // Call the parent component's sell function
     if (onSellStock) {
-      onSellStock(index, asset, amountToSell, priceData);
+      onSellStock(index, asset, amountToSell);
     }
   };
 
@@ -249,21 +267,9 @@ export default function Portfolio({
       return;
     }
     
-    // Jumlah yang tersisa setelah penjualan
-    const remainingAmount = asset.amount - amountToSell;
-    
-    if (remainingAmount <= 0) {
-      // Jika menjual semua, sama dengan menghapus aset
-      onDeleteCrypto(index);
-    } else {
-      // Jika hanya menjual sebagian, update jumlah yang tersisa
-      const updatedAsset = { ...asset, amount: remainingAmount };
-      onUpdateCrypto(index, updatedAsset);
-    }
-    
     // Call the parent component's sell function
     if (onSellCrypto) {
-      onSellCrypto(index, asset, amountToSell, priceData);
+      onSellCrypto(index, asset, amountToSell);
     }
   };
   
@@ -283,11 +289,15 @@ export default function Portfolio({
     let error = null;
     // Hitung total saham
     assets.stocks.forEach(stock => {
-      const tickerKey = stock.currency === 'USD'
-        ? `${stock.ticker}.US`
-        : stock.currency === 'IDR'
-          ? `${stock.ticker}.JK`
-          : stock.ticker;
+      let tickerKey;
+      if (stock.currency === 'USD') {
+        tickerKey = `${stock.ticker}.US`;
+      } else if (stock.currency === 'IDR') {
+        tickerKey = `${stock.ticker}.JK`;
+      } else {
+        // Auto-detect: if ticker is 4 characters or less, assume IDX, otherwise US
+        tickerKey = stock.ticker.length <= 4 ? `${stock.ticker}.JK` : `${stock.ticker}.US`;
+      }
       if (prices[tickerKey]) {
         const price = prices[tickerKey];
         // For IDX stocks: 1 lot = 100 shares, for US stocks: fractional shares allowed
@@ -398,128 +408,128 @@ export default function Portfolio({
       {/* Dashboard Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-lg">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Total Portfolio</h3>
-            <div className="bg-blue-100 dark:bg-blue-500/20 p-2 rounded-lg">
-              <FiDollarSign className="text-blue-500 dark:text-blue-400" />
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Total Portfolio</h3>
+              <div className="bg-blue-100 dark:bg-blue-500/20 p-2 rounded-lg">
+                <FiDollarSign className="text-blue-500 dark:text-blue-400" />
+              </div>
             </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-800 dark:text-white">Rp {totals.totalIDR.toLocaleString()}</p>
-          <div className="flex justify-between items-center">
-            <p className="text-gray-500 dark:text-gray-400 text-sm">
-              $ {totals.totalUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            {totals.avgDayChange !== 0 && (
-              <p className={`text-sm font-medium ${
-                totals.avgDayChange > 0 
-                  ? 'text-green-500 dark:text-green-400' 
-                  : 'text-red-500 dark:text-red-400'
-              }`}>
-                {totals.avgDayChange > 0 ? '+' : ''}{totals.avgDayChange.toFixed(2)}%
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">Rp {totals.totalIDR.toLocaleString()}</p>
+            <div className="flex justify-between items-center">
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
+                $ {totals.totalUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
+              {totals.avgDayChange !== 0 && (
+                <p className={`text-sm font-medium ${
+                  totals.avgDayChange > 0 
+                    ? 'text-green-500 dark:text-green-400' 
+                    : 'text-red-500 dark:text-red-400'
+                }`}>
+                  {totals.avgDayChange > 0 ? '+' : ''}{totals.avgDayChange.toFixed(2)}%
+                </p>
+              )}
+            </div>
+            {totals.totalPreviousDayIDR > 0 && (
+              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Kemarin: Rp {totals.totalPreviousDayIDR.toLocaleString()} 
+                  ({totals.changeIDR > 0 ? '+' : ''}{totals.changeIDR.toLocaleString()})
+                </p>
+              </div>
             )}
           </div>
-          {totals.totalPreviousDayIDR > 0 && (
-            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Kemarin: Rp {totals.totalPreviousDayIDR.toLocaleString()} 
-                ({totals.changeIDR > 0 ? '+' : ''}{totals.changeIDR.toLocaleString()})
-              </p>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-lg">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Saham</h3>
+              <div className="bg-green-100 dark:bg-green-500/20 p-2 rounded-lg">
+                <FiTrendingUp className="text-green-500 dark:text-green-400" />
+              </div>
             </div>
-          )}
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">Rp {totals.totalStocksIDR.toLocaleString()}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              $ {totals.totalStocksUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+              <div 
+                className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full" 
+                style={{ width: `${totals.stocksPercent}%` }}
+              ></div>
+            </div>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{totals.stocksPercent.toFixed(1)}% dari portfolio</p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-lg">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Kripto</h3>
+              <div className="bg-purple-100 dark:bg-purple-500/20 p-2 rounded-lg">
+                <FiActivity className="text-purple-500 dark:text-purple-400" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">Rp {totals.totalCryptoIDR.toLocaleString()}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              $ {totals.totalCryptoUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+              <div 
+                className="bg-gradient-to-r from-purple-400 to-pink-500 h-2 rounded-full" 
+                style={{ width: `${totals.cryptoPercent}%` }}
+              ></div>
+            </div>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{totals.cryptoPercent.toFixed(1)}% dari portfolio</p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-lg">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Kurs USD/IDR</h3>
+              <div className="bg-orange-100 dark:bg-orange-500/20 p-2 rounded-lg">
+                <FiDollarSign className="text-orange-500 dark:text-orange-400" />
+              </div>
+            </div>
+            {loadingExchangeRate ? (
+              <div className="text-center py-3">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Memperbarui...
+                </p>
+              </div>
+            ) : exchangeRateError ? (
+              <div className="text-center py-3">
+                <p className="text-red-500">{exchangeRateError}</p>
+              </div>
+            ) : (
+              <>
+                {exchangeRate ? (
+                  <>
+                    <p className="text-2xl font-bold text-gray-800 dark:text-white">Rp {exchangeRate.toLocaleString()}</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">
+                      {exchangeRateSource}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                      Diperbarui: {lastExchangeRateUpdate || 'N/A'}
+                    </p>
+                  </>
+                ) : (
+                  <div className="text-center py-3">
+                    <p className="text-gray-500 dark:text-gray-400">
+                      Tidak tersedia
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
-        
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-lg">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Saham</h3>
-            <div className="bg-green-100 dark:bg-green-500/20 p-2 rounded-lg">
-              <FiTrendingUp className="text-green-500 dark:text-green-400" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-800 dark:text-white">Rp {totals.totalStocksIDR.toLocaleString()}</p>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            $ {totals.totalStocksUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
-            <div 
-              className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full" 
-              style={{ width: `${totals.stocksPercent}%` }}
-            ></div>
-          </div>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{totals.stocksPercent.toFixed(1)}% dari portfolio</p>
-        </div>
-        
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-lg">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Kripto</h3>
-            <div className="bg-purple-100 dark:bg-purple-500/20 p-2 rounded-lg">
-              <FiActivity className="text-purple-500 dark:text-purple-400" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-800 dark:text-white">Rp {totals.totalCryptoIDR.toLocaleString()}</p>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            $ {totals.totalCryptoUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
-            <div 
-              className="bg-gradient-to-r from-purple-400 to-pink-500 h-2 rounded-full" 
-              style={{ width: `${totals.cryptoPercent}%` }}
-            ></div>
-          </div>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{totals.cryptoPercent.toFixed(1)}% dari portfolio</p>
-        </div>
-        
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-lg">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Kurs USD/IDR</h3>
-            <div className="bg-orange-100 dark:bg-orange-500/20 p-2 rounded-lg">
-              <FiDollarSign className="text-orange-500 dark:text-orange-400" />
-            </div>
-          </div>
-          {loadingExchangeRate ? (
-            <div className="text-center py-3">
-              <p className="text-gray-500 dark:text-gray-400">
-                Memperbarui...
-              </p>
-            </div>
-          ) : exchangeRateError ? (
-            <div className="text-center py-3">
-              <p className="text-red-500">{exchangeRateError}</p>
-            </div>
-          ) : (
-            <>
-              {exchangeRate ? (
-                <>
-                  <p className="text-2xl font-bold text-gray-800 dark:text-white">Rp {exchangeRate.toLocaleString()}</p>
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    {exchangeRateSource}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                    Diperbarui: {lastExchangeRateUpdate || 'N/A'}
-                  </p>
-                </>
-              ) : (
-                <div className="text-center py-3">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    Tidak tersedia
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
       
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between md:items-center">
-          <div className="mb-4 md:mb-0">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col lg:flex-row justify-between lg:items-center gap-4">
+          <div>
             <h2 className="text-xl font-bold text-gray-800 dark:text-white">Daftar Aset</h2>
             <p className="text-gray-500 dark:text-gray-400 text-sm">
               {assets.stocks.length + assets.crypto.length} aset dalam portfolio Anda
             </p>
           </div>
           
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="flex bg-gray-100 dark:bg-gray-900 rounded-lg p-1">
               <button
                 onClick={() => setActiveAssetTab('all')}
@@ -553,22 +563,24 @@ export default function Portfolio({
               </button>
             </div>
             
-            <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-300 transition"
-              title="Refresh data"
-            >
-              <FiRefreshCw className={`${loading ? 'animate-spin' : ''}`} />
-            </button>
-            
-            <button
-              onClick={onAddAsset}
-              className="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white transition"
-              title="Tambah aset"
-            >
-              <FiPlusCircle />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-300 transition"
+                title="Refresh data"
+              >
+                <FiRefreshCw className={`${loading ? 'animate-spin' : ''}`} />
+              </button>
+              
+              <button
+                onClick={onAddAsset}
+                className="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white transition"
+                title="Tambah aset"
+              >
+                <FiPlusCircle />
+              </button>
+            </div>
           </div>
         </div>
         
@@ -607,7 +619,6 @@ export default function Portfolio({
                     exchangeRate={exchangeRate}
                     type="stock"
                     onUpdate={onUpdateStock}
-                    onDelete={onDeleteStock}
                     onSell={handleSellStock}
                     loading={loading}
                   />
@@ -634,7 +645,6 @@ export default function Portfolio({
                     exchangeRate={exchangeRate}
                     type="crypto"
                     onUpdate={onUpdateCrypto}
-                    onDelete={onDeleteCrypto}
                     onSell={handleSellCrypto}
                     loading={loading}
                   />

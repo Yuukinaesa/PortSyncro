@@ -104,7 +104,17 @@ export default function Home() {
   // Debounce price fetching
   const debouncedFetchPrices = useCallback(
     debounce(async () => {
-      const stockTickers = assets.stocks.map(stock => stock.ticker);
+      const stockTickers = assets.stocks.map(stock => {
+        // Use the same ticker format as other components
+        if (stock.currency === 'USD') {
+          return `${stock.ticker}.US`;
+        } else if (stock.currency === 'IDR') {
+          return `${stock.ticker}.JK`;
+        } else {
+          // Auto-detect: if ticker is 4 characters or less, assume IDX, otherwise US
+          return stock.ticker.length <= 4 ? `${stock.ticker}.JK` : `${stock.ticker}.US`;
+        }
+      });
       const cryptoSymbols = assets.crypto.map(crypto => crypto.symbol);
       
       if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
@@ -689,8 +699,18 @@ export default function Home() {
 
   const handleSellStock = async (index, asset, amountToSell) => {
     try {
-      // Get current price from prices state
-      const priceData = prices[asset.ticker];
+      // Get current price from prices state using correct ticker format
+      let tickerKey;
+      if (asset.currency === 'USD') {
+        tickerKey = `${asset.ticker}.US`;
+      } else if (asset.currency === 'IDR') {
+        tickerKey = `${asset.ticker}.JK`;
+      } else {
+        // Auto-detect: if ticker is 4 characters or less, assume IDX, otherwise US
+        tickerKey = asset.ticker.length <= 4 ? `${asset.ticker}.JK` : `${asset.ticker}.US`;
+      }
+      
+      const priceData = prices[tickerKey];
       if (!priceData) {
         throw new Error('Price data not available');
       }
@@ -853,19 +873,19 @@ export default function Home() {
         </Head>
         
         <main className="container mx-auto px-4 py-8 font-['Inter']">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
             <div>
-              <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
+              <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
                 VestTrack
               </h1>
-              <p className="text-gray-500 dark:text-gray-400">Sync to Stay Ahead – Crypto & Stocks Together</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Sync to Stay Ahead – Crypto & Stocks Together</p>
             </div>
             
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 mr-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-full sm:w-auto">
                 <button 
                   onClick={() => setActiveTab('portfolio')}
-                  className={`px-3 py-1.5 text-sm rounded-lg ${
+                  className={`flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg ${
                     activeTab === 'portfolio' 
                       ? 'bg-indigo-600 text-white' 
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -875,7 +895,7 @@ export default function Home() {
                 </button>
                 <button 
                   onClick={() => setActiveTab('add')}
-                  className={`px-3 py-1.5 text-sm rounded-lg ${
+                  className={`flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg ${
                     activeTab === 'add' 
                       ? 'bg-indigo-600 text-white' 
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -885,7 +905,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => setActiveTab('history')}
-                  className={`px-3 py-1.5 text-sm rounded-lg ${
+                  className={`flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg ${
                     activeTab === 'history'
                       ? 'bg-indigo-600 text-white'
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -895,17 +915,17 @@ export default function Home() {
                 </button>
               </div>
               
-              <div className="flex items-center">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <ThemeToggle />
                 
-                <div className="flex items-center ml-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-sm">
-                  <FiUser className="text-gray-500 dark:text-gray-400 mr-2" />
-                  <span className="truncate max-w-[100px] sm:max-w-[150px] text-gray-700 dark:text-gray-300">{user?.email}</span>
+                <div className="flex items-center flex-1 sm:flex-none px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-sm">
+                  <FiUser className="text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
+                  <span className="truncate max-w-[120px] sm:max-w-[150px] text-gray-700 dark:text-gray-300">{user?.email}</span>
                 </div>
                 
                 <button 
                   onClick={logout}
-                  className="ml-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
                   title="Logout"
                 >
                   <FiLogOut />
@@ -924,7 +944,7 @@ export default function Home() {
           ) : (
             <>
               {activeTab === 'add' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
                   <StockInput onAdd={addStock} onComplete={() => setActiveTab('portfolio')} />
                   <CryptoInput onAdd={addCrypto} onComplete={() => setActiveTab('portfolio')} />
                 </div>
@@ -933,11 +953,11 @@ export default function Home() {
                   assets={assets} 
                   onUpdateStock={updateStock}
                   onUpdateCrypto={updateCrypto}
-                  onDeleteStock={deleteStock}
-                  onDeleteCrypto={deleteCrypto}
                   onAddAsset={() => setActiveTab('add')}
                   onSellStock={handleSellStock}
                   onSellCrypto={handleSellCrypto}
+                  prices={prices}
+                  exchangeRate={exchangeRate}
                 />
               ) : activeTab === 'history' ? (
                 <TransactionHistory 
