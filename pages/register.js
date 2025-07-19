@@ -79,7 +79,7 @@ export default function Register() {
     <ProtectedRoute authPage={true}>
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4 transition-colors">
         <Head>
-          <title>Daftar | Fin•Track</title>
+          <title>Register | VestTrack</title>
           <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         </Head>
 
@@ -90,9 +90,9 @@ export default function Register() {
         <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
-              Fin•Track
+              VestTrack
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">Daftar Akun Baru</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">Sync to Stay Ahead – Crypto & Stocks Together</p>
           </div>
 
           {error && (
@@ -144,25 +144,25 @@ export default function Register() {
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-60"
               >
-                {loading ? 'Memproses...' : 'Daftar'}
+                {loading ? 'Processing...' : 'Register'}
               </button>
             </form>
   
             <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-              Sudah punya akun?{' '}
+              Already have an account?{' '}
               <Link href="/login" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
                 Login
               </Link>
             </div>
   
             <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4 text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Apakah ingin membuat akun demo untuk pengujian?</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Want to create a demo account for testing?</p>
               <button
                 type="button"
                 onClick={handleDemoAccount}
                 className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
               >
-                Buat Akun Demo
+                Create Demo Account
               </button>
             </div>
           </div>

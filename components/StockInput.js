@@ -25,13 +25,13 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
     try {
       // Validate input
       if (!ticker || !lots) {
-        throw new Error('Kode saham dan jumlah lot harus diisi');
+        throw new Error('Stock code and lot amount must be filled');
       }
 
       // Validate lots is a positive number
       const lotsNum = parseFloat(lots);
       if (isNaN(lotsNum) || lotsNum <= 0) {
-        throw new Error('Jumlah lot harus lebih dari 0');
+        throw new Error('Lot amount must be greater than 0');
       }
 
       // Format tickers based on exchange
@@ -66,7 +66,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Gagal mengambil harga saham (HTTP ${response.status}): ${errorText}`);
+        throw new Error(`Failed to fetch stock price (HTTP ${response.status}): ${errorText}`);
       }
 
       const data = await response.json();
@@ -93,7 +93,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       }
       console.log('Used ticker for price:', usedTicker);
       if (!stockPrice) {
-        throw new Error('Data harga saham tidak ditemukan atau API limit tercapai. Pastikan kode benar dan coba lagi nanti.');
+        throw new Error('Stock price data not found or API limit reached. Please check the code and try again later.');
       }
 
       // Calculate values based on real-time price
@@ -132,7 +132,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       setExchange('JK');
       
       // Show success message
-      setSuccess('Saham berhasil ditambahkan');
+      setSuccess('Stock successfully added');
       setTimeout(() => setSuccess(null), 3000);
       
       // Call onComplete if provided

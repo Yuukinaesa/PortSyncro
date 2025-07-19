@@ -200,7 +200,7 @@ export default function Home() {
       setConfirmModal({
         isOpen: true,
         title: 'Error',
-        message: 'Gagal memuat transaksi: ' + error.message,
+        message: 'Failed to load transactions: ' + error.message,
         type: 'error',
         confirmText: 'OK',
         onConfirm: () => setConfirmModal(null)
@@ -729,8 +729,8 @@ export default function Home() {
     <ErrorBoundary>
       <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-white transition-colors">
         <Head>
-          <title>Fin•Track | Portfolio Dinamis</title>
-          <meta name="description" content="Portfolio dinamis untuk melacak aset saham dan kripto" />
+          <title>VestTrack | Sync to Stay Ahead – Crypto & Stocks Together</title>
+          <meta name="description" content="Sync to Stay Ahead – Crypto & Stocks Together" />
           <link rel="icon" href="/favicon.ico" />
           <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         </Head>
@@ -739,9 +739,9 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <div>
               <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
-                Fin•Track
+                VestTrack
               </h1>
-              <p className="text-gray-500 dark:text-gray-400">Portfolio Dinamis Saham & Kripto</p>
+              <p className="text-gray-500 dark:text-gray-400">Sync to Stay Ahead – Crypto & Stocks Together</p>
             </div>
             
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
@@ -764,7 +764,7 @@ export default function Home() {
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Tambah Aset
+                  Add Asset
                 </button>
                 <button
                   onClick={() => setActiveTab('history')}
@@ -774,7 +774,7 @@ export default function Home() {
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Riwayat
+                  History
                 </button>
               </div>
               
@@ -801,7 +801,7 @@ export default function Home() {
             <div className="flex justify-center items-center h-64">
               <div className="text-center">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-                <p>Memuat portfolio...</p>
+                <p>Loading portfolio...</p>
               </div>
             </div>
           ) : (
@@ -835,7 +835,7 @@ export default function Home() {
         </main>
         
         <footer className="container mx-auto px-4 py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800">
-          <p>© {new Date().getFullYear()} Fin•Track Portfolio Dinamis</p>
+          <p>© {new Date().getFullYear()} VestTrack - Sync to Stay Ahead – Crypto & Stocks Together</p>
         </footer>
       </div>
     </ErrorBoundary>

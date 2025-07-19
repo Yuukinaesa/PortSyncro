@@ -1,7 +1,7 @@
-# 💹 Fin-Track - Dynamic Portfolio Tracker
-A modern, professional web application for tracking stocks and cryptocurrencies. **Fin-Track** helps you manage, analyze, and simulate your investments with ease, accuracy, and a beautiful interface—all powered by Next.js, React, and Firebase.
+# 💹 VestTrack - Sync to Stay Ahead – Crypto & Stocks Together
+A modern, professional web application for tracking stocks and cryptocurrencies. **VestTrack** helps you manage, analyze, and simulate your investments with ease, accuracy, and a beautiful interface—all powered by Next.js, React, and Firebase.
 
-🌐 Live Website: [fintrack.arfan.biz.id](https://fintrack.arfan.biz.id/)
+🌐 Live Website: [vesttrack.arfan.biz.id](https://vesttrack.arfan.biz.id/)
 
 ---
 
@@ -38,8 +38,8 @@ A modern, professional web application for tracking stocks and cryptocurrencies.
 
 Clone the repository:
 ```sh
-git clone https://github.com/Yuukinaesa/Fin-Track.git
-cd Fin-Track
+git clone https://github.com/Yuukinaesa/VestTrack.git
+cd VestTrack
 ```
 
 Install dependencies:
@@ -111,5 +111,5 @@ For questions or support, please open an issue on the repository.
 
 ---
 
-> **Fin-Track** — [fintrack.arfan.biz.id](https://fintrack.arfan.biz.id)
-> _Track your financial future, beautifully._
+> **VestTrack** — [vesttrack.arfan.biz.id](https://vesttrack.arfan.biz.id)
+> _Sync to Stay Ahead – Crypto & Stocks Together._

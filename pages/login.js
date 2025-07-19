@@ -72,7 +72,7 @@ export default function Login() {
     <ProtectedRoute authPage={true}>
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4 transition-colors">
         <Head>
-          <title>Login | Fin•Track</title>
+          <title>Login | VestTrack</title>
           <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         </Head>
 
@@ -83,9 +83,9 @@ export default function Login() {
         <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
-              Fin•Track
+              VestTrack
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">Portfolio Dinamis Saham & Kripto</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">Sync to Stay Ahead – Crypto & Stocks Together</p>
           </div>
 
           {error && (
@@ -124,30 +124,30 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60"
             >
-              {loading ? 'Memproses...' : 'Login'}
+              {loading ? 'Processing...' : 'Login'}
             </button>
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-            Belum punya akun?{' '}
+            Don't have an account?{' '}
             <Link href="/register" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
-              Daftar
+              Register
             </Link>
           </div>
 
           <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
             <Link href="/reset-password" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
-              Lupa Password?
+              Forgot Password?
             </Link>
           </div>
           
           <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Gunakan akun berikut untuk demo:</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Use the following account for demo:</p>
             <button
               onClick={handleDemoLogin}
               className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
             >
-              Gunakan Akun Demo
+              Use Demo Account
             </button>
           </div>
         </div>
