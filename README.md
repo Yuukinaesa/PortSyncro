@@ -1,40 +1,115 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# 💹 Fin-Track - Dynamic Portfolio Tracker
+A modern, professional web application for tracking stocks and cryptocurrencies. **Fin-Track** helps you manage, analyze, and simulate your investments with ease, accuracy, and a beautiful interface—all powered by Next.js, React, and Firebase.
 
-## Getting Started
+🌐 Live Website: [fintrack.arfan.biz.id](https://fintrack.arfan.biz.id/)
 
-First, run the development server:
+---
 
-```bash
+## ✨ Features
+
+### 📊 Real-time Stock & Crypto Prices
+- **Live Data:** Fetch real-time prices for stocks (IDX & US) and cryptocurrencies
+- **Smart Portfolio:** Track multiple assets in one place
+- **Professional Formatting:** Clean, readable data presentation
+
+### 💸 USD/IDR Exchange Rate
+- **Automatic Conversion:** Live USD/IDR rates for accurate portfolio value
+- **Source:** ExchangeRate-API integration
+
+### 🧾 Transaction History
+- **Buy/Sell Tracking:** Record and view all your asset transactions
+- **Detailed Logs:** Timestamped, categorized, and easy to review
+
+### 🔒 Authentication
+- **Secure Login/Register:** Firebase Auth for safe access
+- **Protected Routes:** Only logged-in users can access portfolio features
+
+### 🌗 Dark Mode
+- **Modern UI:** Beautiful interface in both light and dark themes
+- **One-click Toggle:** Instantly switch between modes
+
+### 🛡️ Error Handling
+- **Friendly Messages:** Clear feedback for missing data or API issues
+- **Robust Validation:** Prevents invalid input and actions
+
+---
+
+## 🚀 Quickstart
+
+Clone the repository:
+```sh
+git clone https://github.com/Yuukinaesa/Fin-Track.git
+cd Fin-Track
+```
+
+Install dependencies:
+```sh
+npm install
+# or
+yarn install
+```
+
+Set up your environment variables:
+- Copy `.env.local.example` to `.env.local` and fill in your Firebase and API keys.
+
+Run the application:
+```sh
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open your browser:
+- Visit [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+---
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+## 🖥️ Requirements
+- Node.js: 16+
+- Next.js: React framework
+- Firebase: Auth & Firestore
+- Tailwind CSS: Styling
+- Yahoo Finance API: Stock data
+- CryptoCompare API: Crypto data
+- ExchangeRate-API: Currency conversion
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📂 Project Structure
+```
+components/      # Reusable React components
+lib/             # Utility functions, API clients, context
+pages/           # Next.js pages (routes)
+public/          # Static assets (images, icons)
+styles/          # Global and component styles
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🎯 Key Features
+- Modern, responsive design
+- Real-time calculations and updates
+- Secure authentication
+- Accurate currency conversion
+- Comprehensive transaction history
+- Professional UI/UX
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📄 License
+This project is licensed under the MIT License.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🤝 Contributing
+Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+---
+
+## 🙋 Support
+For questions or support, please open an issue on the repository.
+
+---
+
+> **Fin-Track** — [fintrack.arfan.biz.id](https://fintrack.arfan.biz.id)
+> _Track your financial future, beautifully._
