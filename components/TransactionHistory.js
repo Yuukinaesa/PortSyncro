@@ -34,7 +34,7 @@ export default function TransactionHistory({
   useEffect(() => {
     let filtered = [...transactions]; // Create a copy of transactions array
     
-    // Apply type filter (buy/sell)
+    // Apply type filter (buy/sell/delete)
     if (filter !== 'all') {
       filtered = filtered.filter(tx => tx.type === filter);
     }
@@ -155,12 +155,33 @@ export default function TransactionHistory({
       
       filteredTransactions.forEach(tx => {
         const values = calculateValue(tx);
+        let typeText = '';
+        let amountText = '';
+        
+        switch(tx.type) {
+          case 'buy':
+            typeText = 'Beli';
+            amountText = tx.amount;
+            break;
+          case 'sell':
+            typeText = 'Jual';
+            amountText = tx.amount;
+            break;
+          case 'delete':
+            typeText = 'Hapus';
+            amountText = tx.amount;
+            break;
+          default:
+            typeText = tx.type;
+            amountText = tx.amount;
+        }
+        
         const row = [
           `"${formatDate(tx.timestamp)}"`,
-          `"${tx.type === 'buy' ? 'Beli' : 'Jual'}"`,
+          `"${typeText}"`,
           `"${tx.assetType === 'stock' ? 'Saham' : 'Kripto'}"`,
           `"${tx.ticker || tx.symbol}"`,
-          tx.amount,
+          `"${amountText}"`,
           formatNumberForCSV(tx.price, tx.currency === 'IDR' ? 'IDR' : 'USD'),
           formatNumberForCSV(values.valueIDR, 'IDR'),
           formatNumberForCSV(values.valueUSD, 'USD')
@@ -388,6 +409,16 @@ export default function TransactionHistory({
               >
                 Jual
               </button>
+              <button
+                onClick={() => setFilter('delete')}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  filter === 'delete'
+                    ? 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                Hapus
+              </button>
             </div>
           </div>
 
@@ -456,9 +487,15 @@ export default function TransactionHistory({
                       <span className={`px-3 py-1 text-xs rounded-full font-medium ${
                         tx.type === 'buy'
                           ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                          : tx.type === 'sell'
+                          ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                          : tx.type === 'delete'
+                          ? 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+                          : 'bg-gray-50 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400'
                       }`}>
-                        {tx.type === 'buy' ? 'Beli' : 'Jual'}
+                        {tx.type === 'buy' ? 'Beli' : 
+                         tx.type === 'sell' ? 'Jual' : 
+                         tx.type === 'delete' ? 'Hapus' : tx.type}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -548,7 +585,7 @@ export default function TransactionHistory({
 TransactionHistory.propTypes = {
   transactions: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string.isRequired,
-    type: PropTypes.oneOf(['buy', 'sell']).isRequired,
+    type: PropTypes.oneOf(['buy', 'sell', 'delete']).isRequired,
     ticker: PropTypes.string,
     symbol: PropTypes.string,
     amount: PropTypes.number.isRequired,

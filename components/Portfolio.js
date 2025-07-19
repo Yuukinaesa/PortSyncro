@@ -278,6 +278,8 @@ export default function Portfolio({
     let totalCryptoWithPrices = 0;
     let avgDayChange = 0;
     let totalAssetsWithChange = 0;
+    let totalPreviousDayIDR = 0;
+    let totalPreviousDayUSD = 0;
     let error = null;
     // Hitung total saham
     assets.stocks.forEach(stock => {
@@ -307,10 +309,22 @@ export default function Portfolio({
             totalStocksIDR += price.price * shareCount * exchangeRate;
           }
         }
-        // Hitung rata-rata perubahan harian
+        // Hitung rata-rata perubahan harian dan nilai hari sebelumnya
         if (price.change !== undefined) {
           avgDayChange += price.change;
           totalAssetsWithChange++;
+          
+          // Hitung nilai hari sebelumnya
+          const previousPrice = price.price / (1 + price.change / 100);
+          const previousValueIDR = price.currency === 'IDR' ? 
+            previousPrice * shareCount : 
+            (exchangeRate ? previousPrice * shareCount * exchangeRate : 0);
+          const previousValueUSD = price.currency === 'USD' ? 
+            previousPrice * shareCount : 
+            (exchangeRate ? previousPrice * shareCount / exchangeRate : 0);
+          
+          totalPreviousDayIDR += previousValueIDR;
+          totalPreviousDayUSD += previousValueUSD;
         }
         totalStocksWithPrices++;
       }
@@ -325,10 +339,18 @@ export default function Portfolio({
         } else {
           totalCryptoIDR += price.price * crypto.amount * exchangeRate;
         }
-        // Hitung rata-rata perubahan harian
+        // Hitung rata-rata perubahan harian dan nilai hari sebelumnya
         if (price.change !== undefined) {
           avgDayChange += price.change;
           totalAssetsWithChange++;
+          
+          // Hitung nilai hari sebelumnya untuk kripto
+          const previousPrice = price.price / (1 + price.change / 100);
+          const previousValueUSD = previousPrice * crypto.amount;
+          const previousValueIDR = exchangeRate ? previousValueUSD * exchangeRate : 0;
+          
+          totalPreviousDayIDR += previousValueIDR;
+          totalPreviousDayUSD += previousValueUSD;
         }
         totalCryptoWithPrices++;
       }
@@ -339,9 +361,18 @@ export default function Portfolio({
     avgDayChange = totalAssetsWithChange > 0 ? avgDayChange / totalAssetsWithChange : 0;
     const stocksPercent = totalIDR > 0 ? (totalStocksIDR / totalIDR) * 100 : 0;
     const cryptoPercent = totalIDR > 0 ? (totalCryptoIDR / totalIDR) * 100 : 0;
+    
+    // Hitung perubahan absolut
+    const changeIDR = totalIDR - totalPreviousDayIDR;
+    const changeUSD = totalUSD - totalPreviousDayUSD;
+    
     return {
       totalIDR,
       totalUSD,
+      totalPreviousDayIDR,
+      totalPreviousDayUSD,
+      changeIDR,
+      changeUSD,
       totalStocksIDR,
       totalStocksUSD,
       totalCryptoIDR,
@@ -388,6 +419,14 @@ export default function Portfolio({
               </p>
             )}
           </div>
+          {totals.totalPreviousDayIDR > 0 && (
+            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Kemarin: Rp {totals.totalPreviousDayIDR.toLocaleString()} 
+                ({totals.changeIDR > 0 ? '+' : ''}{totals.changeIDR.toLocaleString()})
+              </p>
+            </div>
+          )}
         </div>
         
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-lg">

@@ -572,18 +572,119 @@ export default function Home() {
     });
   };
   
-  const deleteStock = (index) => {
-    setAssets(prev => ({
-      ...prev,
-      stocks: prev.stocks.filter((_, i) => i !== index)
-    }));
+  const deleteStock = async (index) => {
+    try {
+      const stockToDelete = assets.stocks[index];
+      
+      // Update local state first
+      setAssets(prev => ({
+        ...prev,
+        stocks: prev.stocks.filter((_, i) => i !== index)
+      }));
+
+      // Record delete transaction
+      if (user && stockToDelete) {
+        const now = new Date();
+        const formattedDate = now.toLocaleString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+
+        // Get current price for calculation
+        const priceData = prices[stockToDelete.ticker];
+        const price = priceData ? priceData.price : stockToDelete.price || 0;
+        const currency = priceData ? priceData.currency : stockToDelete.currency || 'IDR';
+        
+        // Calculate values
+        const totalShares = currency === 'IDR' ? stockToDelete.lots * 100 : stockToDelete.lots;
+        let valueIDR, valueUSD;
+        if (currency === 'IDR') {
+          valueIDR = price * totalShares;
+          valueUSD = exchangeRate ? valueIDR / exchangeRate : 0;
+        } else {
+          valueUSD = price * totalShares;
+          valueIDR = exchangeRate ? valueUSD * exchangeRate : 0;
+        }
+
+        const transactionData = {
+          type: 'delete',
+          assetType: 'stock',
+          ticker: stockToDelete.ticker,
+          amount: stockToDelete.lots,
+          price: price,
+          valueIDR: valueIDR,
+          valueUSD: valueUSD,
+          timestamp: now.toISOString(),
+          date: formattedDate,
+          currency: currency,
+          shares: totalShares,
+          userId: user.uid,
+          status: 'completed'
+        };
+
+        // Save to Firestore
+        await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
+      }
+    } catch (error) {
+      console.error('Error deleting stock:', error);
+    }
   };
   
-  const deleteCrypto = (index) => {
-    setAssets(prev => ({
-      ...prev,
-      crypto: prev.crypto.filter((_, i) => i !== index)
-    }));
+  const deleteCrypto = async (index) => {
+    try {
+      const cryptoToDelete = assets.crypto[index];
+      
+      // Update local state first
+      setAssets(prev => ({
+        ...prev,
+        crypto: prev.crypto.filter((_, i) => i !== index)
+      }));
+
+      // Record delete transaction
+      if (user && cryptoToDelete) {
+        const now = new Date();
+        const formattedDate = now.toLocaleString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+
+        // Get current price for calculation
+        const priceData = prices[cryptoToDelete.symbol];
+        const price = priceData ? priceData.price : cryptoToDelete.price || 0;
+        
+        // Calculate values
+        const valueUSD = price * cryptoToDelete.amount;
+        const valueIDR = exchangeRate ? valueUSD * exchangeRate : 0;
+
+        const transactionData = {
+          type: 'delete',
+          assetType: 'crypto',
+          symbol: cryptoToDelete.symbol,
+          amount: cryptoToDelete.amount,
+          price: price,
+          valueIDR: valueIDR,
+          valueUSD: valueUSD,
+          timestamp: now.toISOString(),
+          date: formattedDate,
+          currency: 'USD',
+          userId: user.uid,
+          status: 'completed'
+        };
+
+        // Save to Firestore
+        await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
+      }
+    } catch (error) {
+      console.error('Error deleting crypto:', error);
+    }
   };
 
   const handleSellStock = async (index, asset, amountToSell) => {
