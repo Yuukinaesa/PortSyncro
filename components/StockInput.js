@@ -35,7 +35,11 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       }
 
       // Format ticker based on exchange
-      const formattedTicker = exchange ? `${ticker.trim().toUpperCase()}:${exchange}` : ticker.trim().toUpperCase();
+      const formattedTicker = exchange === 'US'
+        ? ticker.trim().toUpperCase()
+        : exchange
+        ? `${ticker.trim().toUpperCase()}:${exchange}`
+        : ticker.trim().toUpperCase();
       
       // Fetch current stock price
       const response = await fetch('/api/prices', {
@@ -55,7 +59,24 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       }
 
       const data = await response.json();
-      const stockPrice = data.prices[formattedTicker];
+      let stockPrice = data.prices[formattedTicker];
+      // Fallback: if not found and formattedTicker contains ':', try symbol only (for US stocks)
+      if (!stockPrice && formattedTicker.includes(':')) {
+        const symbolOnly = formattedTicker.split(':')[0];
+        stockPrice = data.prices[symbolOnly];
+      }
+      // Extra fallback: try to find any key that matches symbol (case-insensitive, with or without suffix)
+      if (!stockPrice) {
+        const symbolOnly = formattedTicker.split(':')[0].toUpperCase();
+        const foundKey = Object.keys(data.prices).find(key => key.toUpperCase().startsWith(symbolOnly));
+        if (foundKey) {
+          stockPrice = data.prices[foundKey];
+        }
+      }
+      // Debug log if still not found
+      if (!stockPrice) {
+        console.error('Available price keys:', Object.keys(data.prices));
+      }
       
       if (!stockPrice) {
         throw new Error('Kode saham tidak ditemukan atau tidak didukung. Pastikan kode dan exchange benar.');

@@ -65,6 +65,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
   const handleSaveSell = (index, asset) => {
     const amountToSell = parseFloat(sellAmount);
     const currentAmount = type === 'stock' ? asset.lots : asset.amount;
+    const price = prices[type === 'stock' ? asset.ticker : asset.symbol];
+    const isIDX = type === 'stock' && price && price.currency === 'IDR';
     
     if (isNaN(amountToSell) || amountToSell <= 0) {
       setConfirmModal({
@@ -75,17 +77,16 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       });
       return;
     }
-    // Only allow integer lots for stock
-    if (type === 'stock' && (!Number.isInteger(amountToSell) || String(sellAmount).includes(','))) {
+    // Only allow integer lots for IDX stock
+    if (isIDX && (!Number.isInteger(amountToSell) || String(sellAmount).includes(','))) {
       setConfirmModal({
         isOpen: true,
         title: 'Peringatan',
-        message: 'Penjualan saham hanya diperbolehkan dalam satuan lot bulat (tidak boleh desimal atau koma).',
+        message: 'Penjualan saham IDX hanya diperbolehkan dalam satuan lot bulat (tidak boleh desimal atau koma).',
         type: 'error'
       });
       return;
     }
-    
     if (amountToSell > currentAmount) {
       setConfirmModal({
         isOpen: true,
@@ -98,24 +99,21 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     
     // Tampilkan konfirmasi penjualan
     const ticker = type === 'stock' ? asset.ticker : asset.symbol;
-    const price = prices[ticker];
-    let valueFormatted = '';
-    
-    if (price) {
-      if (type === 'stock') {
+    const valueFormatted = price ? (
+      type === 'stock' ? (
         // For IDX stocks: 1 lot = 100 shares, for US stocks: fractional shares allowed
-        const shareCount = price.currency === 'IDR' ? amountToSell * 100 : amountToSell;
-        const value = price.price * shareCount;
-        const valueIDR = price.currency === 'USD' && exchangeRate ? value * exchangeRate : value;
-        
-        valueFormatted = valueIDR.toLocaleString('id-ID', {style: 'currency', currency: 'IDR'});
-      } else {
-        const valueUSD = amountToSell * price.price;
-        const valueIDR = price.priceIDR ? amountToSell * price.priceIDR : exchangeRate ? valueUSD * exchangeRate : 0;
-        
-        valueFormatted = valueIDR.toLocaleString('id-ID', {style: 'currency', currency: 'IDR'});
-      }
-    }
+        price.currency === 'IDR' ? (amountToSell * 100).toLocaleString('id-ID', {style: 'currency', currency: 'IDR'}) :
+        amountToSell.toLocaleString(undefined, { 
+          minimumFractionDigits: 2, 
+          maximumFractionDigits: 8 
+        })
+      ) : (
+        amountToSell.toLocaleString(undefined, { 
+          minimumFractionDigits: 2, 
+          maximumFractionDigits: 8 
+        })
+      )
+    ) : '';
     
     setConfirmModal({
       isOpen: true,
@@ -430,11 +428,11 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             value={sellAmount}
                             onChange={(e) => {
                               let value = e.target.value;
-                              if (type === 'stock') {
-                                // Only allow digits (no dot or comma)
+                              const price = prices[type === 'stock' ? asset.ticker : asset.symbol];
+                              const isIDX = type === 'stock' && price && price.currency === 'IDR';
+                              if (isIDX) {
                                 value = value.replace(/[^0-9]/g, '');
                               } else {
-                                // For crypto, allow digits and dot
                                 value = value.replace(/[^0-9.]/g, '');
                               }
                               setSellAmount(value);
