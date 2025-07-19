@@ -327,12 +327,9 @@ export default function Home() {
       };
       
       // Update local state
+      const normalizedNewTicker = stock.ticker.toUpperCase();
       setAssets(prev => {
-        const normalizedNewTicker = stock.ticker.toUpperCase();
-        const existingStockIndex = prev.stocks.findIndex(s => 
-          s.ticker.toUpperCase() === normalizedNewTicker
-        );
-        
+        const existingStockIndex = prev.stocks.findIndex(s => s.ticker.toUpperCase() === normalizedNewTicker);
         if (existingStockIndex >= 0) {
           const updatedStocks = [...prev.stocks];
           updatedStocks[existingStockIndex] = {
@@ -341,17 +338,22 @@ export default function Home() {
             shares: updatedStocks[existingStockIndex].shares + stock.shares,
             valueIDR: updatedStocks[existingStockIndex].valueIDR + valueIDR,
             valueUSD: updatedStocks[existingStockIndex].valueUSD + valueUSD,
-            ...updatedStock
+            lastUpdate: formattedDate,
+            price: stock.price,
+            purchasePrice: stock.price,
+            ticker: normalizedNewTicker // always store normalized
           };
           return {
             ...prev,
             stocks: updatedStocks
           };
         }
-        
         return {
           ...prev,
-          stocks: [...prev.stocks, updatedStock]
+          stocks: [...prev.stocks, {
+            ...updatedStock,
+            ticker: normalizedNewTicker
+          }]
         };
       });
 
@@ -483,12 +485,9 @@ export default function Home() {
       };
       
       // Update local state
+      const normalizedNewSymbol = crypto.symbol.toUpperCase();
       setAssets(prev => {
-        const normalizedNewSymbol = crypto.symbol.toUpperCase();
-        const existingCryptoIndex = prev.crypto.findIndex(c => 
-          c.symbol.toUpperCase() === normalizedNewSymbol
-        );
-        
+        const existingCryptoIndex = prev.crypto.findIndex(c => c.symbol.toUpperCase() === normalizedNewSymbol);
         if (existingCryptoIndex >= 0) {
           const updatedCrypto = [...prev.crypto];
           updatedCrypto[existingCryptoIndex] = {
@@ -496,17 +495,22 @@ export default function Home() {
             amount: updatedCrypto[existingCryptoIndex].amount + crypto.amount,
             valueIDR: updatedCrypto[existingCryptoIndex].valueIDR + totalValueIDR,
             valueUSD: updatedCrypto[existingCryptoIndex].valueUSD + totalValueUSD,
-            ...updatedCrypto
+            lastUpdate: formattedDate,
+            price: cryptoPrice.price,
+            purchasePrice: pricePerUnit,
+            symbol: normalizedNewSymbol // always store normalized
           };
           return {
             ...prev,
             crypto: updatedCrypto
           };
         }
-        
         return {
           ...prev,
-          crypto: [...prev.crypto, updatedCrypto]
+          crypto: [...prev.crypto, {
+            ...updatedCrypto,
+            symbol: normalizedNewSymbol
+          }]
         };
       });
 

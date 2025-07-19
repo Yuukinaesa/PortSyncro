@@ -151,7 +151,7 @@ export default function TransactionHistory({
     try {
       // Add UTF-8 BOM to prevent Excel from showing warning
       const BOM = '\uFEFF';
-      let csvContent = BOM + "Tanggal,Tipe,Aset,Symbol,Jumlah,Harga,Nilai IDR,Nilai USD\n";
+      let csvContent = BOM + "Tanggal;Tipe;Aset;Symbol;Jumlah;Harga;Nilai IDR;Nilai USD\n";
       
       filteredTransactions.forEach(tx => {
         const values = calculateValue(tx);
@@ -165,7 +165,7 @@ export default function TransactionHistory({
           formatNumberForCSV(values.valueIDR, 'IDR'),
           formatNumberForCSV(values.valueUSD, 'USD')
         ];
-        csvContent += row.join(',') + '\n';
+        csvContent += row.join(';') + '\n';
       });
       
       // Create blob with proper MIME type

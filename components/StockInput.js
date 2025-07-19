@@ -35,7 +35,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       }
 
       // Format ticker based on exchange
-      const formattedTicker = exchange ? `${ticker}:${exchange}` : ticker;
+      const formattedTicker = exchange ? `${ticker.trim().toUpperCase()}:${exchange}` : ticker.trim().toUpperCase();
       
       // Fetch current stock price
       const response = await fetch('/api/prices', {
@@ -57,8 +57,11 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       const data = await response.json();
       const stockPrice = data.prices[formattedTicker];
       
-      if (!stockPrice || !stockPrice.price) {
-        throw new Error('Data harga saham tidak valid');
+      if (!stockPrice) {
+        throw new Error('Kode saham tidak ditemukan atau tidak didukung. Pastikan kode dan exchange benar.');
+      }
+      if (!stockPrice.price) {
+        throw new Error('Harga saham tidak tersedia untuk kode ini.');
       }
 
       // Calculate values based on real-time price
