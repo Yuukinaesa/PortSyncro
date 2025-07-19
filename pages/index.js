@@ -623,19 +623,30 @@ export default function Home() {
         };
       }
 
-      // Add transaction
-      const newTransaction = {
-        id: Date.now().toString(),
+      // Add transaction (SELL) - always use addDoc to Firestore
+      const now = new Date();
+      const formattedDate = now.toLocaleString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      const transactionData = {
         type: 'sell',
         ticker: asset.ticker,
         amount: amountToSell,
         price: priceData.price,
         valueIDR,
         valueUSD,
-        timestamp: new Date().toISOString(),
+        timestamp: now.toISOString(),
         assetType: 'stock',
         currency: priceData.currency,
-        shares: shareCount
+        shares: shareCount,
+        date: formattedDate,
+        userId: user ? user.uid : null,
+        status: 'completed'
       };
 
       setAssets(prev => ({
@@ -643,17 +654,14 @@ export default function Home() {
         stocks: updatedStocks
       }));
 
-      setTransactions(prev => [...prev, newTransaction]);
-
       // Save to Firestore if user is logged in
       if (user) {
-        const transactionRef = doc(db, "users", user.uid, "transactions", newTransaction.id);
-        await setDoc(transactionRef, newTransaction);
+        await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
       }
 
     } catch (error) {
       console.error('Error selling stock:', error);
-      alert('Gagal menjual saham: ' + error.message);
+      alert('Failed to sell stock: ' + error.message);
     }
   };
 
@@ -697,9 +705,17 @@ export default function Home() {
         }));
       }
 
-      // Add transaction
+      // Add transaction (SELL) - always use addDoc to Firestore
+      const now = new Date();
+      const formattedDate = now.toLocaleString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
       const transaction = {
-        id: Date.now().toString(),
         type: 'sell',
         assetType: 'crypto',
         symbol: crypto.symbol,
@@ -707,16 +723,16 @@ export default function Home() {
         price: priceData.price,
         valueIDR,
         valueUSD,
-        date: new Date().toISOString(),
-        currency: 'USD'
+        timestamp: now.toISOString(),
+        date: formattedDate,
+        currency: 'USD',
+        userId: user ? user.uid : null,
+        status: 'completed'
       };
-
-      setTransactions(prev => [transaction, ...prev]);
 
       // Save to Firestore if user is logged in
       if (user) {
-        const transactionRef = doc(db, "users", user.uid, "transactions", transaction.id);
-        await setDoc(transactionRef, transaction);
+        await addDoc(collection(db, 'users', user.uid, 'transactions'), transaction);
       }
 
     } catch (error) {
