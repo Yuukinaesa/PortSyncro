@@ -10,7 +10,7 @@ async function testExchangeRate() {
     console.log('Testing Exchange Rate API...');
     console.log(`Requesting: ${API_BASE_URL}/exchange-rate`);
     
-    const response = await fetch(`${API_BASE_URL}/exchange-rate`);
+    const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
     
     console.log('Response Status:', response.status, response.statusText);
     
@@ -48,9 +48,9 @@ async function testExchangeRate() {
 async function testExternalAPI() {
   try {
     console.log('\n\nTesting External Exchange Rate API directly...');
-    console.log('Requesting: https://v6.exchangerate-api.com/v6/df6c889b7268e7d4dc9ef4cf/latest/USD');
+    console.log('Requesting: https://api.exchangerate-api.com/v4/latest/USD');
     
-    const response = await fetch('https://v6.exchangerate-api.com/v6/df6c889b7268e7d4dc9ef4cf/latest/USD');
+    const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
     
     console.log('Response Status:', response.status, response.statusText);
     

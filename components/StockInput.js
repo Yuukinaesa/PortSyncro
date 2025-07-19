@@ -34,15 +34,17 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         throw new Error('Jumlah lot harus lebih dari 0');
       }
 
-      // Format ticker(s) based on exchange
-      let tickersToSend;
+      // Format ticker based on exchange
+      let formattedTicker;
       if (exchange === 'US') {
-        const base = ticker.trim().toUpperCase();
-        tickersToSend = [base, `${base}.US`];
+        formattedTicker = `${ticker.trim().toUpperCase()}.US`;
+      } else if (exchange === 'JK') {
+        formattedTicker = `${ticker.trim().toUpperCase()}:JK`;
       } else {
-        tickersToSend = [exchange ? `${ticker.trim().toUpperCase()}:${exchange}` : ticker.trim().toUpperCase()];
+        formattedTicker = ticker.trim().toUpperCase();
       }
-      
+      console.log('Submitting ticker:', formattedTicker, 'Exchange:', exchange);
+
       // Fetch current stock price
       const response = await fetch('/api/prices', {
         method: 'POST',
@@ -50,7 +52,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          stocks: tickersToSend,
+          stocks: [formattedTicker],
           crypto: [],
           exchangeRate: exchangeRate
         }),
@@ -61,37 +63,30 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       }
 
       const data = await response.json();
-      // Find the first available price from tickersToSend or any matching key
+      console.log('API returned prices:', data.prices);
       let stockPrice = null;
-      for (const t of tickersToSend) {
-        if (data.prices[t]) {
-          stockPrice = data.prices[t];
-          break;
-        }
-      }
-      // Fallback: try to find any key that matches symbol (case-insensitive, with or without suffix)
-      if (!stockPrice) {
-        const symbolOnly = tickersToSend[0].split(':')[0].toUpperCase();
-        const foundKey = Object.keys(data.prices).find(key => key.toUpperCase().startsWith(symbolOnly));
+      let usedTicker = null;
+      if (data.prices[formattedTicker] && data.prices[formattedTicker].price) {
+        stockPrice = data.prices[formattedTicker];
+        usedTicker = formattedTicker;
+      } else {
+        // Fallback: try to find any key that matches the ticker (case-insensitive, startsWith)
+        const baseTicker = ticker.trim().toUpperCase();
+        const foundKey = Object.keys(data.prices).find(key => key.toUpperCase().startsWith(baseTicker) && data.prices[key] && data.prices[key].price);
         if (foundKey) {
           stockPrice = data.prices[foundKey];
+          usedTicker = foundKey;
+          console.log('Fallback matched ticker:', foundKey);
         }
       }
-      // Debug log if still not found
+      console.log('Used ticker for price:', usedTicker);
       if (!stockPrice) {
-        console.error('Available price keys:', Object.keys(data.prices));
-      }
-      
-      if (!stockPrice) {
-        throw new Error('Kode saham tidak ditemukan atau tidak didukung. Pastikan kode dan exchange benar.');
-      }
-      if (!stockPrice.price) {
-        throw new Error('Harga saham tidak tersedia untuk kode ini.');
+        throw new Error('Data harga saham tidak ditemukan atau API limit tercapai. Pastikan kode benar dan coba lagi nanti.');
       }
 
       // Calculate values based on real-time price
-      // For IDX stocks: 1 lot = 100 shares, for US stocks: fractional shares allowed
-      const totalShares = stockPrice.currency === 'IDR' ? lotsNum * 100 : lotsNum;
+      const sharesPerLot = 100; // 1 lot = 100 saham
+      const totalShares = lotsNum * sharesPerLot;
       
       let valueIDR, valueUSD;
       
