@@ -34,16 +34,22 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         throw new Error('Jumlah lot harus lebih dari 0');
       }
 
-      // Format ticker based on exchange
-      let formattedTicker;
+      // Format tickers based on exchange
+      let tickersToTry;
       if (exchange === 'US') {
-        formattedTicker = `${ticker.trim().toUpperCase()}.US`;
+        tickersToTry = [`${ticker.trim().toUpperCase()}.US`];
       } else if (exchange === 'JK') {
-        formattedTicker = `${ticker.trim().toUpperCase()}:JK`;
+        tickersToTry = [`${ticker.trim().toUpperCase()}.JK`];
       } else {
-        formattedTicker = ticker.trim().toUpperCase();
+        // Auto: try raw, .JK, .US
+        const base = ticker.trim().toUpperCase();
+        tickersToTry = [base, `${base}.JK`, `${base}.US`];
       }
-      console.log('Submitting ticker:', formattedTicker, 'Exchange:', exchange);
+      console.log('Submitting tickers:', tickersToTry, 'Exchange:', exchange);
+
+      // Debounce submit button
+      setIsLoading(true);
+      setTimeout(() => setIsLoading(false), 1500);
 
       // Fetch current stock price
       const response = await fetch('/api/prices', {
@@ -52,27 +58,33 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          stocks: [formattedTicker],
+          stocks: tickersToTry,
           crypto: [],
           exchangeRate: exchangeRate
         }),
       });
       
       if (!response.ok) {
-        throw new Error('Gagal mengambil harga saham');
+        const errorText = await response.text();
+        throw new Error(`Gagal mengambil harga saham (HTTP ${response.status}): ${errorText}`);
       }
 
       const data = await response.json();
       console.log('API returned prices:', data.prices);
       let stockPrice = null;
       let usedTicker = null;
-      if (data.prices[formattedTicker] && data.prices[formattedTicker].price) {
-        stockPrice = data.prices[formattedTicker];
-        usedTicker = formattedTicker;
-      } else {
-        // Fallback: try to find any key that matches the ticker (case-insensitive, startsWith)
+      // Try each ticker in order
+      for (const t of tickersToTry) {
+        if (data.prices[t] && data.prices[t].price) {
+          stockPrice = data.prices[t];
+          usedTicker = t;
+          break;
+        }
+      }
+      // Fallback: prefer full match with .JK or .US
+      if (!stockPrice && exchange === '') {
         const baseTicker = ticker.trim().toUpperCase();
-        const foundKey = Object.keys(data.prices).find(key => key.toUpperCase().startsWith(baseTicker) && data.prices[key] && data.prices[key].price);
+        const foundKey = Object.keys(data.prices).find(key => (key.toUpperCase() === `${baseTicker}.JK` || key.toUpperCase() === `${baseTicker}.US`) && data.prices[key] && data.prices[key].price);
         if (foundKey) {
           stockPrice = data.prices[foundKey];
           usedTicker = foundKey;
