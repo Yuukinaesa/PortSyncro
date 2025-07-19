@@ -53,7 +53,13 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     setSellingIndex(index);
     // Default to half of current amount
     const currentAmount = type === 'stock' ? asset.lots : asset.amount;
-    setSellAmount((currentAmount / 2).toString());
+    let defaultValue;
+    if (type === 'stock') {
+      defaultValue = Math.floor(currentAmount / 2); // Hanya bilangan bulat
+    } else {
+      defaultValue = (currentAmount / 2).toString();
+    }
+    setSellAmount(defaultValue.toString());
   };
 
   const handleSaveSell = (index, asset) => {
