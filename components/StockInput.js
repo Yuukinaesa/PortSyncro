@@ -34,12 +34,14 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         throw new Error('Jumlah lot harus lebih dari 0');
       }
 
-      // Format ticker based on exchange
-      const formattedTicker = exchange === 'US'
-        ? ticker.trim().toUpperCase()
-        : exchange
-        ? `${ticker.trim().toUpperCase()}:${exchange}`
-        : ticker.trim().toUpperCase();
+      // Format ticker(s) based on exchange
+      let tickersToSend;
+      if (exchange === 'US') {
+        const base = ticker.trim().toUpperCase();
+        tickersToSend = [base, `${base}.US`];
+      } else {
+        tickersToSend = [exchange ? `${ticker.trim().toUpperCase()}:${exchange}` : ticker.trim().toUpperCase()];
+      }
       
       // Fetch current stock price
       const response = await fetch('/api/prices', {
@@ -48,7 +50,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          stocks: [formattedTicker],
+          stocks: tickersToSend,
           crypto: [],
           exchangeRate: exchangeRate
         }),
@@ -59,15 +61,17 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       }
 
       const data = await response.json();
-      let stockPrice = data.prices[formattedTicker];
-      // Fallback: if not found and formattedTicker contains ':', try symbol only (for US stocks)
-      if (!stockPrice && formattedTicker.includes(':')) {
-        const symbolOnly = formattedTicker.split(':')[0];
-        stockPrice = data.prices[symbolOnly];
+      // Find the first available price from tickersToSend or any matching key
+      let stockPrice = null;
+      for (const t of tickersToSend) {
+        if (data.prices[t]) {
+          stockPrice = data.prices[t];
+          break;
+        }
       }
-      // Extra fallback: try to find any key that matches symbol (case-insensitive, with or without suffix)
+      // Fallback: try to find any key that matches symbol (case-insensitive, with or without suffix)
       if (!stockPrice) {
-        const symbolOnly = formattedTicker.split(':')[0].toUpperCase();
+        const symbolOnly = tickersToSend[0].split(':')[0].toUpperCase();
         const foundKey = Object.keys(data.prices).find(key => key.toUpperCase().startsWith(symbolOnly));
         if (foundKey) {
           stockPrice = data.prices[foundKey];
