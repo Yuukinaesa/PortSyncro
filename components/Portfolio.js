@@ -54,7 +54,16 @@ export default function Portfolio({
   };
 
   const fetchPrices = async () => {
-    const stockTickers = assets.stocks.map(stock => stock.ticker);
+    const stockTickers = assets.stocks.map(stock => {
+      // Use the same ticker format as when adding stocks
+      if (stock.currency === 'USD') {
+        return `${stock.ticker}.US`;
+      } else if (stock.currency === 'IDR') {
+        return `${stock.ticker}.JK`;
+      } else {
+        return stock.ticker;
+      }
+    });
     const cryptoSymbols = assets.crypto.map(crypto => crypto.symbol);
     
     if (stockTickers.length === 0 && cryptoSymbols.length === 0) {

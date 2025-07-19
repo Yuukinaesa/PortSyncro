@@ -163,7 +163,11 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
   
   const calculateAssetValue = (asset, currency, exchangeRate) => {
     if (asset.type === 'stock') {
-      const price = prices[asset.ticker];
+      // Use the same ticker format as when fetching prices
+      const tickerKey = asset.currency === 'USD' ? `${asset.ticker}.US` : 
+                       asset.currency === 'IDR' ? `${asset.ticker}.JK` : 
+                       asset.ticker;
+      const price = prices[tickerKey];
       // For IDX stocks: 1 lot = 100 shares, for US stocks: fractional shares allowed
       const shareCount = price && price.currency === 'IDR' ? asset.lots * 100 : asset.lots;
       
@@ -176,17 +180,17 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         };
       }
       
-              if (price.currency === 'IDR') {
-          const assetValue = price.price * shareCount;
-          if (!exchangeRate || exchangeRate === 0) {
-            return {
-              valueIDR: assetValue,
-              valueUSD: 0,
-              price: price.price,
-              error: 'Kurs tidak tersedia untuk konversi ke USD'
-            };
-          }
-          const assetValueUSD = assetValue / exchangeRate;
+      if (price.currency === 'IDR') {
+        const assetValue = price.price * shareCount;
+        if (!exchangeRate || exchangeRate === 0) {
+          return {
+            valueIDR: assetValue,
+            valueUSD: 0,
+            price: price.price,
+            error: 'Kurs tidak tersedia untuk konversi ke USD'
+          };
+        }
+        const assetValueUSD = assetValue / exchangeRate;
         
         return {
           valueIDR: assetValue,
@@ -278,7 +282,13 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {assets.map((asset, index) => {
               const ticker = type === 'stock' ? asset.ticker : asset.symbol;
-              const price = prices[ticker];
+              // Use the same ticker format as when fetching prices
+              const tickerKey = type === 'stock' ? 
+                (asset.currency === 'USD' ? `${asset.ticker}.US` : 
+                 asset.currency === 'IDR' ? `${asset.ticker}.JK` : 
+                 asset.ticker) : 
+                asset.symbol;
+              const price = prices[tickerKey];
               
               let originalPrice = 0;
               let priceInIDR = 0;
