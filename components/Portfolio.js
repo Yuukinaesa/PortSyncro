@@ -281,8 +281,13 @@ export default function Portfolio({
     let error = null;
     // Hitung total saham
     assets.stocks.forEach(stock => {
-      if (prices[stock.ticker]) {
-        const price = prices[stock.ticker];
+      const tickerKey = stock.currency === 'USD'
+        ? `${stock.ticker}.US`
+        : stock.currency === 'IDR'
+          ? `${stock.ticker}.JK`
+          : stock.ticker;
+      if (prices[tickerKey]) {
+        const price = prices[tickerKey];
         // For IDX stocks: 1 lot = 100 shares, for US stocks: fractional shares allowed
         const shareCount = price.currency === 'IDR' ? stock.lots * 100 : stock.lots;
         if (price.currency === 'IDR') {
