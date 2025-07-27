@@ -1,13 +1,16 @@
 // AssetTable.js
 import { useState } from 'react';
-import { FiArrowDown, FiArrowUp, FiTrendingUp, FiDollarSign } from 'react-icons/fi';
+import { FiArrowDown, FiArrowUp, FiTrendingUp, FiDollarSign, FiPercent, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
 import Modal from './Modal';
 import ErrorBoundary from './ErrorBoundary';
+import { formatNumber, formatIDR, formatUSD } from '../lib/utils';
 
 export default function AssetTable({ assets, prices, exchangeRate, type, onUpdate, onSell = () => {}, loading = false }) {
   const [sellingIndex, setSellingIndex] = useState(null);
   const [sellAmount, setSellAmount] = useState('');
   const [confirmModal, setConfirmModal] = useState(null);
+  const [editingAvgPrice, setEditingAvgPrice] = useState(null);
+  const [newAvgPrice, setNewAvgPrice] = useState('');
   
   if (assets.length === 0) {
     return null;
@@ -33,15 +36,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     // Use the same ticker format as calculateAssetValue
     let price;
     if (type === 'stock') {
-      let tickerKey;
-      if (asset.currency === 'USD') {
-        tickerKey = `${asset.ticker}.US`;
-      } else if (asset.currency === 'IDR') {
-        tickerKey = `${asset.ticker}.JK`;
-      } else {
-        // Auto-detect: if ticker is 4 characters or less, assume IDX, otherwise US
-        tickerKey = asset.ticker.length <= 4 ? `${asset.ticker}.JK` : `${asset.ticker}.US`;
-      }
+      const tickerKey = `${asset.ticker}.JK`;
       price = prices[tickerKey];
     } else {
       price = prices[asset.symbol];
@@ -84,27 +79,30 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     
     if (price) {
       if (type === 'stock') {
-        // For IDX stocks: 1 lot = 100 shares, for US stocks: fractional shares allowed
+        // For IDX stocks: 1 lot = 100 shares
         if (price.currency === 'IDR') {
           const valueIDR = amountToSell * 100 * price.price;
-          valueFormatted = valueIDR.toLocaleString('id-ID', {style: 'currency', currency: 'IDR'});
+          valueFormatted = formatIDR(valueIDR);
         } else {
-          const valueUSD = amountToSell * price.price;
-          const valueIDR = exchangeRate ? valueUSD * exchangeRate : 0;
-          valueFormatted = valueIDR.toLocaleString('id-ID', {style: 'currency', currency: 'IDR'});
+          // Hapus logika konversi USD ke IDR untuk saham (karena tidak ada saham US)
+          valueFormatted = 'Nilai tidak tersedia';
         }
       } else {
         // For crypto: always show in IDR
         const valueUSD = amountToSell * price.price;
         const valueIDR = exchangeRate ? valueUSD * exchangeRate : 0;
-        valueFormatted = valueIDR.toLocaleString('id-ID', {style: 'currency', currency: 'IDR'});
+        valueFormatted = formatIDR(valueIDR);
       }
     }
+    
+    const message = price 
+      ? `Anda akan menjual ${amountToSell} ${type === 'stock' ? 'lot' : ''} ${ticker} ${valueFormatted ? `dengan nilai sekitar ${valueFormatted}` : ''}. Lanjutkan penjualan?`
+      : `Anda akan menjual ${amountToSell} ${type === 'stock' ? 'lot' : ''} ${ticker}. Data harga akan diperbarui otomatis. Lanjutkan penjualan?`;
     
     setConfirmModal({
       isOpen: true,
       title: 'Konfirmasi Penjualan',
-      message: `Anda akan menjual ${amountToSell} ${type === 'stock' ? 'lot' : ''} ${ticker} ${valueFormatted ? `dengan nilai sekitar ${valueFormatted}` : ''}. Lanjutkan penjualan?`,
+      message: message,
       type: 'warning',
       onConfirm: () => {
         onSell(index, asset, amountToSell);
@@ -117,31 +115,76 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
   const handleCancelSell = () => {
     setSellingIndex(null);
   };
+
+  const handleEditAvgPrice = (index, asset) => {
+    setEditingAvgPrice(index);
+    setNewAvgPrice(asset.avgPrice ? asset.avgPrice.toString() : '');
+  };
+
+  const handleSaveAvgPrice = (index, asset) => {
+    const price = parseFloat(newAvgPrice);
+    if (isNaN(price) || price < 0) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Peringatan',
+        message: 'Masukkan harga yang valid (lebih dari 0)',
+        type: 'error'
+      });
+      return;
+    }
+
+    // Update the asset with new average price
+    const updatedAsset = {
+      ...asset,
+      avgPrice: price,
+      // Recalculate gain/loss based on new average price
+      totalCost: price * (type === 'stock' ? asset.lots : asset.amount),
+      gain: (asset.porto || 0) - (price * (type === 'stock' ? asset.lots : asset.amount))
+    };
+
+    if (onUpdate) {
+      onUpdate(index, updatedAsset);
+    }
+    
+    setEditingAvgPrice(null);
+    setNewAvgPrice('');
+  };
+
+  const handleCancelEditAvgPrice = () => {
+    setEditingAvgPrice(null);
+    setNewAvgPrice('');
+  };
   
   // Function to format price based on currency and exchange rate
   const formatPrice = (price, currency, inIDR = false) => {
     if (!price && price !== 0) return 'Tidak tersedia';
     
     if (currency === 'IDR' || inIDR) {
-      return `Rp ${price.toLocaleString()}`;
+      return formatIDR(price);
     } else {
-      return `$ ${price.toLocaleString(undefined, { 
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: currency === 'USD' ? 2 : 8
-      })}`;
+      return formatUSD(price, currency === 'USD' ? 2 : 8);
     }
   };
-  
 
+  // Function to calculate gain/loss percentage
+  const calculateGainPercentage = (gain, totalCost) => {
+    if (!totalCost || totalCost === 0) return 0;
+    return (gain / totalCost) * 100;
+  };
+
+  // Function to get gain/loss color
+  const getGainColor = (gain) => {
+    if (!gain && gain !== 0) return 'text-gray-500 dark:text-gray-400';
+    if (gain === 0) return 'text-blue-600 dark:text-blue-400'; // Break even - warna biru
+    return gain > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+  };
   
   const calculateAssetValue = (asset, currency, exchangeRate) => {
     if (asset.type === 'stock') {
       // Use the same ticker format as when fetching prices
-      const tickerKey = asset.currency === 'USD' ? `${asset.ticker}.US` : 
-                       asset.currency === 'IDR' ? `${asset.ticker}.JK` : 
-                       asset.ticker;
+      const tickerKey = `${asset.ticker}.JK`;
       const price = prices[tickerKey];
-      // For IDX stocks: 1 lot = 100 shares, for US stocks: fractional shares allowed
+      // For IDX stocks: 1 lot = 100 shares
       const shareCount = price && price.currency === 'IDR' ? asset.lots * 100 : asset.lots;
       
       if (!price) {
@@ -155,32 +198,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       
       if (price.currency === 'IDR') {
         const assetValue = price.price * shareCount;
-        if (!exchangeRate || exchangeRate === 0) {
-          return {
-            valueIDR: assetValue,
-            valueUSD: 0,
-            price: price.price,
-            error: 'Kurs tidak tersedia untuk konversi ke USD'
-          };
-        }
-        const assetValueUSD = assetValue / exchangeRate;
-        
-        return {
-          valueIDR: assetValue,
-          valueUSD: assetValueUSD,
-          price: price.price
-        };
-      } else if (price.currency === 'USD') {
-        const assetValueUSD = price.price * shareCount;
-        if (!exchangeRate) {
-          return {
-            valueIDR: 0,
-            valueUSD: assetValueUSD,
-            price: price.price,
-            error: 'Kurs tidak tersedia untuk konversi ke IDR'
-          };
-        }
-        const assetValue = assetValueUSD * exchangeRate;
+        const assetValueUSD = exchangeRate && exchangeRate > 0 ? assetValue / exchangeRate : 0;
         
         return {
           valueIDR: assetValue,
@@ -201,18 +219,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       }
       
       const assetValueUSD = price.price * asset.amount;
-      if (!exchangeRate) {
-        return {
-          valueIDR: 0,
-          valueUSD: assetValueUSD,
-          price: price.price,
-          error: 'Kurs tidak tersedia untuk konversi ke IDR'
-        };
-      }
-      const assetValue = assetValueUSD * exchangeRate;
+      const assetValueIDR = exchangeRate && exchangeRate > 0 ? assetValueUSD * exchangeRate : 0;
       
       return {
-        valueIDR: assetValue,
+        valueIDR: assetValueIDR,
         valueUSD: assetValueUSD,
         price: price.price
       };
@@ -239,7 +249,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                 Jumlah
               </th>
               <th className="hidden sm:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Harga
+                Harga Sekarang
               </th>
               <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Nilai IDR
@@ -250,13 +260,52 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
               <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Aksi
               </th>
+              <th className="hidden sm:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Avg Price
+              </th>
+              <th className="hidden sm:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Gain/Loss
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {assets.map((asset, index) => {
               const assetValue = calculateAssetValue(asset, asset.currency, exchangeRate);
-              const price = prices[type === 'stock' ? asset.ticker : asset.symbol];
+              const price = prices[type === 'stock' ? `${asset.ticker}.JK` : asset.symbol];
               const change = price ? price.change : 0;
+              
+
+              
+              // Recalculate gain/loss using real-time price and current portfolio value
+              let realTimeGain = 0;
+              let realTimeGainUSD = 0;
+              let realTimeGainPercentage = 0;
+              
+              if (assetValue.price) {
+                // Calculate current portfolio value using real-time price
+                const currentPortfolioValue = assetValue.price * (type === 'stock' ? asset.lots * 100 : asset.amount);
+                
+                if (type === 'stock') {
+                  // For stocks: gain/loss in IDR
+                  // Use avgPrice * total shares for correct total cost calculation
+                  const totalShares = asset.lots * 100; // 1 lot = 100 shares
+                  const correctTotalCost = asset.avgPrice * totalShares;
+                  realTimeGain = currentPortfolioValue - correctTotalCost;
+                  realTimeGainUSD = exchangeRate && exchangeRate > 0 ? realTimeGain / exchangeRate : 0;
+                  realTimeGainPercentage = calculateGainPercentage(realTimeGain, correctTotalCost);
+                } else {
+                  // For crypto: gain/loss in USD, convert to IDR for display
+                  const costBasis = asset.totalCost || (asset.avgPrice * asset.amount);
+                  realTimeGainUSD = currentPortfolioValue - costBasis;
+                  realTimeGain = exchangeRate && exchangeRate > 0 ? realTimeGainUSD * exchangeRate : realTimeGainUSD;
+                  // For percentage calculation, use USD values
+                  realTimeGainPercentage = calculateGainPercentage(realTimeGainUSD, costBasis);
+                }
+              }
+              
+
+              
+
               
               return (
                 <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
@@ -283,6 +332,39 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                         {/* Show price on mobile */}
                         <div className="sm:hidden text-xs text-gray-500 dark:text-gray-400">
                           {assetValue.price ? formatPrice(assetValue.price, asset.currency || 'IDR') : 'Tidak tersedia'}
+                          {/* Show IDR price for crypto on mobile */}
+                          {type === 'crypto' && assetValue.price && exchangeRate && (
+                            <div className="text-xs text-gray-400 dark:text-gray-500">
+                              {formatIDR(assetValue.price * exchangeRate)}
+                            </div>
+                          )}
+                          {change !== undefined && change !== null && (
+                            <div className={`flex items-center text-xs mt-1 ${
+                              change > 0 ? 'text-green-500 dark:text-green-400' : change < 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'
+                            }`}>
+                              {change > 0 ? <FiArrowUp className="w-2 h-2" /> : change < 0 ? <FiArrowDown className="w-2 h-2" /> : null}
+                              {change > 0 ? '+' : ''}{change.toFixed(2)}%
+                            </div>
+                          )}
+                          {/* Show gain/loss on mobile */}
+                          {realTimeGain !== undefined && realTimeGain !== null && (
+                            <div className="mt-1">
+                              <div className={`text-xs ${getGainColor(realTimeGain)}`}>
+                                {realTimeGain === 0 ? 'Rp 0' : formatPrice(realTimeGain, asset.currency || 'IDR', true)}
+                              </div>
+                              {exchangeRate && (
+                                <div className={`text-xs ${getGainColor(realTimeGain)}`}>
+                                  {realTimeGain === 0 ? '$ 0' : formatPrice(realTimeGainUSD, 'USD')}
+                                </div>
+                              )}
+                              {realTimeGainPercentage !== undefined && realTimeGainPercentage !== null && asset.totalCost && asset.totalCost > 0 && (
+                                <div className={`flex items-center text-xs ${getGainColor(realTimeGain)}`}>
+                                  <FiPercent className="w-2 h-2 mr-1" />
+                                  {realTimeGainPercentage > 0 ? '+' : realTimeGainPercentage < 0 ? '' : ''}{Math.abs(realTimeGainPercentage).toFixed(2)}%
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -310,12 +392,18 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       <span className="text-sm text-gray-900 dark:text-white">
                         {assetValue.price ? formatPrice(assetValue.price, asset.currency || 'IDR') : 'Tidak tersedia'}
                       </span>
-                      {change !== 0 && (
+                      {/* Show IDR price for crypto */}
+                      {type === 'crypto' && assetValue.price && exchangeRate && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatIDR(assetValue.price * exchangeRate)}
+                        </span>
+                      )}
+                      {change !== undefined && change !== null && (
                         <div className={`flex items-center text-xs ${
-                          change > 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'
+                          change > 0 ? 'text-green-500 dark:text-green-400' : change < 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'
                         }`}>
-                          {change > 0 ? <FiArrowUp className="w-3 h-3" /> : <FiArrowDown className="w-3 h-3" />}
-                          {Math.abs(change).toFixed(2)}%
+                          {change > 0 ? <FiArrowUp className="w-3 h-3" /> : change < 0 ? <FiArrowDown className="w-3 h-3" /> : null}
+                          {change > 0 ? '+' : ''}{change.toFixed(2)}%
                         </div>
                       )}
                     </div>
@@ -353,12 +441,82 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       <div className="flex justify-center">
                         <button
                           onClick={() => handleSellClick(index, asset)}
-                          className="bg-amber-100 dark:bg-amber-600/40 px-2 py-1 rounded text-amber-600 dark:text-white hover:bg-amber-200 dark:hover:bg-amber-600 text-xs font-medium"
+                          className="px-2 py-1 rounded text-xs font-medium transition-colors bg-amber-100 dark:bg-amber-600/40 text-amber-600 dark:text-white hover:bg-amber-200 dark:hover:bg-amber-600"
+                          title="Jual aset"
                         >
                           Jual
                         </button>
                       </div>
                     )}
+                  </td>
+                  
+                  <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-right">
+                    {editingAvgPrice === index ? (
+                      <div className="flex items-center space-x-1">
+                        <input
+                          type="number"
+                          value={newAvgPrice}
+                          onChange={(e) => setNewAvgPrice(e.target.value)}
+                          className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          step="any"
+                          min="0"
+                        />
+                        <button
+                          onClick={() => handleSaveAvgPrice(index, asset)}
+                          className="bg-green-600 p-1 rounded text-white hover:bg-green-700 text-xs"
+                          title="Simpan"
+                        >
+                          <FiCheck className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={handleCancelEditAvgPrice}
+                          className="bg-gray-500 dark:bg-gray-600 p-1 rounded text-white hover:bg-gray-600 dark:hover:bg-gray-700 text-xs"
+                          title="Batal"
+                        >
+                          <FiX className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end space-x-1">
+                        <span className="text-sm text-gray-900 dark:text-white">
+                          {asset.avgPrice ? formatPrice(asset.avgPrice, asset.currency || 'IDR') : '-'}
+                        </span>
+                        <button
+                          onClick={() => handleEditAvgPrice(index, asset)}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs"
+                          title="Edit Average Price"
+                        >
+                          <FiEdit2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                  
+                  <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-right">
+                    <div className="flex flex-col items-end">
+                      {/* IDR Gain/Loss */}
+                      <span className={`text-sm font-medium ${getGainColor(realTimeGain)}`}>
+                        {realTimeGain !== undefined && realTimeGain !== null ? (realTimeGain === 0 ? 'Rp 0' : formatPrice(realTimeGain, asset.currency || 'IDR', true)) : '-'}
+                      </span>
+                      {/* USD Gain/Loss */}
+                      {type === 'stock' && realTimeGain !== undefined && realTimeGain !== null && exchangeRate && (
+                        <span className={`text-xs ${getGainColor(realTimeGain)}`}>
+                          {realTimeGain === 0 ? '$ 0' : formatPrice(realTimeGainUSD, 'USD')}
+                        </span>
+                      )}
+                      {type === 'crypto' && realTimeGain !== undefined && realTimeGain !== null && (
+                        <span className={`text-xs ${getGainColor(realTimeGain)}`}>
+                          {realTimeGain === 0 ? '$ 0' : formatPrice(realTimeGainUSD, 'USD')}
+                        </span>
+                      )}
+                      {/* Percentage */}
+                      {realTimeGain !== undefined && realTimeGain !== null && asset.totalCost && asset.totalCost > 0 && (
+                        <div className={`flex items-center text-xs ${getGainColor(realTimeGain)}`}>
+                          <FiPercent className="w-3 h-3 mr-1" />
+                          {realTimeGainPercentage > 0 ? '+' : realTimeGainPercentage < 0 ? '' : ''}{Math.abs(realTimeGainPercentage).toFixed(2)}%
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

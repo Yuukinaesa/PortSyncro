@@ -17,7 +17,7 @@ export default function Register() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { darkMode } = useTheme();
+  const { isDarkMode } = useTheme();
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -80,7 +80,7 @@ export default function Register() {
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4 transition-colors">
         <Head>
           <title>Register | PortSyncro</title>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
         </Head>
 
         <div className="absolute top-4 right-4">
@@ -92,7 +92,7 @@ export default function Register() {
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
               PortSyncro
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">Sync to Stay Ahead – Crypto & Stocks Together</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">Effortless Portfolio Sync for Crypto and Stocks</p>
           </div>
 
           {error && (

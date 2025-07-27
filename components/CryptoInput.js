@@ -3,6 +3,7 @@ import { useState } from 'react';
 export default function CryptoInput({ onAdd, onComplete }) {
   const [symbol, setSymbol] = useState('');
   const [amount, setAmount] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   
@@ -73,11 +74,13 @@ export default function CryptoInput({ onAdd, onComplete }) {
         amount: amountValue,
         price: price,
         type: 'crypto',
-        addedAt: new Date().toISOString()
+        addedAt: new Date().toISOString(),
+
       });
       
       setSymbol('');
       setAmount('');
+
       
       // Opsional: pindah ke tab portfolio setelah tambah
       if (onComplete) onComplete();
@@ -95,8 +98,8 @@ export default function CryptoInput({ onAdd, onComplete }) {
   };
   
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Tambah Kripto</h2>
+    <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800 dark:text-white">Tambah Kripto</h2>
       
       {error && (
         <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-200 px-3 py-2 rounded-lg text-sm">
@@ -116,6 +119,8 @@ export default function CryptoInput({ onAdd, onComplete }) {
           />
         </div>
         
+
+        
         <div className="mb-6">
           <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Jumlah</label>
           <input
@@ -130,14 +135,11 @@ export default function CryptoInput({ onAdd, onComplete }) {
             }}
             placeholder="Contoh: 0.05, 0.00123456, 100"
           />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Untuk kripto, masukkan jumlah dengan presisi yang diinginkan (contoh: 0.00123456)
-          </p>
         </div>
         
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-60"
+          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 sm:py-3 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-60 touch-target"
           disabled={isLoading}
         >
           {isLoading ? 'Menambahkan...' : 'Tambah Kripto'}

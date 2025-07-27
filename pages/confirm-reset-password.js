@@ -79,7 +79,7 @@ export default function ConfirmResetPassword() {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center px-4">
         <Head>
           <title>Reset Password | Fin•Track</title>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
         </Head>
 
         {loading ? (

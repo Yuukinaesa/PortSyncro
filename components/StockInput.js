@@ -3,18 +3,20 @@ import { useState } from 'react';
 export default function StockInput({ onAdd, onComplete, exchangeRate }) {
   const [ticker, setTicker] = useState('');
   const [lots, setLots] = useState('1');
-  const [exchange, setExchange] = useState('JK');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
   
   const popularStocks = [
-    { ticker: 'BBCA', name: 'Bank Central Asia', exchange: 'JK' },
-    { ticker: 'BBRI', name: 'Bank Rakyat Indonesia', exchange: 'JK' },
-    { ticker: 'AAPL', name: 'Apple Inc.', exchange: 'US' },
-    { ticker: 'MSFT', name: 'Microsoft', exchange: 'US' },
-    { ticker: 'NVDA', name: 'NVIDIA Corporation', exchange: 'US' },
-    { ticker: 'TSLA', name: 'Tesla', exchange: 'US' },
+    { ticker: 'BBCA', name: 'Bank Central Asia Tbk' },
+    { ticker: 'BBRI', name: 'Bank Rakyat Indonesia Tbk' },
+    { ticker: 'ASII', name: 'Astra International Tbk' },
+    { ticker: 'TLKM', name: 'Telkom Indonesia Tbk' },
+    { ticker: 'ICBP', name: 'Indofood CBP Sukses Makmur Tbk' },
+    { ticker: 'UNVR', name: 'Unilever Indonesia Tbk' },
+    { ticker: 'PGAS', name: 'Perusahaan Gas Negara Tbk' },
+    { ticker: 'KLBF', name: 'Kalbe Farma Tbk' }
   ];
   
   const handleSubmit = async (e) => {
@@ -34,18 +36,9 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         throw new Error('Lot amount must be greater than 0');
       }
 
-      // Format tickers based on exchange
-      let tickersToTry;
-      if (exchange === 'US') {
-        tickersToTry = [`${ticker.trim().toUpperCase()}.US`];
-      } else if (exchange === 'JK') {
-        tickersToTry = [`${ticker.trim().toUpperCase()}.JK`];
-      } else {
-        // Auto: try raw, .JK, .US
-        const base = ticker.trim().toUpperCase();
-        tickersToTry = [base, `${base}.JK`, `${base}.US`];
-      }
-      console.log('Submitting tickers:', tickersToTry, 'Exchange:', exchange);
+      // Format tickers for IDX
+      const tickersToTry = [`${ticker.trim().toUpperCase()}.JK`];
+      console.log('Submitting tickers:', tickersToTry);
 
       // Debounce submit button
       setIsLoading(true);
@@ -81,16 +74,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
           break;
         }
       }
-      // Fallback: prefer full match with .JK or .US
-      if (!stockPrice && exchange === '') {
-        const baseTicker = ticker.trim().toUpperCase();
-        const foundKey = Object.keys(data.prices).find(key => (key.toUpperCase() === `${baseTicker}.JK` || key.toUpperCase() === `${baseTicker}.US`) && data.prices[key] && data.prices[key].price);
-        if (foundKey) {
-          stockPrice = data.prices[foundKey];
-          usedTicker = foundKey;
-          console.log('Fallback matched ticker:', foundKey);
-        }
-      }
+
       console.log('Used ticker for price:', usedTicker);
       if (!stockPrice) {
         throw new Error('Stock price data not found or API limit reached. Please check the code and try again later.');
@@ -103,11 +87,13 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       let valueIDR, valueUSD;
       
       if (stockPrice.currency === 'IDR') {
+        // Saham IDX tetap dalam IDR, tidak perlu konversi
         valueIDR = stockPrice.price * totalShares;
-        valueUSD = exchangeRate ? valueIDR / exchangeRate : 0;
+        valueUSD = 0; // Saham IDX tidak dalam USD
       } else {
         valueUSD = stockPrice.price * totalShares;
-        valueIDR = exchangeRate ? valueUSD * exchangeRate : 0;
+        // Hapus logika konversi USD ke IDR untuk saham (karena tidak ada saham US)
+        valueIDR = 0;
       }
 
       // Create stock object with calculated values
@@ -120,7 +106,8 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         price: stockPrice.price,
         shares: totalShares,
         type: 'stock',
-        addedAt: new Date().toISOString()
+        addedAt: new Date().toISOString(),
+
       };
 
       console.log('Submitting stock data:', stockData);
@@ -129,7 +116,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       // Reset form
       setTicker('');
       setLots('1');
-      setExchange('JK');
+
       
       // Show success message
       setSuccess('Stock successfully added');
@@ -149,12 +136,11 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
   
   const handleQuickAdd = (stock) => {
     setTicker(stock.ticker);
-    setExchange(stock.exchange);
   };
   
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Tambah Saham</h2>
+    <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800 dark:text-white">Tambah Saham</h2>
       
       {error && (
         <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-200 px-3 py-2 rounded-lg text-sm">
@@ -176,22 +162,11 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
             className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
             value={ticker}
             onChange={(e) => setTicker(e.target.value)}
-            placeholder="Contoh: BBCA, AAPL, NVDA"
+            placeholder="Contoh: BBCA, BBRI, ASII"
           />
         </div>
         
-        <div className="mb-4">
-          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Exchange/Market</label>
-          <select
-            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
-            value={exchange}
-            onChange={(e) => setExchange(e.target.value)}
-          >
-            <option value="JK">Indonesia (IDX)</option>
-            <option value="US">US Markets (NASDAQ/NYSE)</option>
-            <option value="">Other (auto-detect)</option>
-          </select>
-        </div>
+
         
         <div className="mb-4">
           <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Jumlah Lot</label>
@@ -204,9 +179,11 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
           />
         </div>
         
+
+        
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60"
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 sm:py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 touch-target"
           disabled={isLoading}
         >
           {isLoading ? 'Menambahkan...' : 'Tambah Saham'}
@@ -222,7 +199,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
               onClick={() => handleQuickAdd(stock)}
               className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
             >
-              {stock.ticker} ({stock.exchange})
+              {stock.ticker}
             </button>
           ))}
         </div>

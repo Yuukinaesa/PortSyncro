@@ -10,7 +10,8 @@ export default function TransactionHistory({
   transactions = [], 
   user, 
   onTransactionsUpdate,
-  exchangeRate
+  exchangeRate,
+  assetKey // Tambahkan prop assetKey
 }) {
   const [filteredTransactions, setFilteredTransactions] = useState(transactions);
   const [filter, setFilter] = useState('all'); // all, buy, sell
@@ -33,6 +34,11 @@ export default function TransactionHistory({
   useEffect(() => {
     let filtered = [...transactions]; // Create a copy of transactions array
     
+    // Jika ada prop assetKey, filter transactions hanya untuk assetKey (ticker/symbol)
+    if (assetKey) {
+      filtered = filtered.filter(tx => tx.ticker === assetKey || tx.symbol === assetKey);
+    }
+
     // Apply type filter (buy/sell/delete)
     if (filter !== 'all') {
       filtered = filtered.filter(tx => tx.type === filter);
@@ -52,7 +58,7 @@ export default function TransactionHistory({
     
     console.log('Filtered transactions:', filtered);
     setFilteredTransactions(filtered);
-  }, [filter, assetTypeFilter, transactions]);
+  }, [filter, assetTypeFilter, transactions, assetKey]); // Tambahkan assetKey ke dependency
   
   // Format tanggal ke format lokal
   const formatDate = (dateString) => {
@@ -119,27 +125,16 @@ export default function TransactionHistory({
   };
   
   const calculateValue = (transaction) => {
-    if (!transaction) return { valueIDR: 0, valueUSD: 0 };
-
-    // For buy transactions, use the stored values
-    if (transaction.type === 'buy') {
-      return {
-        valueIDR: transaction.valueIDR || 0,
-        valueUSD: transaction.valueUSD || 0
-      };
-    }
-
-    // For sell transactions, recalculate using current exchange rate
-    if (transaction.type === 'sell') {
+    if (transaction.assetType === 'stock') {
       if (transaction.currency === 'IDR') {
         const valueIDR = transaction.valueIDR || 0;
-        const valueUSD = exchangeRate ? valueIDR / exchangeRate : 0;
-        return { valueIDR, valueUSD };
-      } else {
-        const valueUSD = transaction.valueUSD || 0;
-        const valueIDR = exchangeRate ? valueUSD * exchangeRate : 0;
+        const valueUSD = exchangeRate && exchangeRate > 0 ? valueIDR / exchangeRate : 0;
         return { valueIDR, valueUSD };
       }
+    } else if (transaction.assetType === 'crypto') {
+      const valueUSD = transaction.valueUSD || 0;
+      const valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : 0;
+      return { valueIDR, valueUSD };
     }
 
     return { valueIDR: 0, valueUSD: 0 };
@@ -255,7 +250,7 @@ export default function TransactionHistory({
 
   return (
     <ErrorBoundary>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 space-y-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
@@ -264,7 +259,7 @@ export default function TransactionHistory({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Riwayat Transaksi</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Riwayat Transaksi</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -484,5 +479,6 @@ TransactionHistory.propTypes = {
     uid: PropTypes.string.isRequired
   }).isRequired,
   onTransactionsUpdate: PropTypes.func.isRequired,
-  exchangeRate: PropTypes.number
+  exchangeRate: PropTypes.number,
+  assetKey: PropTypes.string // Tambahkan propTypes untuk assetKey
 }; 

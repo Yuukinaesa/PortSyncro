@@ -13,7 +13,7 @@ export default function ResetPassword() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { darkMode } = useTheme();
+  const { isDarkMode } = useTheme();
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
@@ -44,7 +44,7 @@ export default function ResetPassword() {
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4 transition-colors">
         <Head>
           <title>Reset Password | Fin•Track</title>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
         </Head>
 
         <div className="absolute top-4 right-4">
