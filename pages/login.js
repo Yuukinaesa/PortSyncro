@@ -6,7 +6,9 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useTheme } from '../lib/themeContext';
+import { useLanguage } from '../lib/languageContext';
 import ThemeToggle from '../components/ThemeToggle';
+import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 export default function Login() {
@@ -16,6 +18,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
 
   // Reset error when inputs change
   useEffect(() => {
@@ -25,7 +28,7 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!email || !password) {
-      setError("Email dan password harus diisi");
+      setError(t('emailAndPasswordRequired'));
       return;
     }
 
@@ -44,19 +47,19 @@ export default function Login() {
         case 'auth/invalid-email':
         case 'auth/user-not-found':
         case 'auth/wrong-password':
-          setError("Email atau password salah. Pastikan Anda sudah terdaftar dan masukan kredensial yang benar.");
+          setError(t('invalidCredentials'));
           break;
         case 'auth/too-many-requests':
-          setError("Terlalu banyak percobaan gagal. Akun Anda sementara diblokir, coba lagi nanti atau reset password.");
+          setError(t('tooManyFailedAttempts'));
           break;
         case 'auth/user-disabled':
-          setError("Akun Anda telah dinonaktifkan. Silakan hubungi administrator.");
+          setError(t('accountDisabled'));
           break;
         case 'auth/network-request-failed':
-          setError("Masalah koneksi. Periksa koneksi internet Anda dan coba lagi.");
+          setError(t('connectionError'));
           break;
         default:
-          setError(`Gagal masuk: ${error.message}`);
+          setError(t('loginFailed', { error: error.message }));
       }
     } finally {
       setLoading(false);
@@ -76,7 +79,8 @@ export default function Login() {
 
         </Head>
 
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex gap-2">
+          <LanguageToggle />
           <ThemeToggle />
         </div>
 
@@ -85,7 +89,7 @@ export default function Login() {
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
               PortSyncro
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">Effortless Portfolio Sync for Crypto and Stocks</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">{t('tagline')}</p>
           </div>
 
           {error && (
@@ -96,7 +100,7 @@ export default function Login() {
 
           <form onSubmit={handleLogin}>
             <div className="mb-6">
-              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('email')}</label>
               <input
                 type="email"
                 className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
@@ -108,7 +112,7 @@ export default function Login() {
             </div>
 
             <div className="mb-6">
-              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('password')}</label>
               <input
                 type="password"
                 className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
@@ -124,32 +128,32 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60"
             >
-              {loading ? 'Processing...' : 'Login'}
+              {loading ? t('signingIn') : t('signIn')}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-            Don't have an account?{' '}
-            <Link href="/register" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
-              Register
-            </Link>
-          </div>
+                      <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              {t('dontHaveAccount')}{' '}
+              <Link href="/register" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
+                {t('register')}
+              </Link>
+            </div>
 
-          <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
-            <Link href="/reset-password" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
-              Forgot Password?
-            </Link>
-          </div>
-          
-          <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Use the following account for demo:</p>
-            <button
-              onClick={handleDemoLogin}
-              className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-            >
-              Use Demo Account
-            </button>
-          </div>
+            <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+              <Link href="/reset-password" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
+                {t('forgotPassword')}
+              </Link>
+            </div>
+            
+            <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t('useDemoAccountText')}</p>
+              <button
+                onClick={handleDemoLogin}
+                className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                {t('useDemoAccount')}
+              </button>
+            </div>
         </div>
       </div>
     </ProtectedRoute>

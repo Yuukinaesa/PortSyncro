@@ -5,7 +5,9 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useTheme } from '../lib/themeContext';
+import { useLanguage } from '../lib/languageContext';
 import ThemeToggle from '../components/ThemeToggle';
+import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 export default function ResetPassword() {
@@ -14,6 +16,7 @@ export default function ResetPassword() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
@@ -23,16 +26,16 @@ export default function ResetPassword() {
 
     try {
       await sendPasswordResetEmail(auth, email);
-      setMessage('Email untuk reset password telah dikirim. Silakan periksa inbox Anda.');
+      setMessage(t('resetPasswordEmailSent'));
     } catch (error) {
       console.error("Error sending password reset email:", error);
       
       if (error.code === 'auth/user-not-found') {
-        setError('Email tidak terdaftar. Silakan periksa atau daftar akun baru.');
+        setError(t('emailNotRegistered'));
       } else if (error.code === 'auth/invalid-email') {
-        setError('Format email tidak valid. Silakan periksa kembali.');
+        setError(t('invalidEmailFormat'));
       } else {
-        setError('Gagal mengirim email reset password. Silakan coba lagi nanti.');
+        setError(t('resetPasswordFailed'));
       }
     } finally {
       setLoading(false);
@@ -47,16 +50,17 @@ export default function ResetPassword() {
 
         </Head>
 
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex gap-2">
+          <LanguageToggle />
           <ThemeToggle />
         </div>
 
         <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
-              Reset Password
+              {t('resetPassword')}
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">Masukkan email Anda untuk reset password</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">{t('enterEmailForReset')}</p>
           </div>
 
           {error && (
@@ -73,14 +77,14 @@ export default function ResetPassword() {
 
           <form onSubmit={handleResetPassword}>
             <div className="mb-6">
-              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('email')}</label>
               <input
                 type="email"
                 className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
+                placeholder={t('emailPlaceholder')}
               />
             </div>
 
@@ -89,13 +93,13 @@ export default function ResetPassword() {
               disabled={loading}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60"
             >
-              {loading ? 'Memproses...' : 'Kirim Email Reset Password'}
+              {loading ? t('processing') : t('sendResetEmail')}
             </button>
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
             <Link href="/login" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
-              Kembali ke Login
+              {t('backToLogin')}
             </Link>
           </div>
         </div>

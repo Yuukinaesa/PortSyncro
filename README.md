@@ -1,4 +1,4 @@
-# 💹 PortSyncro - Effortless Portfolio Sync for Crypto and Stocks
+# 💹 PortSyncro - Easy Portfolio Synchronization for Cryptocurrencies and Stocks
 A modern, professional web application for tracking stocks and cryptocurrencies. **PortSyncro** helps you manage, analyze, and simulate your investments with ease, accuracy, and a beautiful interface—all powered by Next.js, React, and Firebase.
 
 🌐 Live Website: [portsyncro.arfan.biz.id](https://portsyncro.arfan.biz.id/)
@@ -112,4 +112,4 @@ For questions or support, please open an issue on the repository.
 ---
 
 > **PortSyncro** — [portsyncro.arfan.biz.id](https://portsyncro.arfan.biz.id)
-> _Effortless Portfolio Sync for Crypto and Stocks._
+> _Easy Portfolio Synchronization for Cryptocurrencies and Stocks._

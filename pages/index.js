@@ -5,7 +5,9 @@ import Portfolio from '../components/Portfolio';
 import StockInput from '../components/StockInput';
 import CryptoInput from '../components/CryptoInput';
 import ThemeToggle from '../components/ThemeToggle';
+import LanguageToggle from '../components/LanguageToggle';
 import { useAuth } from '../lib/authContext';
+import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
 import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -112,6 +114,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('portfolio'); // portfolio, add, history
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading, logout, getUserPortfolio, saveUserPortfolio } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [prices, setPrices] = useState({});
   const [exchangeRate, setExchangeRate] = useState(null); // Aktifkan kembali untuk konversi crypto
@@ -141,13 +144,15 @@ export default function Home() {
       }
       
       if (currency === 'IDR') {
-        return new Intl.NumberFormat('id-ID', {
+        // Use dot for thousands and decimal separator for IDR
+        return new Intl.NumberFormat('en-IN', {
           style: 'currency',
           currency: 'IDR',
           minimumFractionDigits: 2
         }).format(value);
       } else {
-        return new Intl.NumberFormat('en-US', {
+        // Use dot for thousands and decimal separator for USD
+        return new Intl.NumberFormat('en-IN', {
           style: 'currency',
           currency: 'USD',
           minimumFractionDigits: 2,
@@ -1298,8 +1303,8 @@ export default function Home() {
     <ErrorBoundary>
       <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-white transition-colors">
         <Head>
-          <title>PortSyncro | Effortless Portfolio Sync for Crypto and Stocks</title>
-          <meta name="description" content="Effortless Portfolio Sync for Crypto and Stocks" />
+                  <title>PortSyncro | Easy Portfolio Synchronization for Cryptocurrencies and Stocks</title>
+        <meta name="description" content="Easy Portfolio Synchronization for Cryptocurrencies and Stocks" />
           <link rel="icon" href="/favicon.ico" />
 
         </Head>
@@ -1310,7 +1315,7 @@ export default function Home() {
               <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
                 PortSyncro
               </h1>
-              <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Effortless Portfolio Sync for Crypto and Stocks</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Easy Portfolio Synchronization for Cryptocurrencies and Stocks</p>
             </div>
             
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
@@ -1323,7 +1328,7 @@ export default function Home() {
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Portfolio
+                  {t('portfolio')}
                 </button>
                 <button 
                   onClick={() => setActiveTab('add')}
@@ -1333,7 +1338,7 @@ export default function Home() {
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Add Asset
+                  {t('addAsset')}
                 </button>
                 <button
                   onClick={() => setActiveTab('history')}
@@ -1343,11 +1348,12 @@ export default function Home() {
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  History
+                  {t('history')}
                 </button>
               </div>
               
               <div className="flex items-center gap-2 w-full sm:w-auto">
+                <LanguageToggle />
                 <ThemeToggle />
                 
                 <div className="flex items-center flex-1 sm:flex-none px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-sm">
@@ -1358,7 +1364,7 @@ export default function Home() {
                 <button 
                   onClick={logout}
                   className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
-                  title="Logout"
+                  title={t('logout')}
                 >
                   <FiLogOut />
                 </button>
@@ -1405,7 +1411,7 @@ export default function Home() {
         </main>
         
         <footer className="container mx-auto px-4 py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800">
-          <p>© {new Date().getFullYear()} PortSyncro - Effortless Portfolio Sync for Crypto and Stocks</p>
+          <p>{t('copyright', { year: new Date().getFullYear() })}</p>
         </footer>
         
         {/* Modal for confirmations and errors */}

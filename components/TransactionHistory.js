@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import React from 'react';
 import PropTypes from 'prop-types';
 import ErrorBoundary from './ErrorBoundary';
+import { useLanguage } from '../lib/languageContext';
 
 export default function TransactionHistory({ 
   transactions = [], 
@@ -23,6 +24,7 @@ export default function TransactionHistory({
     cryptoPrices: false,
     transactions: false
   });
+  const { t, language } = useLanguage();
   
   // Debug logging
   useEffect(() => {
@@ -88,7 +90,8 @@ export default function TransactionHistory({
     }
     
     if (currency === 'IDR') {
-      return new Intl.NumberFormat('id-ID', {
+      // Use dot for thousands and decimal separator for IDR
+      return new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'IDR',
         minimumFractionDigits: 0,
@@ -97,7 +100,8 @@ export default function TransactionHistory({
     } else {
       // For USD, show 1 decimal place for values < 1, and 2 for values >= 1
       const decimalPlaces = value >= 1 ? 2 : 1;
-      return new Intl.NumberFormat('en-US', {
+      // Use dot for thousands and decimal separator for USD
+      return new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'USD',
         minimumFractionDigits: decimalPlaces,
@@ -111,13 +115,15 @@ export default function TransactionHistory({
     if (!value || isNaN(value)) return '0';
     
     if (currency === 'IDR') {
-      return new Intl.NumberFormat('id-ID', {
+      // Use dot for thousands and decimal separator for IDR
+      return new Intl.NumberFormat('en-IN', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
       }).format(value);
     } else {
       const decimalPlaces = value >= 1 ? 2 : 1;
-      return new Intl.NumberFormat('en-US', {
+      // Use dot for thousands and decimal separator for USD
+      return new Intl.NumberFormat('en-IN', {
         minimumFractionDigits: decimalPlaces,
         maximumFractionDigits: decimalPlaces
       }).format(value);
@@ -145,7 +151,20 @@ export default function TransactionHistory({
     try {
       // Add UTF-8 BOM to prevent Excel from showing warning
       const BOM = '\uFEFF';
-      let csvContent = BOM + "Tanggal;Tipe;Aset;Symbol;Jumlah;Harga;Nilai IDR;Nilai USD\n";
+      
+      // Language-aware CSV headers
+      const headers = [
+        t('date'),
+        t('type'),
+        t('asset'),
+        'Symbol',
+        t('amount'),
+        t('price'),
+        t('idrValue'),
+        t('usdValue')
+      ];
+      
+      let csvContent = BOM + headers.join(';') + '\n';
       
       filteredTransactions.forEach(tx => {
         const values = calculateValue(tx);
@@ -154,15 +173,15 @@ export default function TransactionHistory({
         
         switch(tx.type) {
           case 'buy':
-            typeText = 'Beli';
+            typeText = t('buy');
             amountText = tx.amount;
             break;
           case 'sell':
-            typeText = 'Jual';
+            typeText = t('sell');
             amountText = tx.amount;
             break;
           case 'delete':
-            typeText = 'Hapus';
+            typeText = t('delete');
             amountText = tx.amount;
             break;
           default:
@@ -173,7 +192,7 @@ export default function TransactionHistory({
         const row = [
           `"${formatDate(tx.timestamp)}"`,
           `"${typeText}"`,
-          `"${tx.assetType === 'stock' ? 'Saham' : 'Kripto'}"`,
+          `"${tx.assetType === 'stock' ? t('stock') : t('crypto')}"`,
           `"${tx.ticker || tx.symbol}"`,
           `"${amountText}"`,
           formatNumberForCSV(tx.price, tx.currency === 'IDR' ? 'IDR' : 'USD'),
@@ -192,9 +211,15 @@ export default function TransactionHistory({
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       
+      // Language-aware filename
+      const currentDate = new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US');
+      const filename = language === 'id' 
+        ? `transaksi_${currentDate}.csv`
+        : `transactions_${currentDate}.csv`;
+      
       // Set download attributes
       link.setAttribute('href', url);
-      link.setAttribute('download', `transaksi_${new Date().toLocaleDateString('id-ID')}.csv`);
+      link.setAttribute('download', filename);
       
       // Append to body and trigger download
       document.body.appendChild(link);
@@ -211,10 +236,10 @@ export default function TransactionHistory({
       console.error('Error exporting CSV:', error);
       setConfirmModal({
         isOpen: true,
-        title: 'Error',
-        message: 'Gagal mengekspor data ke CSV: ' + error.message,
+        title: t('error'),
+        message: t('exportFailed', { error: error.message }),
         type: 'error',
-        confirmText: 'OK',
+        confirmText: t('ok'),
         onConfirm: () => setConfirmModal(null)
       });
     }
@@ -226,13 +251,15 @@ export default function TransactionHistory({
   // Format nilai mata uang
   const formatValue = (value, currency) => {
     if (currency === 'IDR') {
-      return new Intl.NumberFormat('id-ID', {
+      // Use dot for thousands and decimal separator for IDR
+      return new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'IDR',
         minimumFractionDigits: 2
       }).format(value);
     } else {
-      return new Intl.NumberFormat('en-US', {
+      // Use dot for thousands and decimal separator for USD
+      return new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'USD',
         minimumFractionDigits: 2
@@ -251,7 +278,7 @@ export default function TransactionHistory({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Riwayat Transaksi</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">{t('transactionHistory')}</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -261,7 +288,7 @@ export default function TransactionHistory({
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Export CSV
+              {t('exportCSV')}
             </button>
 
           </div>
@@ -271,7 +298,7 @@ export default function TransactionHistory({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
           {/* Transaction Type Filter */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipe Transaksi</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('transactionType')}</label>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setFilter('all')}
@@ -281,7 +308,7 @@ export default function TransactionHistory({
                     : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                Semua
+                {t('all')}
               </button>
               <button
                 onClick={() => setFilter('buy')}
@@ -291,7 +318,7 @@ export default function TransactionHistory({
                     : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                Beli
+                {t('buy')}
               </button>
               <button
                 onClick={() => setFilter('sell')}
@@ -301,14 +328,14 @@ export default function TransactionHistory({
                     : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                Jual
+                {t('sell')}
               </button>
             </div>
           </div>
 
           {/* Asset Type Filter */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Jenis Aset</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('assetType')}</label>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setAssetTypeFilter('all')}
@@ -318,7 +345,7 @@ export default function TransactionHistory({
                     : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                Semua Aset
+                {t('allAssets')}
               </button>
               <button
                 onClick={() => setAssetTypeFilter('stock')}
@@ -328,7 +355,7 @@ export default function TransactionHistory({
                     : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                Saham
+                {t('stocks')}
               </button>
               <button
                 onClick={() => setAssetTypeFilter('crypto')}
@@ -338,7 +365,7 @@ export default function TransactionHistory({
                     : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                Kripto
+                {t('crypto')}
               </button>
             </div>
           </div>
@@ -349,13 +376,13 @@ export default function TransactionHistory({
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tanggal</th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipe</th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aset</th>
-                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jumlah</th>
-                <th className="hidden sm:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Harga</th>
-                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nilai IDR</th>
-                <th className="hidden md:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nilai USD</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('date')}</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('type')}</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('asset')}</th>
+                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('amount')}</th>
+                <th className="hidden sm:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('price')}</th>
+                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('idrValue')}</th>
+                <th className="hidden md:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('usdValue')}</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -374,9 +401,9 @@ export default function TransactionHistory({
                           ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
                           : 'bg-gray-50 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400'
                       }`}>
-                        {tx.type === 'buy' ? 'Beli' : 
-                         tx.type === 'sell' ? 'Jual' : 
-                         tx.type === 'delete' ? 'Hapus' : tx.type}
+                        {tx.type === 'buy' ? t('buy') : 
+                         tx.type === 'sell' ? t('sell') : 
+                         tx.type === 'delete' ? t('delete') : tx.type}
                       </span>
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
@@ -385,7 +412,7 @@ export default function TransactionHistory({
                           {tx.ticker || tx.symbol}
                         </span>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {tx.assetType === 'stock' ? 'Saham' : 'Kripto'}
+                          {tx.assetType === 'stock' ? t('stock') : t('crypto')}
                         </span>
                         {/* Show price on mobile */}
                         <div className="sm:hidden text-xs text-gray-500 dark:text-gray-400">

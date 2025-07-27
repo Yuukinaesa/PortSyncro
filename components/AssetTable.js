@@ -4,6 +4,7 @@ import { FiArrowDown, FiArrowUp, FiTrendingUp, FiDollarSign, FiPercent, FiEdit2,
 import Modal from './Modal';
 import ErrorBoundary from './ErrorBoundary';
 import { formatNumber, formatIDR, formatUSD } from '../lib/utils';
+import { useLanguage } from '../lib/languageContext';
 
 export default function AssetTable({ assets, prices, exchangeRate, type, onUpdate, onSell = () => {}, loading = false }) {
   const [sellingIndex, setSellingIndex] = useState(null);
@@ -11,6 +12,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
   const [confirmModal, setConfirmModal] = useState(null);
   const [editingAvgPrice, setEditingAvgPrice] = useState(null);
   const [newAvgPrice, setNewAvgPrice] = useState('');
+  const { t } = useLanguage();
   
   if (assets.length === 0) {
     return null;
@@ -47,8 +49,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     if (isNaN(amountToSell) || amountToSell <= 0) {
       setConfirmModal({
         isOpen: true,
-        title: 'Peringatan',
-        message: 'Masukkan nilai yang valid',
+        title: t('warning'),
+        message: t('invalidValue'),
         type: 'error'
       });
       return;
@@ -57,8 +59,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     if (isIDX && (!Number.isInteger(amountToSell) || String(sellAmount).includes(','))) {
       setConfirmModal({
         isOpen: true,
-        title: 'Peringatan',
-        message: 'Penjualan saham IDX hanya diperbolehkan dalam satuan lot bulat (tidak boleh desimal atau koma).',
+        title: t('warning'),
+        message: t('invalidLotAmount'),
         type: 'error'
       });
       return;
@@ -66,8 +68,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     if (amountToSell > currentAmount) {
       setConfirmModal({
         isOpen: true,
-        title: 'Peringatan',
-        message: `Jumlah yang dijual tidak boleh melebihi jumlah yang dimiliki (${currentAmount})`,
+        title: t('warning'),
+        message: t('amountExceeds', { amount: currentAmount }),
         type: 'error'
       });
       return;
@@ -85,7 +87,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
           valueFormatted = formatIDR(valueIDR);
         } else {
           // Hapus logika konversi USD ke IDR untuk saham (karena tidak ada saham US)
-          valueFormatted = 'Nilai tidak tersedia';
+          valueFormatted = t('valueNotAvailable');
         }
       } else {
         // For crypto: always show in IDR
@@ -96,12 +98,21 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     }
     
     const message = price 
-      ? `Anda akan menjual ${amountToSell} ${type === 'stock' ? 'lot' : ''} ${ticker} ${valueFormatted ? `dengan nilai sekitar ${valueFormatted}` : ''}. Lanjutkan penjualan?`
-      : `Anda akan menjual ${amountToSell} ${type === 'stock' ? 'lot' : ''} ${ticker}. Data harga akan diperbarui otomatis. Lanjutkan penjualan?`;
+      ? t('saleConfirmation', { 
+          amount: amountToSell, 
+          unit: type === 'stock' ? 'lot' : '', 
+          symbol: ticker, 
+          value: valueFormatted ? `with value around ${valueFormatted}` : '' 
+        })
+      : t('saleConfirmationNoPrice', { 
+          amount: amountToSell, 
+          unit: type === 'stock' ? 'lot' : '', 
+          symbol: ticker 
+        });
     
     setConfirmModal({
       isOpen: true,
-      title: 'Konfirmasi Penjualan',
+      title: t('confirmSale'),
       message: message,
       type: 'warning',
       onConfirm: () => {
@@ -157,7 +168,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
   
   // Function to format price based on currency and exchange rate
   const formatPrice = (price, currency, inIDR = false) => {
-    if (!price && price !== 0) return 'Tidak tersedia';
+    if (!price && price !== 0) return t('notAvailable');
     
     if (currency === 'IDR' || inIDR) {
       return formatIDR(price);
@@ -192,7 +203,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
           valueIDR: 0,
           valueUSD: 0,
           price: 0,
-          error: 'Data harga tidak tersedia'
+          error: t('priceDataUnavailable')
         };
       }
       
@@ -214,7 +225,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
           valueIDR: 0,
           valueUSD: 0,
           price: 0,
-          error: 'Data harga tidak tersedia'
+          error: t('cryptoPriceUnavailable')
         };
       }
       
@@ -232,7 +243,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       valueIDR: 0,
       valueUSD: 0,
       price: 0,
-      error: 'Tipe aset tidak dikenali'
+      error: t('unknownAssetType')
     };
   };
 
@@ -243,28 +254,28 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
           <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {type === 'stock' ? 'Saham' : 'Kripto'}
+                {type === 'stock' ? t('stock') : t('crypto')}
               </th>
               <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Jumlah
+                {t('amount')}
               </th>
               <th className="hidden sm:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Harga Sekarang
+                {t('currentPrice')}
               </th>
               <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Nilai IDR
+                {t('idrValue')}
               </th>
               <th className="hidden md:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Nilai USD
+                {t('usdValue')}
               </th>
               <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Aksi
+                {t('action')}
               </th>
               <th className="hidden sm:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Avg Price
+                {t('avgPrice')}
               </th>
               <th className="hidden sm:table-cell px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Gain/Loss
+                {t('gainLoss')}
               </th>
             </tr>
           </thead>
@@ -331,7 +342,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                         )}
                         {/* Show price on mobile */}
                         <div className="sm:hidden text-xs text-gray-500 dark:text-gray-400">
-                          {assetValue.price ? formatPrice(assetValue.price, asset.currency || 'IDR') : 'Tidak tersedia'}
+                          {assetValue.price ? formatPrice(assetValue.price, asset.currency || 'IDR') : t('notAvailable')}
                           {/* Show IDR price for crypto on mobile */}
                           {type === 'crypto' && assetValue.price && exchangeRate && (
                             <div className="text-xs text-gray-400 dark:text-gray-500">
@@ -390,7 +401,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex flex-col items-end">
                       <span className="text-sm text-gray-900 dark:text-white">
-                        {assetValue.price ? formatPrice(assetValue.price, asset.currency || 'IDR') : 'Tidak tersedia'}
+                        {assetValue.price ? formatPrice(assetValue.price, asset.currency || 'IDR') : t('notAvailable')}
                       </span>
                       {/* Show IDR price for crypto */}
                       {type === 'crypto' && assetValue.price && exchangeRate && (
@@ -411,13 +422,13 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right">
                     <span className="text-sm text-gray-900 dark:text-white">
-                      {assetValue.valueIDR ? formatPrice(assetValue.valueIDR, 'IDR', true) : 'Tidak tersedia'}
+                      {assetValue.valueIDR ? formatPrice(assetValue.valueIDR, 'IDR', true) : t('notAvailable')}
                     </span>
                   </td>
                   
                   <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-right">
                     <span className="text-sm text-gray-900 dark:text-white">
-                      {assetValue.valueUSD ? formatPrice(assetValue.valueUSD, 'USD') : 'Tidak tersedia'}
+                      {assetValue.valueUSD ? formatPrice(assetValue.valueUSD, 'USD') : t('notAvailable')}
                     </span>
                   </td>
                   

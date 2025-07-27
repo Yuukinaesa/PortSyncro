@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import AssetTable from './AssetTable';
 import Notification from './Notification';
-import { FiRefreshCw, FiPlusCircle, FiTrendingUp, FiDollarSign, FiActivity, FiAlertCircle, FiInfo } from 'react-icons/fi';
+import { FiRefreshCw, FiPlusCircle, FiTrendingUp, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload } from 'react-icons/fi';
 import { fetchExchangeRate } from '../lib/fetchPrices';
 import { formatNumber, formatIDR, formatUSD } from '../lib/utils';
+import { useLanguage } from '../lib/languageContext';
 
 export default function Portfolio({ 
   assets, 
@@ -35,6 +36,7 @@ export default function Portfolio({
   const [activeAssetTab, setActiveAssetTab] = useState('all');
   const [confirmModal, setConfirmModal] = useState(null);
   const [notification, setNotification] = useState(null);
+  const { t, language } = useLanguage();
   
   const fetchRate = async () => {
     setLoadingExchangeRate(true);
@@ -43,7 +45,7 @@ export default function Portfolio({
       const rateData = await fetchExchangeRate();
       setExchangeRate(rateData.rate);
       setLastExchangeRateUpdate(new Date().toLocaleString());
-      setExchangeRateSource('Exchange Rates API');
+      setExchangeRateSource(t('exchangeRateSource', { source: 'Exchange Rates API' }));
     } catch (error) {
       console.error('Error fetching exchange rate:', error);
       setExchangeRateError(error.message);
@@ -87,8 +89,8 @@ export default function Portfolio({
       if (loading) {
         setNotification({
           isOpen: true,
-          title: 'Berhasil',
-          message: 'Data harga berhasil diperbarui!',
+          title: t('success'),
+          message: t('priceUpdateSuccess'),
           type: 'success'
         });
         
@@ -98,7 +100,7 @@ export default function Portfolio({
       }
     } catch (error) {
       console.error('Error fetching prices:', error);
-      setError(`Gagal memperbarui data harga: ${error.message}`);
+      setError(t('priceUpdateFailed', { error: error.message }));
     } finally {
       setLoading(false);
     }
@@ -152,8 +154,8 @@ export default function Portfolio({
     if (!prices || !prices[tickerKey]) {
       setConfirmModal({
         isOpen: true,
-        title: 'Memperbarui Data Harga',
-        message: 'Data harga sedang diperbarui. Silakan tunggu sebentar...',
+        title: t('updatingPriceData'),
+        message: t('priceUpdateInfo'),
         type: 'info',
         onConfirm: () => {
           setConfirmModal(null);
@@ -174,8 +176,8 @@ export default function Portfolio({
     if (!prices || !prices[asset.symbol]) {
       setConfirmModal({
         isOpen: true,
-        title: 'Memperbarui Data Harga Kripto',
-        message: 'Data harga kripto sedang diperbarui. Silakan tunggu sebentar...',
+        title: t('updatingCryptoPriceData'),
+        message: t('cryptoPriceUpdateInfo'),
         type: 'info',
         onConfirm: () => {
           setConfirmModal(null);
@@ -251,7 +253,7 @@ export default function Portfolio({
         if (exchangeRate && exchangeRate > 0) {
           totalCryptoIDR += cryptoValueUSD * exchangeRate;
         } else {
-          error = 'Kurs tidak tersedia untuk konversi ke IDR';
+          error = t('exchangeRateUnavailable');
         }
         
         // Calculate daily change and previous day value for crypto
@@ -361,6 +363,122 @@ export default function Portfolio({
 
   const gains = calculateGains();
 
+  // Export portfolio to CSV
+  // Format number for CSV export (without currency symbol) - same as TransactionHistory
+  const formatNumberForCSV = (value, currency) => {
+    if (!value || isNaN(value)) return '0';
+    
+    if (currency === 'IDR') {
+      // Use dot for thousands and decimal separator for IDR
+      return new Intl.NumberFormat('en-IN', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(value);
+    } else {
+      const decimalPlaces = value >= 1 ? 2 : 1;
+      // Use dot for thousands and decimal separator for USD
+      return new Intl.NumberFormat('en-IN', {
+        minimumFractionDigits: decimalPlaces,
+        maximumFractionDigits: decimalPlaces
+      }).format(value);
+    }
+  };
+
+  const exportPortfolioToCSV = () => {
+    try {
+      const BOM = '\uFEFF';
+      
+      // Language-aware headers
+      const headers = language === 'id' 
+        ? ['Aset', 'Tipe', 'Jumlah', 'Harga Rata-rata', 'Harga Sekarang', 'Nilai IDR', 'Nilai USD', 'Gain/Loss IDR', 'Gain/Loss USD']
+        : ['Asset', 'Type', 'Amount', 'Avg Price', 'Current Price', 'IDR Value', 'USD Value', 'Gain/Loss IDR', 'Gain/Loss USD'];
+      
+      let csvContent = BOM + headers.join(';') + '\n';
+      
+      // Add stocks
+      assets.stocks.forEach(stock => {
+        const tickerKey = `${stock.ticker}.JK`;
+        const currentPrice = prices[tickerKey]?.price || stock.price || 0;
+        const shareCount = stock.lots * 100;
+        const currentValueIDR = currentPrice * shareCount;
+        const currentValueUSD = exchangeRate && exchangeRate > 0 ? currentValueIDR / exchangeRate : 0;
+        const costBasis = stock.avgPrice * shareCount;
+        const gainIDR = currentValueIDR - costBasis;
+        const gainUSD = currentValueUSD - (costBasis / (exchangeRate || 1));
+        
+        const row = [
+          `"${stock.ticker}"`,
+          `"${language === 'id' ? 'Saham' : 'Stock'}"`,
+          `"${stock.lots}"`,
+          formatNumberForCSV(stock.avgPrice, 'IDR'),
+          formatNumberForCSV(currentPrice, 'IDR'),
+          formatNumberForCSV(currentValueIDR, 'IDR'),
+          formatNumberForCSV(currentValueUSD, 'USD'),
+          formatNumberForCSV(gainIDR, 'IDR'),
+          formatNumberForCSV(gainUSD, 'USD')
+        ];
+        csvContent += row.join(';') + '\n';
+      });
+      
+      // Add crypto
+      assets.crypto.forEach(crypto => {
+        const currentPrice = prices[crypto.symbol]?.price || crypto.price || 0;
+        const currentValueUSD = currentPrice * crypto.amount;
+        const currentValueIDR = exchangeRate && exchangeRate > 0 ? currentValueUSD * exchangeRate : 0;
+        const costBasis = crypto.totalCost || 0;
+        const gainUSD = currentValueUSD - costBasis;
+        const gainIDR = exchangeRate && exchangeRate > 0 ? gainUSD * exchangeRate : 0;
+        
+        const row = [
+          `"${crypto.symbol}"`,
+          `"${language === 'id' ? 'Kripto' : 'Crypto'}"`,
+          `"${crypto.amount}"`,
+          formatNumberForCSV(crypto.avgPrice || 0, 'USD'),
+          formatNumberForCSV(currentPrice, 'USD'),
+          formatNumberForCSV(currentValueIDR, 'IDR'),
+          formatNumberForCSV(currentValueUSD, 'USD'),
+          formatNumberForCSV(gainIDR, 'IDR'),
+          formatNumberForCSV(gainUSD, 'USD')
+        ];
+        csvContent += row.join(';') + '\n';
+      });
+      
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      // Language-aware filename
+      const currentDate = new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US');
+      const filename = language === 'id' 
+        ? `portfolio_${currentDate}.csv`
+        : `portfolio_${currentDate}.csv`;
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error exporting portfolio:', error);
+      setNotification({
+        isOpen: true,
+        title: t('error'),
+        message: t('portfolioExportFailed', { error: error.message }),
+        type: 'error'
+      });
+      
+      setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Exchange Rate Display - Mobile Optimized */}
@@ -368,20 +486,20 @@ export default function Portfolio({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2">
             <FiDollarSign className="text-green-600 dark:text-green-400 flex-shrink-0" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Kurs USD/IDR:</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('exchangeRate')}</span>
             {loadingExchangeRate ? (
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-                <span className="text-sm text-gray-500 dark:text-gray-400">Loading...</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{t('loading')}</span>
               </div>
             ) : exchangeRateError ? (
-              <span className="text-sm text-red-600 dark:text-red-400">Error: {exchangeRateError}</span>
+              <span className="text-sm text-red-600 dark:text-red-400">{t('error')}: {exchangeRateError}</span>
             ) : exchangeRate ? (
               <span className="text-sm font-bold text-gray-800 dark:text-white">
                 {formatIDR(exchangeRate)}
               </span>
             ) : (
-              <span className="text-sm text-gray-500 dark:text-gray-400">Tidak tersedia</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">{t('notAvailable')}</span>
             )}
           </div>
           
@@ -395,7 +513,7 @@ export default function Portfolio({
               onClick={fetchRate}
               disabled={loadingExchangeRate}
               className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-              title="Refresh kurs"
+              title={t('refreshExchangeRate')}
             >
               <FiRefreshCw className={`w-4 h-4 ${loadingExchangeRate ? 'animate-spin' : ''}`} />
             </button>
@@ -408,7 +526,7 @@ export default function Portfolio({
         {/* Total Portfolio Card */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Total Portfolio</h3>
+            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">{t('totalPortfolio')}</h3>
             <div className="bg-blue-100 dark:bg-blue-500/20 p-2 rounded-lg">
               <FiDollarSign className="text-blue-500 dark:text-blue-400 w-4 h-4" />
             </div>
@@ -423,13 +541,13 @@ export default function Portfolio({
             <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
               <div className="space-y-1">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Kemarin: {formatIDR(totals.totalPreviousDayIDR)} 
+                  {t('yesterday')}: {formatIDR(totals.totalPreviousDayIDR)} 
                   <span className={`ml-1 ${totals.changeIDR >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     ({totals.changeIDR >= 0 ? '+' : ''}{formatIDR(totals.changeIDR)})
                   </span>
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Kemarin: {formatUSD(totals.totalPreviousDayUSD)} 
+                  {t('yesterday')}: {formatUSD(totals.totalPreviousDayUSD)} 
                   <span className={`ml-1 ${totals.changeUSD >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     ({totals.changeUSD >= 0 ? '+' : ''}{formatUSD(totals.changeUSD)})
                   </span>
@@ -442,7 +560,7 @@ export default function Portfolio({
         {/* Stocks Card */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Saham</h3>
+            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">{t('stocks')}</h3>
             <div className="bg-green-100 dark:bg-green-500/20 p-2 rounded-lg">
               <FiTrendingUp className="text-green-500 dark:text-green-400 w-4 h-4" />
             </div>
@@ -460,14 +578,14 @@ export default function Portfolio({
             ></div>
           </div>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
-            {totals.stocksPercent.toFixed(1)}% dari portfolio
+            {totals.stocksPercent.toFixed(1)}% {t('fromPortfolio')}
           </p>
         </div>
 
         {/* Crypto Card */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Kripto</h3>
+            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">{t('crypto')}</h3>
             <div className="bg-purple-100 dark:bg-purple-500/20 p-2 rounded-lg">
               <FiActivity className="text-purple-500 dark:text-purple-400 w-4 h-4" />
             </div>
@@ -485,14 +603,14 @@ export default function Portfolio({
             ></div>
           </div>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
-            {totals.cryptoPercent.toFixed(1)}% dari portfolio
+            {totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}
           </p>
         </div>
         
         {/* Total Gain Card */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Total Gain</h3>
+            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">{t('totalGain')}</h3>
             <div className="bg-yellow-100 dark:bg-yellow-500/20 p-2 rounded-lg">
               <FiTrendingUp className="text-yellow-500 dark:text-yellow-400 w-4 h-4" />
             </div>
@@ -506,10 +624,10 @@ export default function Portfolio({
           <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
             <div className="space-y-1">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Saham: {formatIDR(gains.stocksGain)}
+                {t('stocks')}: {formatIDR(gains.stocksGain)}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Kripto: {formatIDR(gains.cryptoGainIDR)}
+                {t('crypto')}: {formatIDR(gains.cryptoGainIDR)}
               </p>
             </div>
           </div>
@@ -522,9 +640,9 @@ export default function Portfolio({
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">Daftar Aset</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">{t('assetList')}</h2>
               <p className="text-gray-500 dark:text-gray-400 text-sm">
-                {assets.stocks.length + assets.crypto.length} aset dalam portfolio Anda
+                {assets.stocks.length + assets.crypto.length} {t('assetsInPortfolio')}
               </p>
             </div>
             
@@ -539,7 +657,7 @@ export default function Portfolio({
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Semua
+                  {t('all')}
                 </button>
                 <button
                   onClick={() => setActiveAssetTab('stocks')}
@@ -549,7 +667,7 @@ export default function Portfolio({
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Saham
+                  {t('stocks')}
                 </button>
                 <button
                   onClick={() => setActiveAssetTab('crypto')}
@@ -559,7 +677,7 @@ export default function Portfolio({
                       : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Kripto
+                  {t('crypto')}
                 </button>
               </div>
               
@@ -569,19 +687,29 @@ export default function Portfolio({
                   onClick={handleRefresh}
                   disabled={loading}
                   className="flex-1 sm:flex-none p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-300 transition flex items-center justify-center gap-2"
-                  title="Refresh data"
+                  title={t('refreshData')}
                 >
                   <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                  <span className="sm:hidden">Refresh</span>
+                  <span className="sm:hidden">{t('refresh')}</span>
+                </button>
+                
+                <button
+                  onClick={exportPortfolioToCSV}
+                  disabled={assets.stocks.length === 0 && assets.crypto.length === 0}
+                  className="flex-1 sm:flex-none p-2 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 rounded-lg text-green-700 dark:text-green-400 transition flex items-center justify-center gap-2"
+                  title={t('exportPortfolio')}
+                >
+                  <FiDownload className="w-4 h-4" />
+                  <span className="sm:hidden">{t('export')}</span>
                 </button>
                 
                 <button
                   onClick={onAddAsset}
                   className="flex-1 sm:flex-none p-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white transition flex items-center justify-center gap-2"
-                  title="Tambah aset"
+                  title={t('addAsset')}
                 >
                   <FiPlusCircle className="w-4 h-4" />
-                  <span className="sm:hidden">Tambah</span>
+                  <span className="sm:hidden">{t('add')}</span>
                 </button>
               </div>
             </div>
@@ -590,34 +718,34 @@ export default function Portfolio({
         
         {/* Error Display */}
         {error && (
-          <div className="mx-4 sm:mx-6 mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-200 px-3 py-2 rounded-lg text-sm flex items-start">
-            <FiAlertCircle className="mt-0.5 mr-2 flex-shrink-0" />
-            <div>
-              <p className="font-medium">Gagal memperbarui data</p>
-              <p className="text-xs mt-1">{error}</p>
+                      <div className="mx-4 sm:mx-6 mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-200 px-3 py-2 rounded-lg text-sm flex items-start">
+              <FiAlertCircle className="mt-0.5 mr-2 flex-shrink-0" />
+              <div>
+                <p className="font-medium">{t('failedToUpdateData')}</p>
+                <p className="text-xs mt-1">{error}</p>
+              </div>
             </div>
-          </div>
         )}
         
         {/* Loading State */}
         {loading && assets.stocks.length + assets.crypto.length > 0 ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-500"></div>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Memperbarui data harga...</p>
+                      <div className="flex justify-center items-center py-8">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-500"></div>
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{t('updatingPrices')}</p>
+              </div>
             </div>
-          </div>
         ) : (
           <>
             {/* Info Panel */}
             {!loading && Object.keys(prices).length < (assets.stocks.length + assets.crypto.length) && (
-              <div className="mx-4 sm:mx-6 mt-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-200 px-3 py-2 rounded-lg text-sm flex items-start">
-                <FiInfo className="mt-0.5 mr-2 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">Data harga sedang diperbarui</p>
-                  <p className="text-xs mt-1">Beberapa data harga mungkin belum tersedia. Klik tombol refresh untuk memperbarui data real-time.</p>
-                </div>
+                          <div className="mx-4 sm:mx-6 mt-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-200 px-3 py-2 rounded-lg text-sm flex items-start">
+              <FiInfo className="mt-0.5 mr-2 flex-shrink-0" />
+              <div>
+                <p className="font-medium">{t('updatingPriceData')}</p>
+                <p className="text-xs mt-1">{t('priceUpdateInfo')}</p>
               </div>
+            </div>
             )}
             
             {/* Stocks Section */}
@@ -635,12 +763,12 @@ export default function Portfolio({
                   />
                 ) : activeAssetTab === 'stocks' ? (
                   <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-                    <p>Belum ada saham yang ditambahkan</p>
+                    <p>{t('noStocksAdded')}</p>
                     <button 
                       onClick={onAddAsset}
                       className="mt-2 inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                     >
-                      <FiPlusCircle className="mr-1" /> Tambah Aset
+                      <FiPlusCircle className="mr-1" /> {t('addAsset')}
                     </button>
                   </div>
                 ) : null}
@@ -662,12 +790,12 @@ export default function Portfolio({
                   />
                 ) : activeAssetTab === 'crypto' ? (
                   <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-                    <p>Belum ada kripto yang ditambahkan</p>
+                    <p>{t('noCryptoAdded')}</p>
                     <button 
                       onClick={onAddAsset}
                       className="mt-2 inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                     >
-                      <FiPlusCircle className="mr-1" /> Tambah Aset
+                      <FiPlusCircle className="mr-1" /> {t('addAsset')}
                     </button>
                   </div>
                 ) : null}
@@ -680,15 +808,15 @@ export default function Portfolio({
                 <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 mb-4 sm:mb-6">
                   <FiDollarSign className="text-2xl sm:text-3xl text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-white mb-2 sm:mb-3">Portfolio Kosong</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-white mb-2 sm:mb-3">{t('emptyPortfolio')}</h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base">
-                  Mulai membangun portfolio Anda dengan menambahkan aset saham atau kripto untuk melacak investasi Anda
+                  {t('emptyPortfolioDesc')}
                 </p>
                 <button 
                   onClick={onAddAsset}
                   className="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg text-white font-medium transition-all duration-200 inline-flex items-center shadow-lg hover:shadow-xl transform hover:scale-105 text-sm sm:text-base"
                 >
-                  <FiPlusCircle className="mr-2" /> Tambah Aset Pertama
+                  <FiPlusCircle className="mr-2" /> {t('addFirstAsset')}
                 </button>
               </div>
             )}
@@ -698,13 +826,13 @@ export default function Portfolio({
         {/* Footer */}
         {lastUpdate && assets.stocks.length + assets.crypto.length > 0 && (
           <div className="px-4 sm:px-6 py-3 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 text-xs flex flex-col sm:flex-row sm:justify-between gap-2">
-            <span>Terakhir diperbarui: {lastUpdate}</span>
+            <span>{t('lastUpdated')}: {lastUpdate}</span>
             {!loading && (
               <button 
                 onClick={handleRefresh}
                 className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 self-start sm:self-auto"
               >
-                Refresh sekarang
+                {t('refreshNow')}
               </button>
             )}
           </div>

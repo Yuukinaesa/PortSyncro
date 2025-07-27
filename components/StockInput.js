@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '../lib/languageContext';
 
 export default function StockInput({ onAdd, onComplete, exchangeRate }) {
   const [ticker, setTicker] = useState('');
@@ -6,6 +7,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const { t } = useLanguage();
 
   
   const popularStocks = [
@@ -119,7 +121,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
 
       
       // Show success message
-      setSuccess('Stock successfully added');
+      setSuccess(t('stockSuccessfullyAdded'));
       setTimeout(() => setSuccess(null), 3000);
       
       // Call onComplete if provided
@@ -140,7 +142,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
   
   return (
     <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800 dark:text-white">Tambah Saham</h2>
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800 dark:text-white">{t('addStock')}</h2>
       
       {error && (
         <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-200 px-3 py-2 rounded-lg text-sm">
@@ -156,26 +158,26 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Kode Saham</label>
+          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('stockCode')}</label>
           <input
             type="text"
             className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
             value={ticker}
             onChange={(e) => setTicker(e.target.value)}
-            placeholder="Contoh: BBCA, BBRI, ASII"
+            placeholder={t('stockCodePlaceholder')}
           />
         </div>
         
 
         
         <div className="mb-4">
-          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Jumlah Lot</label>
+          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('lotAmount')}</label>
           <input
             type="text"
             className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
             value={lots}
             onChange={(e) => setLots(e.target.value)}
-            placeholder="Contoh: 1, 0.5"
+            placeholder={t('lotAmountPlaceholder')}
           />
         </div>
         
@@ -186,12 +188,12 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
           className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 sm:py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 touch-target"
           disabled={isLoading}
         >
-          {isLoading ? 'Menambahkan...' : 'Tambah Saham'}
+          {isLoading ? t('adding') : t('addStock')}
         </button>
       </form>
       
       <div className="mt-6">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Pilihan Cepat</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('quickOptions')}</p>
         <div className="flex flex-wrap gap-2">
           {popularStocks.map(stock => (
             <button

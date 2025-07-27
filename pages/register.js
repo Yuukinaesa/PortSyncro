@@ -7,7 +7,9 @@ import { doc, setDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useTheme } from '../lib/themeContext';
+import { useLanguage } from '../lib/languageContext';
 import ThemeToggle from '../components/ThemeToggle';
+import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 export default function Register() {
@@ -18,19 +20,20 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
 
   const handleRegister = async (e) => {
     e.preventDefault();
     
     // Validasi password match
     if (password !== confirmPassword) {
-      setError("Password tidak cocok.");
+      setError(t('passwordMismatch'));
       return;
     }
     
     // Validasi kekuatan password
     if (password.length < 6) {
-      setError("Password minimal 6 karakter.");
+      setError(t('passwordTooShort'));
       return;
     }
     
@@ -56,13 +59,13 @@ export default function Register() {
     } catch (error) {
       console.error("Error signing up:", error);
       if (error.code === 'auth/email-already-in-use') {
-        setError("Email sudah digunakan. Gunakan email lain atau login.");
+        setError(t('emailAlreadyInUse'));
       } else if (error.code === 'auth/invalid-email') {
-        setError("Format email tidak valid.");
+        setError(t('invalidEmailFormat'));
       } else if (error.code === 'auth/weak-password') {
-        setError("Password terlalu lemah. Gunakan minimal 6 karakter.");
+        setError(t('weakPassword'));
       } else {
-        setError("Pendaftaran gagal. Silakan coba lagi.");
+        setError(t('registrationFailed'));
       }
     } finally {
       setLoading(false);
@@ -83,7 +86,8 @@ export default function Register() {
 
         </Head>
 
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex gap-2">
+          <LanguageToggle />
           <ThemeToggle />
         </div>
 
@@ -92,7 +96,7 @@ export default function Register() {
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
               PortSyncro
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">Effortless Portfolio Sync for Crypto and Stocks</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">{t('tagline')}</p>
           </div>
 
           {error && (
@@ -103,39 +107,39 @@ export default function Register() {
 
             <form onSubmit={handleRegister}>
               <div className="mb-4">
-                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('email')}</label>
                 <input
                   type="email"
                   className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@contoh.com"
+                  placeholder={t('emailPlaceholder')}
                 />
               </div>
   
               <div className="mb-4">
-                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('password')}</label>
                 <input
                   type="password"
                   className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimal 6 karakter"
+                  placeholder={t('passwordMinLength')}
                 />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Minimal 6 karakter</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('passwordMinLength')}</p>
               </div>
   
               <div className="mb-6">
-                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Konfirmasi Password</label>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('confirmPassword')}</label>
                 <input
                   type="password"
                   className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Masukkan password yang sama"
+                  placeholder={t('confirmPasswordPlaceholder')}
                 />
               </div>
   
@@ -144,25 +148,25 @@ export default function Register() {
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-60"
               >
-                {loading ? 'Processing...' : 'Register'}
+                {loading ? t('processing') : t('register')}
               </button>
             </form>
   
             <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-              Already have an account?{' '}
+              {t('alreadyHaveAccount')}{' '}
               <Link href="/login" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
-                Login
+                {t('login')}
               </Link>
             </div>
   
             <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4 text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Want to create a demo account for testing?</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t('createDemoAccountText')}</p>
               <button
                 type="button"
                 onClick={handleDemoAccount}
                 className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
               >
-                Create Demo Account
+                {t('createDemoAccount')}
               </button>
             </div>
           </div>
