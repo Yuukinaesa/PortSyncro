@@ -206,15 +206,7 @@ export default function TransactionHistory({
         URL.revokeObjectURL(url);
       }, 100);
 
-      // Show success message
-      setConfirmModal({
-        isOpen: true,
-        title: 'Sukses',
-        message: 'Data transaksi berhasil diekspor ke CSV',
-        type: 'success',
-        confirmText: 'OK',
-        onConfirm: () => setConfirmModal(null)
-      });
+
     } catch (error) {
       console.error('Error exporting CSV:', error);
       setConfirmModal({
