@@ -72,7 +72,7 @@ export default function Login() {
     <ProtectedRoute authPage={true}>
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4 transition-colors">
         <Head>
-          <title>Login | VestTrack</title>
+          <title>Login | PortSyncro</title>
           <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         </Head>
 
@@ -83,7 +83,7 @@ export default function Login() {
         <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
-              VestTrack
+              PortSyncro
             </h1>
             <p className="text-gray-500 dark:text-gray-400 mt-2">Sync to Stay Ahead – Crypto & Stocks Together</p>
           </div>

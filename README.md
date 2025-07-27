@@ -1,7 +1,7 @@
-# 💹 VestTrack - Sync to Stay Ahead – Crypto & Stocks Together
-A modern, professional web application for tracking stocks and cryptocurrencies. **VestTrack** helps you manage, analyze, and simulate your investments with ease, accuracy, and a beautiful interface—all powered by Next.js, React, and Firebase.
+# 💹 PortSyncro - Sync to Stay Ahead – Crypto & Stocks Together
+A modern, professional web application for tracking stocks and cryptocurrencies. **PortSyncro** helps you manage, analyze, and simulate your investments with ease, accuracy, and a beautiful interface—all powered by Next.js, React, and Firebase.
 
-🌐 Live Website: [vesttrack.arfan.biz.id](https://vesttrack.arfan.biz.id/)
+🌐 Live Website: [portsyncro.arfan.biz.id](https://portsyncro.arfan.biz.id/)
 
 ---
 
@@ -38,8 +38,8 @@ A modern, professional web application for tracking stocks and cryptocurrencies.
 
 Clone the repository:
 ```sh
-git clone https://github.com/Yuukinaesa/VestTrack.git
-cd VestTrack
+git clone https://github.com/Yuukinaesa/PortSyncro.git
+cd PortSyncro
 ```
 
 Install dependencies:
@@ -111,5 +111,5 @@ For questions or support, please open an issue on the repository.
 
 ---
 
-> **VestTrack** — [vesttrack.arfan.biz.id](https://vesttrack.arfan.biz.id)
+> **PortSyncro** — [portsyncro.arfan.biz.id](https://portsyncro.arfan.biz.id)
 > _Sync to Stay Ahead – Crypto & Stocks Together._

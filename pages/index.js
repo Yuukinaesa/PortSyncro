@@ -866,7 +866,7 @@ export default function Home() {
     <ErrorBoundary>
       <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-white transition-colors">
         <Head>
-          <title>VestTrack | Sync to Stay Ahead – Crypto & Stocks Together</title>
+          <title>PortSyncro | Sync to Stay Ahead – Crypto & Stocks Together</title>
           <meta name="description" content="Sync to Stay Ahead – Crypto & Stocks Together" />
           <link rel="icon" href="/favicon.ico" />
           <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -876,7 +876,7 @@ export default function Home() {
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
-                VestTrack
+                PortSyncro
               </h1>
               <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Sync to Stay Ahead – Crypto & Stocks Together</p>
             </div>
@@ -972,7 +972,7 @@ export default function Home() {
         </main>
         
         <footer className="container mx-auto px-4 py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800">
-          <p>© {new Date().getFullYear()} VestTrack - Sync to Stay Ahead – Crypto & Stocks Together</p>
+          <p>© {new Date().getFullYear()} PortSyncro - Sync to Stay Ahead – Crypto & Stocks Together</p>
         </footer>
       </div>
     </ErrorBoundary>
