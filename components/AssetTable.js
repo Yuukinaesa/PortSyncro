@@ -452,7 +452,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       <div className="flex justify-center">
                         <button
                           onClick={() => handleSellClick(index, asset)}
-                          className="px-2 py-1 rounded text-xs font-medium transition-colors bg-amber-100 dark:bg-amber-600/40 text-amber-600 dark:text-white hover:bg-amber-200 dark:hover:bg-amber-600"
+                          className="px-2 py-1 rounded text-xs font-medium transition-colors bg-red-100 dark:bg-red-600/40 text-red-600 dark:text-white hover:bg-red-200 dark:hover:bg-red-600"
                           title="Jual aset"
                         >
                           Jual
