@@ -11,11 +11,13 @@ export default function Notification({ notification, onClose }) {
       title={notification.title}
       type={notification.type}
     >
-      <p>{notification.message}</p>
-      <div className="mt-4 flex justify-end">
+      <p className="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed">
+        {notification.message}
+      </p>
+      <div className="flex justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-gray-800 dark:text-white font-medium"
+          className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-all duration-200"
         >
           Tutup
         </button>

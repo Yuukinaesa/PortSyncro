@@ -1,9 +1,9 @@
 // pages/_app.js
-import '../styles/globals.css';
 import { AuthProvider } from '../lib/authContext';
 import { ThemeProvider } from '../lib/themeContext';
 import { LanguageProvider } from '../lib/languageContext';
 import Head from 'next/head';
+import '../styles/globals.css';
 
 function MyApp({ Component, pageProps }) {
   return (

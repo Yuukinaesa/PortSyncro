@@ -1,5 +1,5 @@
 // pages/index.js
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import Portfolio from '../components/Portfolio';
 import StockInput from '../components/StockInput';
@@ -12,16 +12,17 @@ import { useRouter } from 'next/router';
 import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { FiLogOut, FiUser } from 'react-icons/fi';
-import { debounce } from 'lodash';
+// Removed debounce import
 import { useRef } from 'react';
-import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions } from '../lib/utils';
+import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
 import TransactionHistory from '../components/TransactionHistory';
 import { fetchExchangeRate } from '../lib/fetchPrices';
 import Modal from '../components/Modal';
+import AveragePriceCalculator from '../components/AveragePriceCalculator';
 
 // Tambahkan fungsi untuk membangun ulang aset dari transaksi
-function buildAssetsFromTransactions(transactions, prices) {
+function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [] }) {
   const stocksMap = {};
   const cryptoMap = {};
 
@@ -40,14 +41,24 @@ function buildAssetsFromTransactions(transactions, prices) {
   const stocks = Object.entries(stocksMap).map(([ticker, txs]) => {
     const priceObj = prices[ticker] || prices[`${ticker}.JK`];
     const currentPrice = priceObj ? priceObj.price : 0;
-    const pos = calculatePositionFromTransactions(txs, currentPrice);
     
-    // Check if there's a delete transaction (if yes, skip this asset)
-    const hasDeleteTransaction = txs.some(tx => tx.type === 'delete');
-    if (hasDeleteTransaction) {
-      console.log(`Skipping ${ticker} - has delete transaction`);
-      return null; // Skip this asset
+    // Skip delete transactions when building assets - they don't affect portfolio
+    const validTransactions = txs.filter(tx => tx.type !== 'delete');
+    if (validTransactions.length === 0) {
+      console.log(`Skipping ${ticker} - no valid transactions (only delete transactions)`);
+      // Don't return null - check if we have existing asset to preserve
+      const existingAsset = currentAssets.stocks.find(s => s.ticker === ticker);
+      if (existingAsset) {
+        console.log(`Preserving existing asset ${ticker} despite no valid transactions`);
+        return {
+          ...existingAsset,
+          currentPrice: currentPrice
+        };
+      }
+      return null; // Only skip if no existing asset
     }
+    
+    const pos = calculatePositionFromTransactions(validTransactions, currentPrice);
     
     // Check if the asset is fully sold (amount <= 0)
     if (pos.amount <= 0) {
@@ -55,17 +66,26 @@ function buildAssetsFromTransactions(transactions, prices) {
       return null; // Skip this asset
     }
     
+    // Check if there's a manually set average price in current assets
+    const existingAsset = currentAssets.stocks.find(s => s.ticker === ticker);
+    const useManualAvgPrice = existingAsset && existingAsset.avgPrice && existingAsset.avgPrice !== pos.avgPrice;
+    
+    // Use manually set average price if it exists and is different from calculated
+    const finalAvgPrice = useManualAvgPrice ? existingAsset.avgPrice : pos.avgPrice;
+    const finalTotalCost = finalAvgPrice * pos.amount;
+    const finalGain = pos.porto - finalTotalCost;
+    
     return {
       ticker,
       lots: pos.amount, // untuk saham, 1 lot = 100 saham (IDX)
-      avgPrice: pos.avgPrice,
-      totalCost: pos.totalCost,
-      gain: pos.gain,
+      avgPrice: finalAvgPrice,
+      totalCost: finalTotalCost,
+      gain: finalGain,
       porto: pos.porto,
-      price: currentPrice,
+      currentPrice: currentPrice, // Use currentPrice instead of price
       currency: priceObj ? priceObj.currency : 'IDR',
       type: 'stock',
-      transactions: txs,
+      transactions: validTransactions,
       ...(pos.entryPrice && { entry: pos.entryPrice })
     };
   }).filter(Boolean); // Remove null entries
@@ -73,14 +93,24 @@ function buildAssetsFromTransactions(transactions, prices) {
   const crypto = Object.entries(cryptoMap).map(([symbol, txs]) => {
     const priceObj = prices[symbol];
     const currentPrice = priceObj ? priceObj.price : 0;
-    const pos = calculatePositionFromTransactions(txs, currentPrice);
     
-    // Check if there's a delete transaction (if yes, skip this asset)
-    const hasDeleteTransaction = txs.some(tx => tx.type === 'delete');
-    if (hasDeleteTransaction) {
-      console.log(`Skipping ${symbol} - has delete transaction`);
-      return null; // Skip this asset
+    // Skip delete transactions when building assets - they don't affect portfolio
+    const validTransactions = txs.filter(tx => tx.type !== 'delete');
+    if (validTransactions.length === 0) {
+      console.log(`Skipping ${symbol} - no valid transactions (only delete transactions)`);
+      // Don't return null - check if we have existing asset to preserve
+      const existingAsset = currentAssets.crypto.find(c => c.symbol === symbol);
+      if (existingAsset) {
+        console.log(`Preserving existing asset ${symbol} despite no valid transactions`);
+        return {
+          ...existingAsset,
+          currentPrice: currentPrice
+        };
+      }
+      return null; // Only skip if no existing asset
     }
+    
+    const pos = calculatePositionFromTransactions(validTransactions, currentPrice);
     
     // Check if the asset is fully sold (amount <= 0)
     if (pos.amount <= 0) {
@@ -88,20 +118,58 @@ function buildAssetsFromTransactions(transactions, prices) {
       return null; // Skip this asset
     }
     
+    // Check if there's a manually set average price in current assets
+    const existingAsset = currentAssets.crypto.find(c => c.symbol === symbol);
+    const useManualAvgPrice = existingAsset && existingAsset.avgPrice && existingAsset.avgPrice !== pos.avgPrice;
+    
+    // Use manually set average price if it exists and is different from calculated
+    const finalAvgPrice = useManualAvgPrice ? existingAsset.avgPrice : pos.avgPrice;
+    const finalTotalCost = finalAvgPrice * pos.amount;
+    const finalGain = pos.porto - finalTotalCost;
+    
     return {
       symbol,
       amount: pos.amount,
-      avgPrice: pos.avgPrice,
-      totalCost: pos.totalCost,
-      gain: pos.gain,
+      avgPrice: finalAvgPrice,
+      totalCost: finalTotalCost,
+      gain: finalGain,
       porto: pos.porto,
-      price: currentPrice,
+      currentPrice: currentPrice, // Use currentPrice instead of price
       currency: 'USD',
       type: 'crypto',
-      transactions: txs,
+      transactions: validTransactions,
       ...(pos.entryPrice && { entry: pos.entryPrice })
     };
   }).filter(Boolean); // Remove null entries
+
+  // CRITICAL FIX: Preserve existing assets that are not in current transactions
+  // This prevents portfolio from being cleared when transactions are deleted
+  const existingStocks = currentAssets.stocks || [];
+  const existingCrypto = currentAssets.crypto || [];
+  
+  // Add existing stocks that are not in the new stocks list
+  existingStocks.forEach(existingStock => {
+    const existsInNew = stocks.some(stock => stock.ticker === existingStock.ticker);
+    if (!existsInNew) {
+      console.log(`Preserving existing stock ${existingStock.ticker} that's not in current transactions`);
+      stocks.push({
+        ...existingStock,
+        currentPrice: prices[existingStock.ticker] || prices[`${existingStock.ticker}.JK`]?.price || existingStock.currentPrice || 0
+      });
+    }
+  });
+  
+  // Add existing crypto that are not in the new crypto list
+  existingCrypto.forEach(existingCrypto => {
+    const existsInNew = crypto.some(c => c.symbol === existingCrypto.symbol);
+    if (!existsInNew) {
+      console.log(`Preserving existing crypto ${existingCrypto.symbol} that's not in current transactions`);
+      crypto.push({
+        ...existingCrypto,
+        currentPrice: prices[existingCrypto.symbol]?.price || existingCrypto.currentPrice || 0
+      });
+    }
+  });
 
   return { stocks, crypto };
 }
@@ -121,9 +189,13 @@ export default function Home() {
   const [transactions, setTransactions] = useState([]);
   const [confirmModal, setConfirmModal] = useState(null);
   const [sellingLoading, setSellingLoading] = useState(false);
+  const [pricesLoading, setPricesLoading] = useState(false);
   const [isUpdatingPortfolio, setIsUpdatingPortfolio] = useState(false);
   const [lastManualUpdate, setLastManualUpdate] = useState(null);
   const rebuildTimeoutRef = useRef(null);
+  const [portfolioProtected, setPortfolioProtected] = useState(false);
+  const [showAverageCalculator, setShowAverageCalculator] = useState(false);
+  const [previousTransactionCount, setPreviousTransactionCount] = useState(0);
 
   // Log initial state
   // console.log('Home component initialized with:', {
@@ -140,24 +212,15 @@ export default function Home() {
   const formatPrice = useCallback((value, currency = 'IDR') => {
     try {
       if (value === undefined || value === null || isNaN(value) || value === 0) {
-        return currency === 'IDR' ? 'Rp 0' : '$ 0';
+        return currency === 'IDR' ? 'Rp0' : '$0.00';
       }
       
       if (currency === 'IDR') {
-        // Use dot for thousands and decimal separator for IDR
-        return new Intl.NumberFormat('en-IN', {
-          style: 'currency',
-          currency: 'IDR',
-          minimumFractionDigits: 2
-        }).format(value);
+        // Use Indonesian format for IDR (dots for thousands, comma for decimal)
+        return formatIDR(value, 0);
       } else {
-        // Use dot for thousands and decimal separator for USD
-        return new Intl.NumberFormat('en-IN', {
-          style: 'currency',
-          currency: 'USD',
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 8
-        }).format(value);
+        // Use US format for USD (comma for thousands, period for decimal)
+        return formatUSD(value, 2);
       }
     } catch (error) {
       console.error('Error formatting price:', error);
@@ -188,15 +251,103 @@ export default function Home() {
     checkAuth();
   }, [user, authLoading, router, getUserPortfolio]);
 
-  // Debounce price fetching
-  const debouncedFetchPrices = useCallback(
-    debounce(async () => {
+  // Direct price fetching function (no debounce)
+  const fetchPrices = useCallback(async () => {
+    setPricesLoading(true);
+    try {
       // Validate assets structure
       if (!assets || !assets.stocks || !assets.crypto) {
         console.error('Invalid assets structure:', assets);
         return;
       }
+    
+    // Filter out US stocks and invalid data
+    const validStocks = assets.stocks.filter(stock => {
+      if (!stock || !stock.ticker || !stock.ticker.trim()) return false;
       
+      // Remove US stocks that we removed
+      const usStockTickers = ['TSLA', 'NVDA', 'MSTR', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'INVALID'];
+      const tickerUpper = stock.ticker.toUpperCase();
+      
+      // Only allow valid IDX stocks (4 characters or less, not US stocks)
+      return tickerUpper.length <= 4 && !usStockTickers.includes(tickerUpper);
+    });
+    
+    const stockTickers = validStocks
+      .map(stock => `${stock.ticker}.JK`);
+      
+    const cryptoSymbols = assets.crypto
+      .filter(crypto => crypto && crypto.symbol && crypto.symbol.trim() && crypto.symbol.toUpperCase() !== 'INVALID')
+      .map(crypto => crypto.symbol);
+    
+    if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
+      return;
+    }
+    
+    // Validate data before sending
+    const requestData = {
+      stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
+      crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim())
+    };
+    
+    // Additional validation
+    if (requestData.stocks.length === 0 && requestData.crypto.length === 0) {
+      return;
+    }
+    
+    // Validate each ticker/symbol format
+    const invalidStocks = requestData.stocks.filter(ticker => !ticker.includes('.JK'));
+    const invalidCrypto = requestData.crypto.filter(symbol => !symbol || symbol.length === 0);
+    
+    if (invalidStocks.length > 0 || invalidCrypto.length > 0) {
+      console.error('Invalid data format:', { invalidStocks, invalidCrypto });
+      return;
+    }
+    
+    const response = await fetch('/api/prices', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...requestData,
+        exchangeRate: exchangeRate
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
+      // Don't throw error, just log it and continue
+      console.warn(`API error: ${response.status} - ${errorText}`);
+      return; // Exit early without throwing
+    }
+    
+    const data = await response.json();
+    setPrices(data.prices);
+  } catch (error) {
+    console.error('Error fetching prices:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      stockTickers,
+      cryptoSymbols
+    });
+  } finally {
+    setPricesLoading(false);
+  }
+  }, [assets, exchangeRate]);
+
+  // Direct fetch prices function for immediate refresh (bypasses debounce)
+  const fetchPricesImmediate = useCallback(async () => {
+    setPricesLoading(true);
+    try {
+      // Validate assets structure
+      if (!assets || !assets.stocks || !assets.crypto) {
+        console.error('Invalid assets structure:', assets);
+        return;
+      }
+    
       // Filter out US stocks and invalid data
       const validStocks = assets.stocks.filter(stock => {
         if (!stock || !stock.ticker || !stock.ticker.trim()) return false;
@@ -240,81 +391,84 @@ export default function Home() {
         return;
       }
       
-      try {
-        const response = await fetch('/api/prices', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestData),
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('API Error Response:', errorText);
-          // Don't throw error, just log it and continue
-          console.warn(`API error: ${response.status} - ${errorText}`);
-          return; // Exit early without throwing
-        }
-        
-        const data = await response.json();
-        setPrices(data.prices);
-      } catch (error) {
-        console.error('Error fetching prices:', error);
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack,
-          stockTickers,
-          cryptoSymbols
-        });
+      const response = await fetch('/api/prices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...requestData,
+          exchangeRate: exchangeRate
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        // Don't throw error, just log it and continue
+        console.warn(`API error: ${response.status} - ${errorText}`);
+        return; // Exit early without throwing
       }
-    }, 300000), // 5 minutes debounce
-    [assets]
-  );
+      
+      const data = await response.json();
+      setPrices(data.prices);
+    } catch (error) {
+      console.error('Error fetching prices:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        stockTickers,
+        cryptoSymbols
+      });
+    } finally {
+      setPricesLoading(false);
+    }
+  }, [assets, exchangeRate]);
 
-  // Fetch exchange rate and prices on component mount with 5-minute intervals
+  // Update exchange rate function
+  const updateExchangeRate = useCallback(async () => {
+    try {
+      const rateData = await fetchExchangeRate();
+      if (rateData && rateData.rate) {
+        setExchangeRate(rateData.rate);
+      } else {
+        throw new Error('Invalid exchange rate data received');
+      }
+    } catch (error) {
+      console.error('Error fetching exchange rate:', error);
+      setExchangeRate(null);
+    }
+  }, []);
+
+  // Update prices function
+  const updatePrices = useCallback(async (immediate = false) => {
+    if (assets.stocks.length > 0 || assets.crypto.length > 0) {
+      if (immediate) {
+        // For manual refresh, use direct fetch function
+        await fetchPricesImmediate();
+      } else {
+        fetchPrices();
+      }
+    }
+  }, [assets.stocks.length, assets.crypto.length, fetchPrices, fetchPricesImmediate]);
+
+  // Set up intervals for exchange rate and price updates
   useEffect(() => {
-    const updateExchangeRate = async () => {
-      try {
-        const rateData = await fetchExchangeRate();
-        if (rateData && rateData.rate) {
-          setExchangeRate(rateData.rate);
-        } else {
-          throw new Error('Invalid exchange rate data received');
-        }
-      } catch (error) {
-        console.error('Error fetching exchange rate:', error);
-        setExchangeRate(null);
-      }
-    };
-
-    const updatePrices = async () => {
-      if (assets.stocks.length > 0 || assets.crypto.length > 0) {
-        debouncedFetchPrices();
-      }
-    };
-
-    // Immediate refresh on page load
-    // console.log('🔄 Auto-refresh triggered on page load');
+    // Initial fetch
     updateExchangeRate();
     updatePrices();
-
-    // Set up 5-minute intervals
-    const exchangeInterval = setInterval(updateExchangeRate, 300000); // 5 minutes
-    const priceInterval = setInterval(updatePrices, 300000); // 5 minutes
+    
+    const exchangeInterval = setInterval(updateExchangeRate, 60000); // 1 minute
+    const priceInterval = setInterval(updatePrices, 60000); // 1 minute
 
     return () => {
       clearInterval(exchangeInterval);
       clearInterval(priceInterval);
     };
-  }, [assets.stocks.length, assets.crypto.length]);
+  }, [updateExchangeRate, updatePrices]); // Add missing dependencies
 
-  // Fetch prices for assets
-  useEffect(() => {
-    if (assets.stocks.length > 0 || assets.crypto.length > 0) {
-      debouncedFetchPrices();
-    }
-  }, [assets.stocks.length, assets.crypto.length]);
+  // Fetch prices for assets - removed to prevent infinite loops
+  // Prices are now fetched via intervals and manual refresh only
 
   // Save portfolio to Firebase whenever it changes
   useEffect(() => {
@@ -364,6 +518,14 @@ export default function Home() {
       });
       
       console.log('Processed transactions:', newTransactions);
+      
+      // Check if transactions are being deleted (count is decreasing)
+      if (newTransactions.length < previousTransactionCount && (assets.stocks.length > 0 || assets.crypto.length > 0)) {
+        console.log('Transaction count decreased, protecting portfolio from rebuild');
+        setPortfolioProtected(true);
+      }
+      
+      setPreviousTransactionCount(newTransactions.length);
       setTransactions(newTransactions);
     }, (error) => {
       console.error('Error in transaction listener:', error);
@@ -381,7 +543,7 @@ export default function Home() {
       console.log('Cleaning up transaction listener');
       unsubscribe();
     };
-  }, [user]);
+  }, [user, previousTransactionCount, assets.stocks.length, assets.crypto.length]);
 
   // Pada bagian useEffect yang update assets berdasarkan transaksi dan harga
   useEffect(() => {
@@ -402,52 +564,137 @@ export default function Home() {
       return;
     }
     
-      // Debounce the rebuild to prevent rapid changes
-  rebuildTimeoutRef.current = setTimeout(() => {
+      // Skip rebuilding if transactions are empty (to preserve portfolio when transactions are deleted)
+  if (!transactions || transactions.length === 0) {
+    console.log('Skipping portfolio rebuild - no transactions available');
+    // Don't return here - preserve existing portfolio
+    return;
+  }
+    
+    // Skip rebuilding if we already have assets and transactions are being deleted
+    // This prevents portfolio from being cleared when transactions are deleted
+    if (assets.stocks.length > 0 || assets.crypto.length > 0) {
+      const hasBuyTransactions = transactions.some(tx => tx.type === 'buy');
+      const hasDeleteTransactions = transactions.some(tx => tx.type === 'delete');
+      
+      // If we have assets but no buy transactions, don't rebuild
+      if (!hasBuyTransactions) {
+        console.log('Skipping portfolio rebuild - no buy transactions but portfolio exists');
+        setPortfolioProtected(true);
+        return;
+      }
+      
+      // If we have delete transactions and assets exist, be more careful about rebuilding
+      if (hasDeleteTransactions) {
+        console.log('Skipping portfolio rebuild - delete transactions detected, preserving existing portfolio');
+        setPortfolioProtected(true);
+        return;
+      }
+      
+      // Additional protection: if we have assets and the number of transactions is decreasing
+      // (which happens when transactions are deleted), preserve the portfolio
+      const currentTransactionCount = transactions.length;
+      const currentAssetCount = assets.stocks.length + assets.crypto.length;
+      
+      if (currentTransactionCount < currentAssetCount) {
+        console.log('Skipping portfolio rebuild - transaction count decreased, preserving existing portfolio');
+        setPortfolioProtected(true);
+        return;
+      }
+      
+      // NEW: Check if we're deleting transaction history (not portfolio assets)
+      // If we have existing assets and transactions are being deleted from history,
+      // we should preserve the portfolio and not rebuild
+      // If we have assets but transactions are being deleted (which happens when deleting transaction history),
+      // preserve the existing portfolio
+      if (currentAssetCount > 0 && currentTransactionCount < previousTransactionCount) {
+        console.log('Skipping portfolio rebuild - transaction history deletion detected, preserving existing portfolio');
+        setPortfolioProtected(true);
+        return;
+      }
+    }
+    
+    // If portfolio is protected, don't rebuild
+    if (portfolioProtected) {
+      console.log('Skipping portfolio rebuild - portfolio is protected');
+      return;
+    }
+    
+    // ADDITIONAL PROTECTION: If we have existing assets and transactions are being deleted,
+    // don't rebuild to prevent portfolio loss
+    if (assets.stocks.length > 0 || assets.crypto.length > 0) {
+      const hasRecentDeletions = transactions.some(tx => 
+        tx.type === 'delete' && 
+        new Date(tx.timestamp) > new Date(Date.now() - 30000) // Last 30 seconds
+      );
+      
+      if (hasRecentDeletions) {
+        console.log('Skipping portfolio rebuild - recent deletions detected, protecting existing portfolio');
+        setPortfolioProtected(true);
+        return;
+      }
+    }
+    
+    // Direct rebuild without debounce
     if (transactions && prices && Object.keys(prices).length > 0) {
       try {
         console.log('Building assets from transactions and prices');
-        const newAssets = buildAssetsFromTransactions(transactions, prices);
-        console.log('New assets built:', newAssets);
-        
-        // Filter out assets with zero amount (fully sold)
-        const filteredStocks = newAssets.stocks.filter(stock => {
-          const isValid = stock.lots > 0;
-          if (!isValid) {
-            console.log(`Filtering out stock ${stock.ticker} - lots: ${stock.lots}`);
+        // Get current assets from state to preserve manual prices
+        setAssets(currentAssets => {
+          const newAssets = buildAssetsFromTransactions(transactions, prices, currentAssets);
+          console.log('New assets built:', newAssets);
+          
+          // Reset portfolio protection when rebuilding successfully
+          setPortfolioProtected(false);
+          
+          // Filter out assets with zero amount (fully sold)
+          const filteredStocks = newAssets.stocks.filter(stock => {
+            const isValid = stock.lots > 0;
+            if (!isValid) {
+              console.log(`Filtering out stock ${stock.ticker} - lots: ${stock.lots}`);
+            }
+            return isValid;
+          });
+          const filteredCrypto = newAssets.crypto.filter(crypto => {
+            const isValid = crypto.amount > 0;
+            if (!isValid) {
+              console.log(`Filtering out crypto ${crypto.symbol} - amount: ${crypto.amount}`);
+            }
+            return isValid;
+          });
+          
+          const filteredAssets = {
+            stocks: filteredStocks,
+            crypto: filteredCrypto
+          };
+          
+          console.log('Filtered assets (removed zero amounts):', filteredAssets);
+          
+          // CRITICAL FIX: If we have existing assets but new assets are empty after filtering,
+          // preserve the existing assets instead of clearing them
+          if (currentAssets.stocks.length > 0 || currentAssets.crypto.length > 0) {
+            if (filteredAssets.stocks.length === 0 && filteredAssets.crypto.length === 0) {
+              console.log('WARNING: New assets are empty but current assets exist. Preserving current assets.');
+              console.log('Current assets:', currentAssets);
+              console.log('This might indicate transaction deletion. Keeping existing portfolio.');
+              return currentAssets; // Preserve existing assets
+            }
           }
-          return isValid;
-        });
-        const filteredCrypto = newAssets.crypto.filter(crypto => {
-          const isValid = crypto.amount > 0;
-          if (!isValid) {
-            console.log(`Filtering out crypto ${crypto.symbol} - amount: ${crypto.amount}`);
-          }
-          return isValid;
-        });
-        
-        const filteredAssets = {
-          stocks: filteredStocks,
-          crypto: filteredCrypto
-        };
-        
-        console.log('Filtered assets (removed zero amounts):', filteredAssets);
-        
-        // Only update if the new assets are different from current assets
-        setAssets(prevAssets => {
-          const stocksChanged = JSON.stringify(prevAssets.stocks) !== JSON.stringify(filteredAssets.stocks);
-          const cryptoChanged = JSON.stringify(prevAssets.crypto) !== JSON.stringify(filteredAssets.crypto);
+          
+          // Only update if the new assets are different from current assets
+          const stocksChanged = JSON.stringify(currentAssets.stocks) !== JSON.stringify(filteredAssets.stocks);
+          const cryptoChanged = JSON.stringify(currentAssets.crypto) !== JSON.stringify(filteredAssets.crypto);
           
           if (stocksChanged || cryptoChanged) {
             console.log('Assets changed, updating portfolio');
-            console.log('Previous stocks:', prevAssets.stocks.map(s => `${s.ticker}: ${s.lots}`));
+            console.log('Previous stocks:', currentAssets.stocks.map(s => `${s.ticker}: ${s.lots}`));
             console.log('New stocks:', filteredAssets.stocks.map(s => `${s.ticker}: ${s.lots}`));
-            console.log('Previous crypto:', prevAssets.crypto.map(c => `${c.symbol}: ${c.amount}`));
+            console.log('Previous crypto:', currentAssets.crypto.map(c => `${c.symbol}: ${c.amount}`));
             console.log('New crypto:', filteredAssets.crypto.map(c => `${c.symbol}: ${c.amount}`));
             return filteredAssets;
           } else {
             console.log('No changes detected, keeping current assets');
-            return prevAssets;
+            return currentAssets;
           }
         });
       } catch (error) {
@@ -455,15 +702,9 @@ export default function Home() {
         // Don't use fallback to prevent overriding manual updates
       }
     }
-  }, 3000); // 3 second debounce to give more time for manual updates
     
-    // Cleanup timeout on unmount
-    return () => {
-      if (rebuildTimeoutRef.current) {
-        clearTimeout(rebuildTimeoutRef.current);
-      }
-    };
-  }, [transactions, prices, isUpdatingPortfolio, lastManualUpdate]);
+    // No cleanup needed since we removed debounce
+  }, [transactions, prices, isUpdatingPortfolio, lastManualUpdate, portfolioProtected, previousTransactionCount]); // Removed assets from dependency array to prevent infinite loop
 
   const addTransaction = async (transaction) => {
     try {
@@ -486,6 +727,10 @@ export default function Home() {
       
       const docRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
       console.log('Transaction saved with ID:', docRef.id);
+      
+      // Reset portfolio protection when adding new transaction
+      setPortfolioProtected(false);
+      setPreviousTransactionCount(prev => prev + 1);
       
       return docRef.id;
     } catch (error) {
@@ -569,7 +814,8 @@ export default function Home() {
         ticker: stock.ticker,
         lots: stock.lots,
         shares: totalShares,
-        price: stock.price,
+        currentPrice: stock.price, // Use currentPrice for the asset
+        avgPrice: stock.price, // Use purchase price as average price
         purchasePrice: stock.price,
         valueIDR: valueIDR,
         valueUSD: valueUSD,
@@ -586,15 +832,22 @@ export default function Home() {
         const existingStockIndex = prev.stocks.findIndex(s => s.ticker.toUpperCase() === normalizedNewTicker);
         if (existingStockIndex >= 0) {
           const updatedStocks = [...prev.stocks];
+          const existingStock = updatedStocks[existingStockIndex];
+          
+          // Calculate new average price based on weighted average
+          const totalLots = existingStock.lots + stock.lots;
+          const totalValue = (existingStock.avgPrice * existingStock.lots) + (stock.price * stock.lots);
+          const newAvgPrice = totalValue / totalLots;
+          
           updatedStocks[existingStockIndex] = {
-            ...updatedStocks[existingStockIndex],
-            lots: updatedStocks[existingStockIndex].lots + stock.lots,
-            shares: updatedStocks[existingStockIndex].shares + stock.shares,
-            valueIDR: updatedStocks[existingStockIndex].valueIDR + valueIDR,
-            valueUSD: updatedStocks[existingStockIndex].valueUSD + valueUSD,
+            ...existingStock,
+            lots: totalLots,
+            shares: existingStock.shares + totalShares,
+            avgPrice: newAvgPrice, // Use calculated weighted average
+            valueIDR: existingStock.valueIDR + valueIDR,
+            valueUSD: existingStock.valueUSD + valueUSD,
             lastUpdate: formattedDate,
-            price: stock.price,
-            purchasePrice: stock.price,
+            currentPrice: stock.price, // Use currentPrice for the asset
             ticker: normalizedNewTicker // always store normalized
           };
           return {
@@ -612,27 +865,32 @@ export default function Home() {
         };
       });
 
-      // Save assets to Firestore
+      // Save assets to Firestore using the updated state
       const userRef = doc(db, 'users', user.uid);
-      const currentAssets = {
-        stocks: assets.stocks.map(stock => ({
-          ...stock,
-          type: 'stock',
-          userId: user.uid,
-          currency: stock.currency || 'IDR',
-          lastUpdate: stock.lastUpdate || formattedDate
-        })),
-        crypto: assets.crypto.map(crypto => ({
-          ...crypto,
-          type: 'crypto',
-          userId: user.uid,
-          currency: crypto.currency || 'USD',
-          lastUpdate: crypto.lastUpdate || formattedDate
-        }))
-      };
+      setAssets(prev => {
+        const currentAssets = {
+          stocks: prev.stocks.map(stock => ({
+            ...stock,
+            type: 'stock',
+            userId: user.uid,
+            currency: stock.currency || 'IDR',
+            lastUpdate: stock.lastUpdate || formattedDate
+          })),
+          crypto: prev.crypto.map(crypto => ({
+            ...crypto,
+            type: 'crypto',
+            userId: user.uid,
+            currency: crypto.currency || 'USD',
+            lastUpdate: crypto.lastUpdate || formattedDate
+          }))
+        };
 
-      await updateDoc(userRef, {
-        assets: currentAssets
+        // Save to Firestore
+        updateDoc(userRef, {
+          assets: currentAssets
+        });
+
+        return prev; // Return unchanged state since we're just saving
       });
 
     } catch (error) {
@@ -665,7 +923,7 @@ export default function Home() {
         body: JSON.stringify({
           stocks: [],
           crypto: [crypto.symbol],
-          // exchangeRate: exchangeRate // Hapus exchangeRate karena tidak diperlukan untuk saham IDX
+          exchangeRate: exchangeRate
         }),
       });
       
@@ -730,7 +988,8 @@ export default function Home() {
       const updatedCrypto = {
         symbol: crypto.symbol,
         amount: crypto.amount,
-        price: cryptoPrice.price,
+        currentPrice: cryptoPrice.price, // Use currentPrice for the asset
+        avgPrice: pricePerUnit, // Use purchase price as average price
         purchasePrice: pricePerUnit,
         valueIDR: totalValueIDR,
         valueUSD: totalValueUSD,
@@ -747,14 +1006,21 @@ export default function Home() {
         const existingCryptoIndex = prev.crypto.findIndex(c => c.symbol.toUpperCase() === normalizedNewSymbol);
         if (existingCryptoIndex >= 0) {
           const updatedCrypto = [...prev.crypto];
+          const existingCrypto = updatedCrypto[existingCryptoIndex];
+          
+          // Calculate new average price based on weighted average
+          const totalAmount = existingCrypto.amount + crypto.amount;
+          const totalValue = (existingCrypto.avgPrice * existingCrypto.amount) + (pricePerUnit * crypto.amount);
+          const newAvgPrice = totalValue / totalAmount;
+          
           updatedCrypto[existingCryptoIndex] = {
-            ...updatedCrypto[existingCryptoIndex],
-            amount: updatedCrypto[existingCryptoIndex].amount + crypto.amount,
-            valueIDR: updatedCrypto[existingCryptoIndex].valueIDR + totalValueIDR,
-            valueUSD: updatedCrypto[existingCryptoIndex].valueUSD + totalValueUSD,
+            ...existingCrypto,
+            amount: totalAmount,
+            avgPrice: newAvgPrice, // Use calculated weighted average
+            valueIDR: existingCrypto.valueIDR + totalValueIDR,
+            valueUSD: existingCrypto.valueUSD + totalValueUSD,
             lastUpdate: formattedDate,
-            price: cryptoPrice.price,
-            purchasePrice: pricePerUnit,
+            currentPrice: cryptoPrice.price, // Use currentPrice for the asset
             symbol: normalizedNewSymbol // always store normalized
           };
           return {
@@ -772,27 +1038,32 @@ export default function Home() {
         };
       });
 
-      // Save assets to Firestore
+      // Save assets to Firestore using the updated state
       const userRef = doc(db, 'users', user.uid);
-      const currentAssets = {
-        stocks: assets.stocks.map(stock => ({
-          ...stock,
-          type: 'stock',
-          userId: user.uid,
-          currency: stock.currency || 'IDR',
-          lastUpdate: stock.lastUpdate || formattedDate
-        })),
-        crypto: assets.crypto.map(crypto => ({
-          ...crypto,
-          type: 'crypto',
-          userId: user.uid,
-          currency: crypto.currency || 'USD',
-          lastUpdate: crypto.lastUpdate || formattedDate
-        }))
-      };
+      setAssets(prev => {
+        const currentAssets = {
+          stocks: prev.stocks.map(stock => ({
+            ...stock,
+            type: 'stock',
+            userId: user.uid,
+            currency: stock.currency || 'IDR',
+            lastUpdate: stock.lastUpdate || formattedDate
+          })),
+          crypto: prev.crypto.map(crypto => ({
+            ...crypto,
+            type: 'crypto',
+            userId: user.uid,
+            currency: crypto.currency || 'USD',
+            lastUpdate: crypto.lastUpdate || formattedDate
+          }))
+        };
 
-      await updateDoc(userRef, {
-        assets: currentAssets
+        // Save to Firestore
+        updateDoc(userRef, {
+          assets: currentAssets
+        });
+
+        return prev; // Return unchanged state since we're just saving
       });
 
     } catch (error) {
@@ -813,7 +1084,7 @@ export default function Home() {
       const updatedStocks = [...prev.stocks];
       
       // Recalculate gain/loss based on new average price
-      const currentPrice = prices[`${updatedStock.ticker}.JK`]?.price || updatedStock.price || 0;
+      const currentPrice = prices[`${updatedStock.ticker}.JK`]?.price || updatedStock.currentPrice || 0;
       const totalShares = updatedStock.lots * 100; // 1 lot = 100 shares for IDX
       const currentValue = currentPrice * totalShares;
       const totalCost = updatedStock.avgPrice * totalShares;
@@ -821,7 +1092,7 @@ export default function Home() {
       
       updatedStocks[index] = {
         ...updatedStock,
-        price: currentPrice,
+        currentPrice: currentPrice, // Store current market price separately
         porto: currentValue,
         totalCost: totalCost,
         gain: gain
@@ -839,14 +1110,14 @@ export default function Home() {
       const updatedCryptos = [...prev.crypto];
       
       // Recalculate gain/loss based on new average price
-      const currentPrice = prices[updatedCrypto.symbol]?.price || updatedCrypto.price || 0;
+      const currentPrice = prices[updatedCrypto.symbol]?.price || updatedCrypto.currentPrice || 0;
       const currentValue = currentPrice * updatedCrypto.amount;
       const totalCost = updatedCrypto.avgPrice * updatedCrypto.amount;
       const gain = currentValue - totalCost;
       
       updatedCryptos[index] = {
         ...updatedCrypto,
-        price: currentPrice,
+        currentPrice: currentPrice, // Store current market price separately
         porto: currentValue,
         totalCost: totalCost,
         gain: gain
@@ -1026,7 +1297,8 @@ export default function Home() {
         const stockTickers = [`${asset.ticker}.JK`];
         const requestData = {
           stocks: stockTickers,
-          crypto: []
+          crypto: [],
+          exchangeRate: exchangeRate
         };
         
         try {
@@ -1101,6 +1373,7 @@ export default function Home() {
         ticker: asset.ticker,
         amount: amountToSell,
         price: priceData.price,
+        avgPrice: asset.avgPrice, // Use the static average price from the asset
         valueIDR,
         valueUSD,
         timestamp: now.toISOString(),
@@ -1173,7 +1446,8 @@ export default function Home() {
         const cryptoSymbols = [crypto.symbol];
         const requestData = {
           stocks: [],
-          crypto: cryptoSymbols
+          crypto: cryptoSymbols,
+          exchangeRate: exchangeRate
         };
         
         try {
@@ -1260,6 +1534,7 @@ export default function Home() {
         symbol: crypto.symbol,
         amount: amountToSell,
         price: priceData.price,
+        avgPrice: crypto.avgPrice, // Use the static average price from the asset
         valueIDR,
         valueUSD,
         timestamp: now.toISOString(),
@@ -1299,74 +1574,102 @@ export default function Home() {
     }
   };
 
+  // Handle average price calculator result
+
+
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-white transition-colors">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-dark-900 dark:via-dark-800 dark:to-dark-900 text-gray-800 dark:text-white transition-all duration-300">
         <Head>
-                  <title>PortSyncro | Easy Portfolio Synchronization for Cryptocurrencies and Stocks</title>
-        <meta name="description" content="Easy Portfolio Synchronization for Cryptocurrencies and Stocks" />
-          <link rel="icon" href="/favicon.ico" />
-
+          <title>PortSyncro | Easy Portfolio Synchronization for Cryptocurrencies and Stocks</title>
+          <meta name="description" content="Easy Portfolio Synchronization for Cryptocurrencies and Stocks" />
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         </Head>
         
-        <main className="container mx-auto px-4 py-4 sm:py-8 font-['Inter']">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 sm:mb-8 gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
-                PortSyncro
-              </h1>
-              <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Easy Portfolio Synchronization for Cryptocurrencies and Stocks</p>
+        <main className="container mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-6 lg:py-8 font-['Inter'] scrollbar-thin">
+          {/* Header Section - Enhanced with PortSyncro Logo */}
+          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8">
+            <div className="flex items-center justify-center sm:justify-start space-x-4">
+              {/* Brand Name and Tagline with Design */}
+              <div className="text-center sm:text-left">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-teal-500 bg-clip-text text-transparent animate-fade-in">
+                  PortSyncro
+                </h1>
+                <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base lg:text-lg mt-1 animate-fade-in">
+                  Easy Portfolio Synchronization for Cryptocurrencies and Stocks
+                </p>
+              </div>
             </div>
             
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
-              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-full sm:w-auto">
+            {/* User Controls - Enhanced */}
+            <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:space-x-3">
+              {/* Tab Navigation - Enhanced */}
+              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-full sm:w-auto shadow-lg">
                 <button 
                   onClick={() => setActiveTab('portfolio')}
-                  className={`flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg ${
+                  className={`nav-tab ${
                     activeTab === 'portfolio' 
-                      ? 'bg-indigo-600 text-white' 
-                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      ? 'nav-tab-active' 
+                      : 'nav-tab-inactive'
                   }`}
                 >
                   {t('portfolio')}
                 </button>
                 <button 
                   onClick={() => setActiveTab('add')}
-                  className={`flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg ${
+                  className={`nav-tab ${
                     activeTab === 'add' 
-                      ? 'bg-indigo-600 text-white' 
-                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      ? 'nav-tab-active' 
+                      : 'nav-tab-inactive'
                   }`}
                 >
                   {t('addAsset')}
                 </button>
                 <button
                   onClick={() => setActiveTab('history')}
-                  className={`flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg ${
+                  className={`nav-tab ${
                     activeTab === 'history'
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      ? 'nav-tab-active'
+                      : 'nav-tab-inactive'
                   }`}
                 >
                   {t('history')}
                 </button>
               </div>
               
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              {/* Average Calculator Button - Enhanced */}
+              <button
+                onClick={() => setShowAverageCalculator(true)}
+                className="btn-success px-4 py-2.5 sm:py-2 lg:py-2.5 text-sm font-medium flex items-center gap-2 hover-lift"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                {t('averagePriceCalculator')}
+              </button>
+              
+
+              
+              {/* User Info and Controls - Enhanced */}
+              <div className="flex items-center justify-center sm:justify-end space-x-2 sm:space-x-3">
                 <LanguageToggle />
                 <ThemeToggle />
                 
-                <div className="flex items-center flex-1 sm:flex-none px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-sm">
+                {/* User Email - Enhanced */}
+                <div className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm min-w-0 shadow-md hover:shadow-lg transition-all duration-200">
                   <FiUser className="text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
-                  <span className="truncate max-w-[120px] sm:max-w-[150px] text-gray-700 dark:text-gray-300">{user?.email}</span>
+                  <span className="truncate max-w-[120px] sm:max-w-[150px] lg:max-w-[200px] text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
+                    {user?.email}
+                  </span>
                 </div>
                 
+                {/* Logout Button - Enhanced */}
                 <button 
                   onClick={logout}
-                  className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                  className="btn-ghost p-2.5 sm:p-2 rounded-full flex-shrink-0 hover-lift"
                   title={t('logout')}
                 >
-                  <FiLogOut />
+                  <FiLogOut className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -1375,16 +1678,98 @@ export default function Home() {
           {loading ? (
             <div className="flex justify-center items-center h-64">
               <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-                <p>Loading portfolio...</p>
+                <div className="spinner-glow w-12 h-12 mb-4"></div>
+                <p className="text-gray-600 dark:text-gray-400 animate-pulse-soft">Loading portfolio...</p>
               </div>
             </div>
           ) : (
             <>
               {activeTab === 'add' ? (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                  <StockInput onAdd={addStock} onComplete={() => setActiveTab('portfolio')} />
-                  <CryptoInput onAdd={addCrypto} onComplete={() => setActiveTab('portfolio')} />
+                <div className="space-y-8">
+                  {/* Add Asset Header */}
+                  <div className="text-center">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                      {t('addAsset')}
+                    </h2>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">
+                      {t('addAssetDesc') || 'Add your stocks and cryptocurrencies to track your portfolio'}
+                    </p>
+                  </div>
+                  
+                  {/* Asset Forms Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+                    {/* Stock Input Card */}
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 sm:p-8 hover:shadow-md transition-shadow duration-200">
+                      <div className="flex items-center mb-6">
+                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mr-4">
+                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                            {t('addStock')}
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {t('addStockDesc') || 'Add Indonesian stocks to your portfolio'}
+                          </p>
+                        </div>
+                      </div>
+                      <StockInput onAdd={addStock} onComplete={() => setActiveTab('portfolio')} />
+                    </div>
+                    
+                    {/* Crypto Input Card */}
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 sm:p-8 hover:shadow-md transition-shadow duration-200">
+                      <div className="flex items-center mb-6">
+                        <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mr-4">
+                          <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                            {t('addCrypto')}
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {t('addCryptoDesc') || 'Add cryptocurrencies to your portfolio'}
+                          </p>
+                        </div>
+                      </div>
+                      <CryptoInput onAdd={addCrypto} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
+                    </div>
+                  </div>
+                  
+                  {/* Quick Actions */}
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl p-6 sm:p-8 border border-blue-100 dark:border-blue-800">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                        {t('quickActions') || 'Quick Actions'}
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">
+                        {t('quickActionsDesc') || 'Need help calculating average prices or managing your portfolio?'}
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <button
+                          onClick={() => setShowAverageCalculator(true)}
+                          className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          {t('averagePriceCalculator')}
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('portfolio')}
+                          className="px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                          {t('viewPortfolio') || 'View Portfolio'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : activeTab === 'portfolio' ? (
                 <Portfolio 
@@ -1394,15 +1779,24 @@ export default function Home() {
                   onAddAsset={() => setActiveTab('add')}
                   onSellStock={handleSellStock}
                   onSellCrypto={handleSellCrypto}
+                  onDeleteStock={deleteStock}
+                  onDeleteCrypto={deleteCrypto}
+                  onRefreshPrices={updatePrices}
+                  onRefreshExchangeRate={updateExchangeRate}
                   prices={prices}
                   exchangeRate={exchangeRate}
                   sellingLoading={sellingLoading}
+                  pricesLoading={pricesLoading}
                 />
               ) : activeTab === 'history' ? (
                 <TransactionHistory 
                   transactions={transactions}
                   user={user}
-                  onTransactionsUpdate={setTransactions}
+                  onTransactionsUpdate={() => {
+                    // The Firebase listener will automatically update the transactions
+                    // No need to manually update here
+                    console.log('Transaction updated, Firebase listener will handle refresh');
+                  }}
                   exchangeRate={exchangeRate}
                 />
               ) : null}
@@ -1410,8 +1804,61 @@ export default function Home() {
           )}
         </main>
         
-        <footer className="container mx-auto px-4 py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800">
-          <p>{t('copyright', { year: new Date().getFullYear() })}</p>
+        {/* Data Sources Information */}
+        <section className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+          <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+            <div className="max-w-4xl mx-auto">
+              <h3 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800 dark:text-white text-center">
+                {t('dataSources')}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {/* Stock Data */}
+                <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center mb-3">
+                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-3">
+                      <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    </div>
+                    <h4 className="font-semibold text-gray-800 dark:text-white">{t('stockData')}</h4>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('stockDataSource')}</p>
+                </div>
+
+                {/* Crypto Data */}
+                <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center mb-3">
+                    <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center mr-3">
+                      <svg className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <h4 className="font-semibold text-gray-800 dark:text-white">{t('cryptoData')}</h4>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('cryptoDataSource')}</p>
+                </div>
+
+                {/* Exchange Rate */}
+                <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center mb-3">
+                    <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mr-3">
+                      <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                      </svg>
+                    </div>
+                    <h4 className="font-semibold text-gray-800 dark:text-white">{t('exchangeRate')}</h4>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('exchangeRateSource')}</p>
+                </div>
+              </div>
+              
+
+            </div>
+          </div>
+        </section>
+        
+        <footer className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-sm">{t('copyright', { year: new Date().getFullYear() })}</p>
         </footer>
         
         {/* Modal for confirmations and errors */}
@@ -1424,6 +1871,14 @@ export default function Home() {
         >
           {confirmModal?.message && <p>{confirmModal.message}</p>}
         </Modal>
+        
+        {/* Average Price Calculator Modal */}
+        {showAverageCalculator && (
+          <AveragePriceCalculator
+            isOpen={showAverageCalculator}
+            onClose={() => setShowAverageCalculator(false)}
+          />
+        )}
       </div>
     </ErrorBoundary>
   );

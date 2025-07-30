@@ -1,22 +1,13 @@
 import { useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
+import { normalizeNumberInput } from '../lib/utils';
 
-export default function CryptoInput({ onAdd, onComplete }) {
+export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
   const [symbol, setSymbol] = useState('');
   const [amount, setAmount] = useState('');
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const { t } = useLanguage();
-  
-  const popularCryptos = [
-    { symbol: 'BTC', name: 'Bitcoin' },
-    { symbol: 'ETH', name: 'Ethereum' },
-    { symbol: 'BNB', name: 'Binance Coin' },
-    { symbol: 'XRP', name: 'Ripple' },
-    { symbol: 'ADA', name: 'Cardano' },
-    { symbol: 'SOL', name: 'Solana' }
-  ];
   
   const fetchCryptoPrice = async (symbol) => {
     try {
@@ -29,7 +20,7 @@ export default function CryptoInput({ onAdd, onComplete }) {
         body: JSON.stringify({
           stocks: [],
           crypto: [symbol],
-          exchangeRate: null
+          exchangeRate: exchangeRate
         }),
       });
       
@@ -49,7 +40,7 @@ export default function CryptoInput({ onAdd, onComplete }) {
       throw error;
     }
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!symbol) {
@@ -58,12 +49,13 @@ export default function CryptoInput({ onAdd, onComplete }) {
     }
     
     // Validasi jumlah
-    const amountValue = parseFloat(amount);
+    const normalizedAmount = normalizeNumberInput(amount);
+    const amountValue = parseFloat(normalizedAmount);
     if (isNaN(amountValue) || amountValue <= 0) {
       setError(t('enterValidAmount'));
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
     
@@ -76,13 +68,11 @@ export default function CryptoInput({ onAdd, onComplete }) {
         amount: amountValue,
         price: price,
         type: 'crypto',
-        addedAt: new Date().toISOString(),
-
+        addedAt: new Date().toISOString()
       });
       
       setSymbol('');
       setAmount('');
-
       
       // Opsional: pindah ke tab portfolio setelah tambah
       if (onComplete) onComplete();
@@ -94,74 +84,93 @@ export default function CryptoInput({ onAdd, onComplete }) {
       setIsLoading(false);
     }
   };
-  
-  const handleQuickAdd = (crypto) => {
-    setSymbol(crypto.symbol);
+
+  const handleCancel = () => {
+    onComplete();
   };
-  
+
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800 dark:text-white">{t('addCrypto')}</h2>
-      
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Crypto Symbol Input */}
+      <div>
+        <label htmlFor="symbol" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {t('cryptoSymbol')} *
+        </label>
+        <input
+          type="text"
+          id="symbol"
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+          placeholder={t('cryptoSymbolPlaceholder')}
+          className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+          required
+        />
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          {t('cryptoSymbolHelp')}
+        </p>
+      </div>
+
+      {/* Amount Input */}
+      <div>
+        <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {t('amount')} *
+        </label>
+        <input
+          type="text"
+          id="amount"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder={t('amountPlaceholder')}
+          className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+          required
+        />
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          {t('amountHelp')}
+        </p>
+      </div>
+
+      {/* Error Display */}
       {error && (
-        <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-200 px-3 py-2 rounded-lg text-sm">
-          {error}
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-800 dark:text-red-200">
+                {error}
+              </p>
+            </div>
+          </div>
         </div>
       )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('cryptoSymbol')}</label>
-          <input
-            type="text"
-            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            placeholder={t('cryptoSymbolPlaceholder')}
-          />
-        </div>
-        
 
-        
-        <div className="mb-6">
-          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('cryptoAmount')}</label>
-          <input
-            type="text"
-            inputMode="decimal"
-            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
-            value={amount}
-            onChange={(e) => {
-              // Hanya terima angka dan titik desimal
-              const value = e.target.value.replace(/[^0-9.]/g, '');
-              setAmount(value);
-            }}
-            placeholder={t('cryptoAmountPlaceholder')}
-          />
-        </div>
-        
+      {/* Action Buttons */}
+      <div className="flex gap-3 pt-4">
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium"
+        >
+          {t('cancel')}
+        </button>
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 sm:py-3 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-60 touch-target"
           disabled={isLoading}
+          className="flex-1 px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 text-sm font-medium disabled:opacity-50"
         >
-          {isLoading ? t('adding') : t('addCrypto')}
+          {isLoading ? (
+            <div className="flex items-center justify-center">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              {t('adding')}...
+            </div>
+          ) : (
+            t('addCrypto')
+          )}
         </button>
-      </form>
-      
-      <div className="mt-6">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('quickOptions')}</p>
-        <div className="flex flex-wrap gap-2">
-          {popularCryptos.map(crypto => (
-            <button
-              key={crypto.symbol}
-              onClick={() => handleQuickAdd(crypto)}
-              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-            >
-              {crypto.symbol}
-            </button>
-          ))}
-        </div>
       </div>
-    </div>
+    </form>
   );
 } 

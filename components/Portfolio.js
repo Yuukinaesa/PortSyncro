@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AssetTable from './AssetTable';
 import Notification from './Notification';
 import { FiRefreshCw, FiPlusCircle, FiTrendingUp, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload } from 'react-icons/fi';
 import { fetchExchangeRate } from '../lib/fetchPrices';
-import { formatNumber, formatIDR, formatUSD } from '../lib/utils';
+import { formatNumber, formatIDR, formatUSD, formatNumberUSD } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
+import { useTheme } from '../lib/themeContext';
 
 export default function Portfolio({ 
   assets, 
@@ -13,6 +14,8 @@ export default function Portfolio({
   onAddAsset,
   onSellStock,
   onSellCrypto,
+  onDeleteStock,
+  onDeleteCrypto,
   onRefreshPrices,
   onRefreshExchangeRate,
   exchangeRate: propExchangeRate,
@@ -22,10 +25,19 @@ export default function Portfolio({
   loadingExchangeRate: propLoadingExchangeRate,
   prices: propPrices,
   exchangeRate: parentExchangeRate,
-  sellingLoading = false
+  sellingLoading = false,
+  pricesLoading = false
 }) {
   const [prices, setPrices] = useState(propPrices || {});
+  
+  // Sync prices from parent component
+  useEffect(() => {
+    if (propPrices) {
+      setPrices(propPrices);
+    }
+  }, [propPrices]);
   const [loading, setLoading] = useState(false);
+  const isPriceLoading = pricesLoading || loading;
   const [lastUpdate, setLastUpdate] = useState('');
   const [error, setError] = useState(null);
   const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
@@ -37,115 +49,55 @@ export default function Portfolio({
   const [confirmModal, setConfirmModal] = useState(null);
   const [notification, setNotification] = useState(null);
   const { t, language } = useLanguage();
-  
-  const fetchRate = async () => {
-    setLoadingExchangeRate(true);
-    setExchangeRateError(null);
+  const { isDarkMode } = useTheme();
+
+  const fetchRate = useCallback(async () => {
     try {
-      const rateData = await fetchExchangeRate();
-      setExchangeRate(rateData.rate);
-      setLastExchangeRateUpdate(new Date().toLocaleString());
-      setExchangeRateSource(t('exchangeRateSource', { source: 'Exchange Rates API' }));
+      setLoadingExchangeRate(true);
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = await response.json();
+      const idrRate = data.rates.IDR;
+      setExchangeRate(idrRate);
+      setLastExchangeRateUpdate(new Date().toISOString());
+      setExchangeRateSource('exchangerate-api.com');
+      setExchangeRateError(null);
     } catch (error) {
       console.error('Error fetching exchange rate:', error);
-      setExchangeRateError(error.message);
+      setExchangeRateError('Failed to fetch exchange rate');
     } finally {
       setLoadingExchangeRate(false);
     }
-  };
+  }, []);
 
-  const fetchPrices = async () => {
-    const stockTickers = assets.stocks.map(stock => `${stock.ticker}.JK`);
-    const cryptoSymbols = assets.crypto.map(crypto => crypto.symbol);
-    
-    if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
-      setLoading(false);
-      return;
-    }
-    
+  const fetchPrices = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch('/api/prices', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          stocks: stockTickers,
-          crypto: cryptoSymbols,
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setPrices(data.prices);
-      setLastUpdate(new Date().toLocaleString());
-      
-      // Show success notification for manual refresh
-      if (loading) {
-        setNotification({
-          isOpen: true,
-          title: t('success'),
-          message: t('priceUpdateSuccess'),
-          type: 'success'
-        });
-        
-        setTimeout(() => {
-          setNotification(null);
-        }, 2000);
+      // This will be handled by the parent component
+      if (onRefreshPrices) {
+        await onRefreshPrices();
       }
     } catch (error) {
       console.error('Error fetching prices:', error);
-      setError(t('priceUpdateFailed', { error: error.message }));
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [onRefreshPrices]);
 
-  // Update the useEffect for exchange rate
-  useEffect(() => {
-    if (!parentExchangeRate) {
-      fetchRate();
+  const handleRefresh = useCallback(async () => {
+    try {
+      // Call parent refresh functions if available
+      if (onRefreshPrices) {
+        await onRefreshPrices(true); // Pass immediate=true for manual refresh
+      } else {
+        await fetchPrices();
+      }
+      
+      if (onRefreshExchangeRate) {
+        await onRefreshExchangeRate();
+      } else {
+        await fetchRate();
+      }
+    } catch (error) {
+      console.error('Error during refresh:', error);
     }
-  }, [parentExchangeRate]);
-
-  // Immediate refresh when component mounts
-  useEffect(() => {
-    if (assets.stocks.length > 0 || assets.crypto.length > 0) {
-      handleRefresh();
-    }
-  }, [assets.stocks.length, assets.crypto.length]);
-
-  // Update prices and exchangeRate when props change
-  useEffect(() => {
-    if (propPrices) {
-      setPrices(propPrices);
-    }
-  }, [propPrices]);
-
-  useEffect(() => {
-    if (parentExchangeRate) {
-      setExchangeRate(parentExchangeRate);
-    }
-  }, [parentExchangeRate]);
-
-  // Separate useEffect for prices
-  useEffect(() => {
-    if (!propPrices) {
-      fetchPrices();
-    } else {
-      setLoading(false);
-    }
-  }, [assets, propPrices]);
-
-  const handleRefresh = () => {
-    fetchPrices();
-    fetchRate();
-  };
+  }, [onRefreshPrices, onRefreshExchangeRate, fetchPrices, fetchRate]);
   
   // Handle sell functionality
   const handleSellStock = (index, asset, amountToSell) => {
@@ -322,23 +274,23 @@ export default function Portfolio({
     let totalCostIDR = 0;
     let totalCostUSD = 0;
 
-    // Calculate stocks gain
+    // Calculate stocks gain - use same logic as AssetTable
     assets.stocks.forEach(stock => {
       const tickerKey = `${stock.ticker}.JK`;
-      const currentPrice = prices[tickerKey]?.price || 0;
-      const shareCount = stock.lots * 100;
+      const currentPrice = prices[tickerKey]?.price || stock.currentPrice || 0;
+      const shareCount = stock.lots * 100; // 1 lot = 100 shares for IDX
       const currentValue = currentPrice * shareCount;
-      const costBasis = stock.avgPrice * shareCount;
+      const costBasis = stock.avgPrice * shareCount; // Use avgPrice directly
       
       stocksGain += currentValue - costBasis;
       totalCostIDR += costBasis;
     });
 
-    // Calculate crypto gain
+    // Calculate crypto gain - use same logic as AssetTable
     assets.crypto.forEach(crypto => {
-      const currentPrice = prices[crypto.symbol]?.price || 0;
+      const currentPrice = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
       const currentValue = currentPrice * crypto.amount;
-      const costBasis = crypto.totalCost || 0;
+      const costBasis = crypto.totalCost || (crypto.avgPrice * crypto.amount); // Use totalCost or calculate from avgPrice
       
       cryptoGainUSD += currentValue - costBasis;
       totalCostUSD += costBasis;
@@ -350,6 +302,10 @@ export default function Portfolio({
     const totalCost = totalCostIDR + (exchangeRate ? totalCostUSD * exchangeRate : totalCostUSD);
     const gainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
 
+    // Calculate individual percentages
+    const stocksGainPercent = totalCostIDR > 0 ? (stocksGain / totalCostIDR) * 100 : 0;
+    const cryptoGainPercent = totalCostUSD > 0 ? (cryptoGainUSD / totalCostUSD) * 100 : 0;
+
     return {
       stocksGain,
       cryptoGainUSD,
@@ -357,7 +313,9 @@ export default function Portfolio({
       totalGain,
       totalGainUSD,
       totalCost,
-      gainPercent
+      gainPercent,
+      stocksGainPercent,
+      cryptoGainPercent
     };
   };
 
@@ -366,21 +324,14 @@ export default function Portfolio({
   // Export portfolio to CSV
   // Format number for CSV export (without currency symbol) - same as TransactionHistory
   const formatNumberForCSV = (value, currency) => {
-    if (!value || isNaN(value)) return '0';
+    if (!value || isNaN(value)) return currency === 'USD' ? '0.00' : '0';
     
     if (currency === 'IDR') {
-      // Use dot for thousands and decimal separator for IDR
-      return new Intl.NumberFormat('en-IN', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      }).format(value);
+      // Use Indonesian format for IDR (dots for thousands, comma for decimal)
+      return formatNumber(value, 0);
     } else {
-      const decimalPlaces = value >= 1 ? 2 : 1;
-      // Use dot for thousands and decimal separator for USD
-      return new Intl.NumberFormat('en-IN', {
-        minimumFractionDigits: decimalPlaces,
-        maximumFractionDigits: decimalPlaces
-      }).format(value);
+      // Use US format for USD (comma for thousands, period for decimal) without dollar sign
+      return formatNumberUSD(value, 2); // Always use 2 decimal places for USD
     }
   };
 
@@ -467,383 +418,455 @@ export default function Portfolio({
     } catch (error) {
       console.error('Error exporting portfolio:', error);
       setNotification({
-        isOpen: true,
+        type: 'error',
         title: t('error'),
         message: t('portfolioExportFailed', { error: error.message }),
-        type: 'error'
       });
-      
-      setTimeout(() => {
-        setNotification(null);
-      }, 3000);
+    }
+  };
+
+  const getGainColor = (value) => {
+    if (value >= 0) {
+      return 'text-green-600 dark:text-green-400';
+    } else {
+      return 'text-red-600 dark:text-red-400';
     }
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Exchange Rate Display - Mobile Optimized */}
-      <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <FiDollarSign className="text-green-600 dark:text-green-400 flex-shrink-0" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('exchangeRate')}</span>
-            {loadingExchangeRate ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-                <span className="text-sm text-gray-500 dark:text-gray-400">{t('loading')}</span>
-              </div>
-            ) : exchangeRateError ? (
-              <span className="text-sm text-red-600 dark:text-red-400">{t('error')}: {exchangeRateError}</span>
-            ) : exchangeRate ? (
-              <span className="text-sm font-bold text-gray-800 dark:text-white">
-                {formatIDR(exchangeRate)}
-              </span>
-            ) : (
-              <span className="text-sm text-gray-500 dark:text-gray-400">{t('notAvailable')}</span>
-            )}
+    <div className="space-y-8">
+      {/* Exchange Rate Display - Minimalist */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <FiDollarSign className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('exchangeRate')}</span>
+              {loadingExchangeRate ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{t('loading')}</span>
+                </div>
+              ) : exchangeRateError ? (
+                <span className="text-sm text-red-600 dark:text-red-400">{t('error')}: {exchangeRateError}</span>
+              ) : exchangeRate ? (
+                <span className="text-xl font-bold text-gray-900 dark:text-white">
+                  {formatIDR(exchangeRate)}
+                </span>
+              ) : (
+                <span className="text-sm text-gray-500 dark:text-gray-400">{t('notAvailable')}</span>
+              )}
+            </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             {lastExchangeRateUpdate && (
-              <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+              <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-xl">
                 Update: {new Date(lastExchangeRateUpdate).toLocaleTimeString()}
               </span>
             )}
-            <button
-              onClick={fetchRate}
-              disabled={loadingExchangeRate}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-              title={t('refreshExchangeRate')}
-            >
-              <FiRefreshCw className={`w-4 h-4 ${loadingExchangeRate ? 'animate-spin' : ''}`} />
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Dashboard Cards - Mobile Optimized */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+      {/* Dashboard Cards - Minimalist */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Total Portfolio Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">{t('totalPortfolio')}</h3>
-            <div className="bg-blue-100 dark:bg-blue-500/20 p-2 rounded-lg">
-              <FiDollarSign className="text-blue-500 dark:text-blue-400 w-4 h-4" />
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('totalPortfolio')}</h3>
+            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <FiDollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-1 break-words">
+          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {formatIDR(totals.totalIDR)}
-          </p>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">
-            {formatUSD(totals.totalUSD)}
-          </p>
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">{formatUSD(totals.totalUSD)}</div>
           {totals.totalAssetsWithChange > 0 && (
-            <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-              <div className="space-y-1">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {t('yesterday')}: {formatIDR(totals.totalPreviousDayIDR)} 
-                  <span className={`ml-1 ${totals.changeIDR >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    ({totals.changeIDR >= 0 ? '+' : ''}{formatIDR(totals.changeIDR)})
-                  </span>
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {t('yesterday')}: {formatUSD(totals.totalPreviousDayUSD)} 
-                  <span className={`ml-1 ${totals.changeUSD >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    ({totals.changeUSD >= 0 ? '+' : ''}{formatUSD(totals.changeUSD)})
-                  </span>
-                </p>
+            <>
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {t('yesterday')}: {formatIDR(totals.totalPreviousDayIDR)} 
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                      totals.changeIDR >= 0 
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                    }`}>
+                      ({totals.changeIDR >= 0 ? '+' : ''}{formatIDR(totals.changeIDR)})
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {t('yesterday')}: {formatUSD(totals.totalPreviousDayUSD)} 
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                      totals.changeUSD >= 0 
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                    }`}>
+                      ({totals.changeUSD >= 0 ? '+' : ''}{formatUSD(totals.changeUSD)})
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
         
         {/* Stocks Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">{t('stocks')}</h3>
-            <div className="bg-green-100 dark:bg-green-500/20 p-2 rounded-lg">
-              <FiTrendingUp className="text-green-500 dark:text-green-400 w-4 h-4" />
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('stocks')}</h3>
+            <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <FiTrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-1">
+          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {formatIDR(totals.totalStocksIDR)}
-          </p>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">
-            {formatUSD(totals.totalStocksUSD)}
-          </p>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
-            <div 
-              className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full transition-all duration-500 ease-out" 
-              style={{ width: `${Math.min(totals.stocksPercent, 100)}%` }}
-            ></div>
           </div>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            {totals.stocksPercent.toFixed(1)}% {t('fromPortfolio')}
-          </p>
-        </div>
-
-        {/* Crypto Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">{t('crypto')}</h3>
-            <div className="bg-purple-100 dark:bg-purple-500/20 p-2 rounded-lg">
-              <FiActivity className="text-purple-500 dark:text-purple-400 w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-1">
-            {formatIDR(totals.totalCryptoIDR)}
-          </p>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">
-            {formatUSD(totals.totalCryptoUSD)}
-          </p>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
-            <div 
-              className="bg-gradient-to-r from-purple-400 to-pink-500 h-2 rounded-full transition-all duration-500 ease-out" 
-              style={{ width: `${Math.min(totals.cryptoPercent, 100)}%` }}
-            ></div>
-          </div>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            {totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}
-          </p>
-        </div>
-        
-        {/* Total Gain Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">{t('totalGain')}</h3>
-            <div className="bg-yellow-100 dark:bg-yellow-500/20 p-2 rounded-lg">
-              <FiTrendingUp className="text-yellow-500 dark:text-yellow-400 w-4 h-4" />
-            </div>
-          </div>
-          <p className={`text-xl sm:text-2xl font-bold mb-1 ${gains.totalGain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            {formatIDR(gains.totalGain)}
-          </p>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">
-            {gains.totalGainUSD >= 0 ? '+' : ''}{formatUSD(gains.totalGainUSD)}
-          </p>
-          <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-            <div className="space-y-1">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {t('stocks')}: {formatIDR(gains.stocksGain)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {t('crypto')}: {formatIDR(gains.cryptoGainIDR)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Asset List Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {/* Header - Mobile Optimized */}
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">{t('assetList')}</h2>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                {assets.stocks.length + assets.crypto.length} {t('assetsInPortfolio')}
-              </p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              {/* Tab Buttons - Mobile Optimized */}
-              <div className="flex bg-gray-100 dark:bg-gray-900 rounded-lg p-1 w-full sm:w-auto">
-                <button
-                  onClick={() => setActiveAssetTab('all')}
-                  className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeAssetTab === 'all' 
-                      ? 'bg-indigo-600 text-white shadow-sm' 
-                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {t('all')}
-                </button>
-                <button
-                  onClick={() => setActiveAssetTab('stocks')}
-                  className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeAssetTab === 'stocks' 
-                      ? 'bg-indigo-600 text-white shadow-sm' 
-                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {t('stocks')}
-                </button>
-                <button
-                  onClick={() => setActiveAssetTab('crypto')}
-                  className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeAssetTab === 'crypto' 
-                      ? 'bg-indigo-600 text-white shadow-sm' 
-                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {t('crypto')}
-                </button>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">{formatUSD(totals.totalStocksUSD)}</div>
+          
+          {/* Stocks Gain/Loss */}
+          <div className="border-t border-gray-100 dark:border-gray-800 pt-4 mb-4">
+            <div className="space-y-2">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {t('gainLoss')}: <span className={`font-medium ${getGainColor(gains.stocksGain)}`}>
+                  {formatIDR(gains.stocksGain)} ({formatUSD(gains.stocksGain / (exchangeRate || 1))})
+                </span>
               </div>
-              
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  onClick={handleRefresh}
-                  disabled={loading}
-                  className="flex-1 sm:flex-none p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-300 transition flex items-center justify-center gap-2"
-                  title={t('refreshData')}
-                >
-                  <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                  <span className="sm:hidden">{t('refresh')}</span>
-                </button>
-                
-                <button
-                  onClick={exportPortfolioToCSV}
-                  disabled={assets.stocks.length === 0 && assets.crypto.length === 0}
-                  className="flex-1 sm:flex-none p-2 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 rounded-lg text-green-700 dark:text-green-400 transition flex items-center justify-center gap-2"
-                  title={t('exportPortfolio')}
-                >
-                  <FiDownload className="w-4 h-4" />
-                  <span className="sm:hidden">{t('export')}</span>
-                </button>
-                
-                <button
-                  onClick={onAddAsset}
-                  className="flex-1 sm:flex-none p-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white transition flex items-center justify-center gap-2"
-                  title={t('addAsset')}
-                >
-                  <FiPlusCircle className="w-4 h-4" />
-                  <span className="sm:hidden">{t('add')}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Error Display */}
-        {error && (
-                      <div className="mx-4 sm:mx-6 mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-200 px-3 py-2 rounded-lg text-sm flex items-start">
-              <FiAlertCircle className="mt-0.5 mr-2 flex-shrink-0" />
-              <div>
-                <p className="font-medium">{t('failedToUpdateData')}</p>
-                <p className="text-xs mt-1">{error}</p>
-              </div>
-            </div>
-        )}
-        
-        {/* Loading State */}
-        {loading && assets.stocks.length + assets.crypto.length > 0 ? (
-                      <div className="flex justify-center items-center py-8">
-              <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-500"></div>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{t('updatingPrices')}</p>
-              </div>
-            </div>
-        ) : (
-          <>
-            {/* Info Panel */}
-            {!loading && Object.keys(prices).length < (assets.stocks.length + assets.crypto.length) && (
-                          <div className="mx-4 sm:mx-6 mt-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-200 px-3 py-2 rounded-lg text-sm flex items-start">
-              <FiInfo className="mt-0.5 mr-2 flex-shrink-0" />
-              <div>
-                <p className="font-medium">{t('updatingPriceData')}</p>
-                <p className="text-xs mt-1">{t('priceUpdateInfo')}</p>
-              </div>
-            </div>
-            )}
-            
-            {/* Stocks Section */}
-            {(activeAssetTab === 'all' || activeAssetTab === 'stocks') && (
-              <div className={`${activeAssetTab === 'all' ? 'border-b border-gray-200 dark:border-gray-700' : ''}`}>
-                {assets.stocks.length > 0 ? (
-                  <AssetTable 
-                    assets={assets.stocks} 
-                    prices={prices} 
-                    exchangeRate={exchangeRate}
-                    type="stock"
-                    onUpdate={onUpdateStock}
-                    onSell={handleSellStock}
-                    loading={loading || sellingLoading}
-                  />
-                ) : activeAssetTab === 'stocks' ? (
-                  <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-                    <p>{t('noStocksAdded')}</p>
-                    <button 
-                      onClick={onAddAsset}
-                      className="mt-2 inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                    >
-                      <FiPlusCircle className="mr-1" /> {t('addAsset')}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            )}
-            
-            {/* Crypto Section */}
-            {(activeAssetTab === 'all' || activeAssetTab === 'crypto') && (
-              <div>
-                {assets.crypto.length > 0 ? (
-                  <AssetTable 
-                    assets={assets.crypto} 
-                    prices={prices} 
-                    exchangeRate={exchangeRate}
-                    type="crypto"
-                    onUpdate={onUpdateCrypto}
-                    onSell={handleSellCrypto}
-                    loading={loading || sellingLoading}
-                  />
-                ) : activeAssetTab === 'crypto' ? (
-                  <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-                    <p>{t('noCryptoAdded')}</p>
-                    <button 
-                      onClick={onAddAsset}
-                      className="mt-2 inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                    >
-                      <FiPlusCircle className="mr-1" /> {t('addAsset')}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            )}
-            
-            {/* Empty State */}
-            {assets.stocks.length === 0 && assets.crypto.length === 0 && (
-              <div className="py-12 sm:py-16 text-center px-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 mb-4 sm:mb-6">
-                  <FiDollarSign className="text-2xl sm:text-3xl text-indigo-600 dark:text-indigo-400" />
+              {gains.stocksGainPercent !== 0 && (
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className={`font-medium ${getGainColor(gains.stocksGainPercent)}`}>
+                    {gains.stocksGainPercent >= 0 ? '+' : ''}{gains.stocksGainPercent.toFixed(2)}%
+                  </span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-white mb-2 sm:mb-3">{t('emptyPortfolio')}</h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base">
-                  {t('emptyPortfolioDesc')}
-                </p>
-                <button 
-                  onClick={onAddAsset}
-                  className="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg text-white font-medium transition-all duration-200 inline-flex items-center shadow-lg hover:shadow-xl transform hover:scale-105 text-sm sm:text-base"
-                >
-                  <FiPlusCircle className="mr-2" /> {t('addFirstAsset')}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-        
-        {/* Footer */}
-        {lastUpdate && assets.stocks.length + assets.crypto.length > 0 && (
-          <div className="px-4 sm:px-6 py-3 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 text-xs flex flex-col sm:flex-row sm:justify-between gap-2">
-            <span>{t('lastUpdated')}: {lastUpdate}</span>
-            {!loading && (
-              <button 
-                onClick={handleRefresh}
-                className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 self-start sm:self-auto"
-              >
-                {t('refreshNow')}
-              </button>
-            )}
+              )}
+            </div>
           </div>
-        )}
+          
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+            <div 
+              className="bg-blue-500 h-2 rounded-full transition-all duration-500" 
+              style={{ width: `${totals.stocksPercent}%` }}
+            ></div>
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{totals.stocksPercent.toFixed(1)}% {t('fromPortfolio')}</div>
+        </div>
         
-        {/* Notification */}
-        <Notification 
-          notification={notification} 
-          onClose={() => setNotification(null)} 
-        />
+        {/* Crypto Card */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('crypto')}</h3>
+            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+              <FiActivity className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            {formatIDR(totals.totalCryptoIDR)}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">{formatUSD(totals.totalCryptoUSD)}</div>
+          
+          {/* Crypto Gain/Loss */}
+          <div className="border-t border-gray-100 dark:border-gray-800 pt-4 mb-4">
+            <div className="space-y-2">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {t('gainLoss')}: <span className={`font-medium ${getGainColor(gains.cryptoGainUSD)}`}>
+                  {formatIDR(gains.cryptoGainIDR)} ({formatUSD(gains.cryptoGainUSD)})
+                </span>
+              </div>
+              {gains.cryptoGainPercent !== 0 && (
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className={`font-medium ${getGainColor(gains.cryptoGainPercent)}`}>
+                    {gains.cryptoGainPercent >= 0 ? '+' : ''}{gains.cryptoGainPercent.toFixed(2)}%
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+            <div 
+              className="bg-purple-500 h-2 rounded-full transition-all duration-500" 
+              style={{ width: `${totals.cryptoPercent}%` }}
+            ></div>
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</div>
+        </div>
+        
+        {/* Total Gain/Loss Card */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('totalGainLoss')}</h3>
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <FiTrendingUp className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+          </div>
+          
+          {/* Main Gain/Loss Value */}
+          <div className={`text-2xl font-bold mb-2 ${getGainColor(gains.totalGain)}`}>
+            {formatIDR(gains.totalGain)}
+          </div>
+          <div className={`text-sm mb-4 ${getGainColor(gains.totalGainUSD)}`}>{formatUSD(gains.totalGainUSD)}</div>
+          
+          {/* Percentage and Progress Bar */}
+          {gains.totalCost > 0 && (
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {gains.gainPercent >= 0 ? '+' : ''}{gains.gainPercent.toFixed(2)}%
+                </span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  {t('ofTotalCost')}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-500 ${
+                    gains.gainPercent >= 0 ? 'bg-green-500' : 'bg-red-500'
+                  }`}
+                  style={{ 
+                    width: `${Math.min(Math.abs(gains.gainPercent), 100)}%`,
+                    maxWidth: '100%'
+                  }}
+                ></div>
+              </div>
+            </div>
+          )}
+          
+          {/* Performance Indicator */}
+          {gains.totalCost > 0 && (
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('performance')}</span>
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                  gains.gainPercent >= 0 
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                }`}>
+                  {gains.gainPercent >= 0 ? (
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  {gains.gainPercent >= 0 ? t('profitable') : t('loss')}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Action Bar - Minimalist */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center space-x-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('portfolio')}</h2>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setActiveAssetTab('all')}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                  activeAssetTab === 'all'
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                {t('all')} ({assets.stocks.length + assets.crypto.length})
+              </button>
+              <button
+                onClick={() => setActiveAssetTab('stocks')}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                  activeAssetTab === 'stocks'
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                {t('stocks')} ({assets.stocks.length})
+              </button>
+              <button
+                onClick={() => setActiveAssetTab('crypto')}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                  activeAssetTab === 'crypto'
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                {t('crypto')} ({assets.crypto.length})
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex space-x-3">
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50"
+              title="Refresh semua data (harga saham, kripto, dan kurs USD/IDR)"
+            >
+              <FiRefreshCw className="w-4 h-4" />
+              <span className="hidden sm:inline">Refresh All</span>
+            </button>
+            
+            <button
+              onClick={exportPortfolioToCSV}
+              disabled={assets.stocks.length === 0 && assets.crypto.length === 0}
+              className="px-4 py-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50"
+              title={t('exportPortfolio')}
+            >
+              <FiDownload className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('export')}</span>
+            </button>
+            
+            <button
+              onClick={onAddAsset}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 flex items-center gap-2 text-sm"
+              title={t('addAsset')}
+            >
+              <FiPlusCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('add')}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+        
+      {/* Error Display - Minimalist */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-4">
+          <div className="flex items-center gap-3">
+            <FiAlertCircle className="w-5 h-5 text-red-500" />
+            <div>
+              <p className="font-medium text-red-800 dark:text-red-200">{t('failedToUpdateData')}</p>
+              <p className="text-sm mt-1 text-red-600 dark:text-red-300">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+        
+      {/* Loading State - Minimalist */}
+      {isPriceLoading && assets.stocks.length + assets.crypto.length > 0 ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{t('updatingPrices')}</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Info Panel - Minimalist */}
+          {!isPriceLoading && Object.keys(prices).length < (assets.stocks.length + assets.crypto.length) && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
+              <div className="flex items-center gap-3">
+                <FiInfo className="w-5 h-5 text-blue-500" />
+                <div>
+                  <p className="font-medium text-blue-800 dark:text-blue-200">{t('updatingPriceData')}</p>
+                  <p className="text-sm mt-1 text-blue-600 dark:text-blue-300">{t('priceUpdateInfo')}</p>
+                </div>
+              </div>
+            </div>
+          )}
+            
+          {/* Stocks Section */}
+          {(activeAssetTab === 'all' || activeAssetTab === 'stocks') && (
+            <div className={activeAssetTab === 'all' ? 'mb-8' : ''}>
+              {assets.stocks.length > 0 ? (
+                <AssetTable 
+                  assets={assets.stocks} 
+                  prices={prices} 
+                  exchangeRate={exchangeRate}
+                  type="stock"
+                  onUpdate={onUpdateStock}
+                  onSell={handleSellStock}
+                  onDelete={onDeleteStock}
+                  loading={isPriceLoading || sellingLoading}
+                />
+              ) : activeAssetTab === 'stocks' ? (
+                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">{t('noStocksAdded')}</p>
+                  <button 
+                    onClick={onAddAsset}
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 text-sm"
+                  >
+                    <FiPlusCircle className="mr-2 inline" /> {t('addAsset')}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+        
+          {/* Crypto Section */}
+          {(activeAssetTab === 'all' || activeAssetTab === 'crypto') && (
+            <div>
+              {assets.crypto.length > 0 ? (
+                <AssetTable 
+                  assets={assets.crypto} 
+                  prices={prices} 
+                  exchangeRate={exchangeRate}
+                  type="crypto"
+                  onUpdate={onUpdateCrypto}
+                  onSell={handleSellCrypto}
+                  onDelete={onDeleteCrypto}
+                  loading={isPriceLoading || sellingLoading}
+                />
+              ) : activeAssetTab === 'crypto' ? (
+                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">{t('noCryptoAdded')}</p>
+                  <button 
+                    onClick={onAddAsset}
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 text-sm"
+                  >
+                    <FiPlusCircle className="mr-2 inline" /> {t('addAsset')}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+            
+          {/* Empty State - Minimalist */}
+          {assets.stocks.length === 0 && assets.crypto.length === 0 && (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-16 text-center">
+              <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-6">
+                <FiDollarSign className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">{t('emptyPortfolio')}</h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                {t('emptyPortfolioDesc')}
+              </p>
+              <button 
+                onClick={onAddAsset}
+                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-all duration-200 inline-flex items-center shadow-sm hover:shadow-md"
+              >
+                <FiPlusCircle className="mr-2" /> {t('addFirstAsset')}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+        
+      {/* Footer - Minimalist */}
+      {lastUpdate && assets.stocks.length + assets.crypto.length > 0 && (
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-4 text-gray-500 dark:text-gray-400 text-sm flex flex-col sm:flex-row sm:justify-between gap-2">
+          <span>{t('lastUpdated')}: {lastUpdate}</span>
+          {!loading && (
+            <button 
+              onClick={handleRefresh}
+              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 self-start sm:self-auto"
+            >
+              {t('refreshNow')}
+            </button>
+          )}
+        </div>
+      )}
+        
+      {/* Notification */}
+      <Notification 
+        notification={notification} 
+        onClose={() => setNotification(null)} 
+      />
     </div>
   );
 }

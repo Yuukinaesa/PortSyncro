@@ -1,26 +1,14 @@
 import { useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
+import { normalizeNumberInput } from '../lib/utils';
 
 export default function StockInput({ onAdd, onComplete, exchangeRate }) {
   const [ticker, setTicker] = useState('');
-  const [lots, setLots] = useState('1');
+  const [lots, setLots] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const { t } = useLanguage();
 
-  
-  const popularStocks = [
-    { ticker: 'BBCA', name: 'Bank Central Asia Tbk' },
-    { ticker: 'BBRI', name: 'Bank Rakyat Indonesia Tbk' },
-    { ticker: 'ASII', name: 'Astra International Tbk' },
-    { ticker: 'TLKM', name: 'Telkom Indonesia Tbk' },
-    { ticker: 'ICBP', name: 'Indofood CBP Sukses Makmur Tbk' },
-    { ticker: 'UNVR', name: 'Unilever Indonesia Tbk' },
-    { ticker: 'PGAS', name: 'Perusahaan Gas Negara Tbk' },
-    { ticker: 'KLBF', name: 'Kalbe Farma Tbk' }
-  ];
-  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -33,18 +21,25 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       }
 
       // Validate lots is a positive number
-      const lotsNum = parseFloat(lots);
+      const normalizedLots = normalizeNumberInput(lots);
+      const lotsNum = parseFloat(normalizedLots);
       if (isNaN(lotsNum) || lotsNum <= 0) {
         throw new Error('Lot amount must be greater than 0');
       }
 
+      // Validate ticker format for IDX (should be 2-4 characters, letters only)
+      const normalizedTicker = ticker.trim().toUpperCase();
+      
+      if (!/^[A-Z]{2,4}$/.test(normalizedTicker)) {
+        throw new Error(t('invalidStockFormat'));
+      }
+
       // Format tickers for IDX
-      const tickersToTry = [`${ticker.trim().toUpperCase()}.JK`];
+      const tickersToTry = [`${normalizedTicker}.JK`];
       console.log('Submitting tickers:', tickersToTry);
 
-      // Debounce submit button
+      // Set loading state
       setIsLoading(true);
-      setTimeout(() => setIsLoading(false), 1500);
 
       // Fetch current stock price
       const response = await fetch('/api/prices', {
@@ -79,133 +74,129 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
 
       console.log('Used ticker for price:', usedTicker);
       if (!stockPrice) {
-        throw new Error('Stock price data not found or API limit reached. Please check the code and try again later.');
+        // Check if the API returned any data but no valid stock price
+        const hasAnyData = Object.keys(data.prices).length > 0;
+        if (hasAnyData) {
+          // API returned data but no valid price - likely not an IDX stock
+          throw new Error(t('invalidIdxStock', { ticker: normalizedTicker }));
+        } else {
+          // No data returned - network or API issue
+          throw new Error(t('stockNotFound', { ticker: normalizedTicker }));
+        }
       }
 
-      // Calculate values based on real-time price
-      const sharesPerLot = 100; // 1 lot = 100 saham
-      const totalShares = lotsNum * sharesPerLot;
-      
-      let valueIDR, valueUSD;
-      
-      if (stockPrice.currency === 'IDR') {
-        // Saham IDX tetap dalam IDR, tidak perlu konversi
-        valueIDR = stockPrice.price * totalShares;
-        valueUSD = 0; // Saham IDX tidak dalam USD
-      } else {
-        valueUSD = stockPrice.price * totalShares;
-        // Hapus logika konversi USD ke IDR untuk saham (karena tidak ada saham US)
-        valueIDR = 0;
-      }
-
-      // Create stock object with calculated values
-      const stockData = {
-        ticker: ticker.toUpperCase(),
+      // Create stock object
+      const stock = {
+        ticker: normalizedTicker,
         lots: lotsNum,
-        valueIDR: valueIDR,
-        valueUSD: valueUSD,
-        currency: stockPrice.currency,
+        avgPrice: stockPrice.price,
+        currentPrice: stockPrice.price,
         price: stockPrice.price,
-        shares: totalShares,
-        type: 'stock',
-        addedAt: new Date().toISOString(),
-
+        currency: stockPrice.currency || 'IDR',
+        change: stockPrice.change || 0,
+        changePercent: stockPrice.changePercent || 0,
+        lastUpdate: new Date().toISOString(),
+        addedAt: new Date().toISOString()
       };
 
-      console.log('Submitting stock data:', stockData);
-      await onAdd(stockData);
-      
-      // Reset form
-      setTicker('');
-      setLots('1');
-
-      
-      // Show success message
-      setSuccess(t('stockSuccessfullyAdded'));
-      setTimeout(() => setSuccess(null), 3000);
-      
-      // Call onComplete if provided
-      if (onComplete) {
-        onComplete();
-      }
+      console.log('Adding stock:', stock);
+      onAdd(stock);
+      setIsLoading(false);
+      onComplete();
     } catch (error) {
-      console.error('Error in handleSubmit:', error);
+      console.error('Error adding stock:', error);
       setError(error.message);
-    } finally {
       setIsLoading(false);
     }
   };
-  
-  const handleQuickAdd = (stock) => {
-    setTicker(stock.ticker);
+
+  const handleCancel = () => {
+    onComplete();
   };
-  
+
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800 dark:text-white">{t('addStock')}</h2>
-      
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Stock Code Input */}
+      <div>
+        <label htmlFor="ticker" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {t('stockCode')} *
+        </label>
+        <input
+          type="text"
+          id="ticker"
+          value={ticker}
+          onChange={(e) => setTicker(e.target.value.toUpperCase())}
+          placeholder={t('stockCodePlaceholder')}
+          className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+          maxLength={4}
+          required
+        />
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          {t('stockCodeHelp')}
+        </p>
+      </div>
+
+      {/* Lot Amount Input */}
+      <div>
+        <label htmlFor="lots" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {t('lotAmount')} *
+        </label>
+        <input
+          type="text"
+          id="lots"
+          value={lots}
+          onChange={(e) => setLots(e.target.value)}
+          placeholder={t('lotAmountPlaceholder')}
+          className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+          required
+        />
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          {t('lotAmountHelp')}
+        </p>
+      </div>
+
+      {/* Error Display */}
       {error && (
-        <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-200 px-3 py-2 rounded-lg text-sm">
-          {error}
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-800 dark:text-red-200">
+                {error}
+              </p>
+            </div>
+          </div>
         </div>
       )}
-      
-      {success && (
-        <div className="mb-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-200 px-3 py-2 rounded-lg text-sm">
-          {success}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('stockCode')}</label>
-          <input
-            type="text"
-            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value)}
-            placeholder={t('stockCodePlaceholder')}
-          />
-        </div>
-        
 
-        
-        <div className="mb-4">
-          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('lotAmount')}</label>
-          <input
-            type="text"
-            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-gray-800 dark:text-white"
-            value={lots}
-            onChange={(e) => setLots(e.target.value)}
-            placeholder={t('lotAmountPlaceholder')}
-          />
-        </div>
-        
-
-        
+      {/* Action Buttons */}
+      <div className="flex gap-3 pt-4">
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium"
+        >
+          {t('cancel')}
+        </button>
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 sm:py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 touch-target"
           disabled={isLoading}
+          className="flex-1 px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 text-sm font-medium disabled:opacity-50"
         >
-          {isLoading ? t('adding') : t('addStock')}
+          {isLoading ? (
+            <div className="flex items-center justify-center">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              {t('adding')}...
+            </div>
+          ) : (
+            t('addStock')
+          )}
         </button>
-      </form>
-      
-      <div className="mt-6">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('quickOptions')}</p>
-        <div className="flex flex-wrap gap-2">
-          {popularStocks.map(stock => (
-            <button
-              key={stock.ticker}
-              onClick={() => handleQuickAdd(stock)}
-              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-            >
-              {stock.ticker}
-            </button>
-          ))}
-        </div>
       </div>
-    </div>
+    </form>
   );
 }

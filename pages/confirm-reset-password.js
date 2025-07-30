@@ -24,30 +24,15 @@ export default function ConfirmResetPassword() {
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
-    // Ambil oobCode dari query parameters
-    const { oobCode } = router.query;
-    
-    if (oobCode) {
-      setOobCode(oobCode);
-      
-      // Verifikasi kode reset password
-      const verifyCode = async () => {
-        try {
-          const email = await verifyPasswordResetCode(auth, oobCode);
-          setEmail(email);
-          setLoading(false);
-        } catch (error) {
-          console.error("Error verifying reset code:", error);
-          setError(t('invalidResetCode'));
-          setLoading(false);
-        }
-      };
+    if (router.query.oobCode) {
+      setOobCode(router.query.oobCode);
+      setLoading(true);
       
       verifyCode();
     } else {
       setLoading(false);
     }
-  }, [router.query]);
+  }, [router.query, t]);
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
