@@ -23,12 +23,40 @@ export default function ConfirmResetPassword() {
   const { t } = useLanguage();
   const { isDarkMode } = useTheme();
 
+  const verifyCode = async () => {
+    try {
+      const email = await verifyPasswordResetCode(auth, oobCode);
+      setEmail(email);
+      setError('');
+    } catch (error) {
+      console.error("Error verifying reset code:", error);
+      setError(t('invalidOrExpiredResetCode'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (router.query.oobCode) {
       setOobCode(router.query.oobCode);
       setLoading(true);
       
-      verifyCode();
+      // Call verifyCode after setting oobCode
+      const code = router.query.oobCode;
+      if (code) {
+        verifyPasswordResetCode(auth, code)
+          .then((email) => {
+            setEmail(email);
+            setError('');
+          })
+          .catch((error) => {
+            console.error("Error verifying reset code:", error);
+            setError(t('invalidOrExpiredResetCode'));
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      }
     } else {
       setLoading(false);
     }
