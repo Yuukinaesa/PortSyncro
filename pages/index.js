@@ -21,6 +21,24 @@ import { fetchExchangeRate } from '../lib/fetchPrices';
 import Modal from '../components/Modal';
 import AveragePriceCalculator from '../components/AveragePriceCalculator';
 
+// Helper function to clean undefined values from objects
+const cleanUndefinedValues = (obj) => {
+  if (obj === null || obj === undefined) return null;
+  if (typeof obj !== 'object') return obj;
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => cleanUndefinedValues(item)).filter(item => item !== null);
+  }
+  
+  const cleaned = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = cleanUndefinedValues(value);
+    }
+  }
+  return cleaned;
+};
+
 // Tambahkan fungsi untuk membangun ulang aset dari transaksi
 function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [] }) {
   const stocksMap = {};
@@ -75,6 +93,18 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     const finalTotalCost = finalAvgPrice * pos.amount;
     const finalGain = pos.porto - finalTotalCost;
     
+    // If we have an existing asset with manual edits, preserve all its data
+    if (existingAsset && useManualAvgPrice) {
+      console.log(`Preserving manual edits for ${ticker} - using existing asset data`);
+      return {
+        ...existingAsset, // Preserve ALL existing data
+        currentPrice: currentPrice, // Only update current price
+        porto: pos.porto, // Update portfolio value
+        totalCost: finalTotalCost, // Update total cost
+        gain: finalGain // Update gain/loss
+      };
+    }
+    
     return {
       ticker,
       lots: pos.amount, // untuk saham, 1 lot = 100 saham (IDX)
@@ -86,7 +116,8 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
       currency: priceObj ? priceObj.currency : 'IDR',
       type: 'stock',
       transactions: validTransactions,
-      ...(pos.entryPrice && { entry: pos.entryPrice })
+      // Only add entry if it exists and is not undefined
+      ...(pos.entryPrice && pos.entryPrice !== undefined && { entry: pos.entryPrice })
     };
   }).filter(Boolean); // Remove null entries
 
@@ -127,6 +158,18 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     const finalTotalCost = finalAvgPrice * pos.amount;
     const finalGain = pos.porto - finalTotalCost;
     
+    // If we have an existing asset with manual edits, preserve all its data
+    if (existingAsset && useManualAvgPrice) {
+      console.log(`Preserving manual edits for ${symbol} - using existing asset data`);
+      return {
+        ...existingAsset, // Preserve ALL existing data
+        currentPrice: currentPrice, // Only update current price
+        porto: pos.porto, // Update portfolio value
+        totalCost: finalTotalCost, // Update total cost
+        gain: finalGain // Update gain/loss
+      };
+    }
+    
     return {
       symbol,
       amount: pos.amount,
@@ -138,7 +181,8 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
       currency: 'USD',
       type: 'crypto',
       transactions: validTransactions,
-      ...(pos.entryPrice && { entry: pos.entryPrice })
+      // Only add entry if it exists and is not undefined
+      ...(pos.entryPrice && pos.entryPrice !== undefined && { entry: pos.entryPrice })
     };
   }).filter(Boolean); // Remove null entries
 
@@ -154,8 +198,16 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
       console.log(`Preserving existing stock ${existingStock.ticker} that's not in current transactions`);
       stocks.push({
         ...existingStock,
-        currentPrice: prices[existingStock.ticker] || prices[`${existingStock.ticker}.JK`]?.price || existingStock.currentPrice || 0
+        currentPrice: prices[existingStock.ticker] || prices[`${existingStock.ticker}.JK`]?.price || existingStock.currentPrice || 0,
+        // Ensure all required fields are present
+        ticker: existingStock.ticker,
+        lots: existingStock.lots,
+        avgPrice: existingStock.avgPrice,
+        currency: existingStock.currency || 'IDR',
+        type: 'stock'
       });
+    } else {
+      console.log(`Stock ${existingStock.ticker} already exists in new list, skipping duplicate`);
     }
   });
   
@@ -166,8 +218,16 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
       console.log(`Preserving existing crypto ${existingCrypto.symbol} that's not in current transactions`);
       crypto.push({
         ...existingCrypto,
-        currentPrice: prices[existingCrypto.symbol]?.price || existingCrypto.currentPrice || 0
+        currentPrice: prices[existingCrypto.symbol]?.price || existingCrypto.currentPrice || 0,
+        // Ensure all required fields are present
+        symbol: existingCrypto.symbol,
+        amount: existingCrypto.amount,
+        avgPrice: existingCrypto.avgPrice,
+        currency: existingCrypto.currency || 'USD',
+        type: 'crypto'
       });
+    } else {
+      console.log(`Crypto ${existingCrypto.symbol} already exists in new list, skipping duplicate`);
     }
   });
 
@@ -446,6 +506,11 @@ export default function Home() {
       if (immediate) {
         // For manual refresh, use direct fetch function
         await fetchPricesImmediate();
+        // Force rebuild assets after manual refresh
+        setLastManualUpdate({
+          timestamp: Date.now(),
+          type: 'price_refresh'
+        });
       } else {
         fetchPrices();
       }
@@ -558,10 +623,30 @@ export default function Home() {
       return;
     }
     
-    // If we have a recent manual update (within last 15 seconds), skip rebuild entirely
-    if (lastManualUpdate && (Date.now() - lastManualUpdate.timestamp) < 15000) {
-      console.log('Skipping rebuild - recent manual update detected');
-      return;
+    // Additional protection: skip rebuild if there are any manual updates in the last 60 seconds
+    if (lastManualUpdate && (Date.now() - lastManualUpdate.timestamp) < 60000) {
+      const isPriceRefresh = lastManualUpdate.type === 'price_refresh';
+      if (!isPriceRefresh) {
+        console.log('Skipping portfolio rebuild - manual update detected within 60s');
+        console.log('Manual update type:', lastManualUpdate.type);
+        console.log('Manual update operation:', lastManualUpdate.operation);
+        return;
+      }
+    }
+    
+    // If we have a recent manual update (within last 30 seconds), skip rebuild entirely
+    // But allow rebuild if prices were just refreshed manually
+    if (lastManualUpdate && (Date.now() - lastManualUpdate.timestamp) < 30000) {
+      // Check if this is a price refresh (not a manual asset update)
+      const isPriceRefresh = lastManualUpdate.type === 'price_refresh';
+      if (!isPriceRefresh) {
+        console.log('Skipping rebuild - recent manual update detected (30s protection)');
+        console.log('Manual update type:', lastManualUpdate.type);
+        console.log('Manual update operation:', lastManualUpdate.operation);
+        return;
+      } else {
+        console.log('Allowing rebuild after manual price refresh');
+      }
     }
     
       // Skip rebuilding if transactions are empty (to preserve portfolio when transactions are deleted)
@@ -885,9 +970,12 @@ export default function Home() {
           }))
         };
 
+        // Clean undefined values before saving
+        const cleanedAssets = cleanUndefinedValues(currentAssets);
+
         // Save to Firestore
         updateDoc(userRef, {
-          assets: currentAssets
+          assets: cleanedAssets
         });
 
         return prev; // Return unchanged state since we're just saving
@@ -1058,9 +1146,12 @@ export default function Home() {
           }))
         };
 
+        // Clean undefined values before saving
+        const cleanedAssets = cleanUndefinedValues(currentAssets);
+
         // Save to Firestore
         updateDoc(userRef, {
-          assets: currentAssets
+          assets: cleanedAssets
         });
 
         return prev; // Return unchanged state since we're just saving
@@ -1080,53 +1171,125 @@ export default function Home() {
   };
 
   const updateStock = (index, updatedStock) => {
+    console.log('updateStock called:', {
+      index,
+      updatedStock,
+      currentStocks: assets.stocks
+    });
+    
     setAssets(prev => {
       const updatedStocks = [...prev.stocks];
       
-      // Recalculate gain/loss based on new average price
-      const currentPrice = prices[`${updatedStock.ticker}.JK`]?.price || updatedStock.currentPrice || 0;
+      // Get the original stock to preserve all data
+      const originalStock = prev.stocks[index];
+      
+      // Get the most current price from prices state
+      const currentPrice = prices[`${updatedStock.ticker}.JK`]?.price || 0;
       const totalShares = updatedStock.lots * 100; // 1 lot = 100 shares for IDX
       const currentValue = currentPrice * totalShares;
       const totalCost = updatedStock.avgPrice * totalShares;
       const gain = currentValue - totalCost;
       
-      updatedStocks[index] = {
-        ...updatedStock,
-        currentPrice: currentPrice, // Store current market price separately
+      const finalStock = {
+        ...originalStock, // Preserve ALL original data first
+        ...updatedStock, // Apply updates (mainly avgPrice)
+        currentPrice: currentPrice, // Always use the most current price
         porto: currentValue,
         totalCost: totalCost,
-        gain: gain
+        gain: gain,
+        // Ensure all required fields are present and correct
+        ticker: updatedStock.ticker || originalStock.ticker,
+        lots: updatedStock.lots || originalStock.lots,
+        avgPrice: updatedStock.avgPrice,
+        currency: updatedStock.currency || originalStock.currency || 'IDR',
+        type: 'stock'
       };
+      
+      updatedStocks[index] = finalStock;
+      
+      console.log('Stock updated:', {
+        original: originalStock,
+        updated: finalStock,
+        ticker: finalStock.ticker,
+        originalTicker: originalStock.ticker,
+        updatedTicker: finalStock.ticker,
+        tickerChanged: originalStock.ticker !== finalStock.ticker
+      });
       
       return {
         ...prev,
         stocks: updatedStocks
       };
     });
+    
+    // Set manual update flag with longer protection
+    setLastManualUpdate({
+      timestamp: Date.now(),
+      type: 'manual_update',
+      operation: 'update_stock',
+      ticker: updatedStock.ticker,
+      protectionDuration: 60000 // 60 seconds protection
+    });
   };
   
   const updateCrypto = (index, updatedCrypto) => {
+    console.log('updateCrypto called:', {
+      index,
+      updatedCrypto,
+      currentCrypto: assets.crypto
+    });
+    
     setAssets(prev => {
       const updatedCryptos = [...prev.crypto];
       
-      // Recalculate gain/loss based on new average price
-      const currentPrice = prices[updatedCrypto.symbol]?.price || updatedCrypto.currentPrice || 0;
+      // Get the original crypto to preserve all data
+      const originalCrypto = prev.crypto[index];
+      
+      // Get the most current price from prices state
+      const currentPrice = prices[updatedCrypto.symbol]?.price || 0;
       const currentValue = currentPrice * updatedCrypto.amount;
       const totalCost = updatedCrypto.avgPrice * updatedCrypto.amount;
       const gain = currentValue - totalCost;
       
-      updatedCryptos[index] = {
-        ...updatedCrypto,
-        currentPrice: currentPrice, // Store current market price separately
+      const finalCrypto = {
+        ...originalCrypto, // Preserve ALL original data first
+        ...updatedCrypto, // Apply updates (mainly avgPrice)
+        currentPrice: currentPrice, // Always use the most current price
         porto: currentValue,
         totalCost: totalCost,
-        gain: gain
+        gain: gain,
+        // Ensure all required fields are present and correct
+        symbol: updatedCrypto.symbol || originalCrypto.symbol,
+        amount: updatedCrypto.amount || originalCrypto.amount,
+        avgPrice: updatedCrypto.avgPrice,
+        currency: updatedCrypto.currency || originalCrypto.currency || 'USD',
+        type: 'crypto'
       };
+      
+      updatedCryptos[index] = finalCrypto;
+      
+      console.log('Crypto updated:', {
+        original: originalCrypto,
+        updated: finalCrypto,
+        symbol: finalCrypto.symbol,
+        originalSymbol: originalCrypto.symbol,
+        updatedSymbol: finalCrypto.symbol,
+        symbolChanged: originalCrypto.symbol !== finalCrypto.symbol
+      });
       
       return {
         ...prev,
         crypto: updatedCryptos
       };
+    });
+    
+    // Set manual update flag with longer protection
+    setLastManualUpdate({
+      timestamp: Date.now(),
+      type: 'manual_update',
+      operation: 'update_crypto',
+      symbol: updatedCrypto.symbol,
+      protectionDuration: 60000 // 60 seconds protection
     });
   };
   
@@ -1144,6 +1307,7 @@ export default function Home() {
       setAssets(newAssets);
       setLastManualUpdate({
         timestamp: Date.now(),
+        type: 'manual_update',
         assets: newAssets,
         operation: 'delete_stock',
         ticker: stockToDelete.ticker
@@ -1224,6 +1388,7 @@ export default function Home() {
       setAssets(newAssets);
       setLastManualUpdate({
         timestamp: Date.now(),
+        type: 'manual_update',
         assets: newAssets,
         operation: 'delete_crypto',
         symbol: cryptoToDelete.symbol
@@ -1393,6 +1558,7 @@ export default function Home() {
       setAssets(newAssets);
       setLastManualUpdate({
         timestamp: Date.now(),
+        type: 'manual_update',
         assets: newAssets,
         operation: 'sell_stock',
         ticker: asset.ticker,
@@ -1512,6 +1678,7 @@ export default function Home() {
       setAssets(newAssets);
       setLastManualUpdate({
         timestamp: Date.now(),
+        type: 'manual_update',
         assets: newAssets,
         operation: 'sell_crypto',
         symbol: crypto.symbol,

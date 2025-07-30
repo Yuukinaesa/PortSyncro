@@ -269,14 +269,48 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       return;
     }
 
+    // Validate that we have the correct asset data
+    if (!asset || (type === 'stock' && !asset.ticker) || (type === 'crypto' && !asset.symbol)) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Data aset tidak valid',
+        type: 'error'
+      });
+      return;
+    }
+
     // Update the asset with new average price
     const updatedAsset = {
-      ...asset,
-      avgPrice: price,
+      ...asset, // Preserve ALL existing data first
+      avgPrice: price, // Only update the average price
+      // Ensure all critical fields are explicitly preserved
+      ticker: asset.ticker,
+      symbol: asset.symbol,
+      lots: asset.lots,
+      amount: asset.amount,
       currency: asset.currency || (type === 'crypto' ? 'USD' : 'IDR'),
-      // Don't recalculate totalCost and gain here - let the parent component handle it
-      // This prevents the average price from being overridden by current market price
+      currentPrice: asset.currentPrice,
+      porto: asset.porto,
+      totalCost: asset.totalCost,
+      gain: asset.gain,
+      type: asset.type || (type === 'crypto' ? 'crypto' : 'stock'),
+      // Preserve any other fields that might exist
+      transactions: asset.transactions,
+      entry: asset.entry,
+      lastUpdate: asset.lastUpdate,
+      userId: asset.userId
     };
+
+    // Debug logging
+    console.log('Editing asset:', {
+      index,
+      originalAsset: asset,
+      updatedAsset: updatedAsset,
+      assetType: type,
+      ticker: asset.ticker,
+      symbol: asset.symbol
+    });
 
     if (onUpdate) {
       onUpdate(index, updatedAsset);
@@ -571,7 +605,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                 let realTimeGainUSD = 0;
                 let realTimeGainPercentage = 0;
                 
-                if (assetValue.price) {
+                if (assetValue.price && assetValue.price > 0) {
                   // Calculate current portfolio value using real-time price
                   const currentPortfolioValue = assetValue.price * (type === 'stock' ? asset.lots * 100 : asset.amount);
                   
@@ -591,6 +625,11 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     // For percentage calculation, use USD values
                     realTimeGainPercentage = costBasis > 0 ? (realTimeGainUSD / costBasis) * 100 : 0;
                   }
+                } else {
+                  // If no price data available, use stored gain/loss values
+                  realTimeGain = asset.gain || 0;
+                  realTimeGainUSD = asset.gainUSD || 0;
+                  realTimeGainPercentage = asset.gainPercentage || 0;
                 }
                 
                 return (
@@ -643,16 +682,16 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     <td className="px-6 py-5 text-right">
                       <div className="flex flex-col items-end space-y-1">
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {assetValue.price ? formatPrice(assetValue.price, asset.currency || (type === 'crypto' ? 'USD' : 'IDR')) : t('notAvailable')}
+                          {assetValue.price && assetValue.price > 0 ? formatPrice(assetValue.price, asset.currency || (type === 'crypto' ? 'USD' : 'IDR')) : t('notAvailable')}
                         </span>
                         {/* Show IDR price for crypto */}
-                        {type === 'crypto' && assetValue.price && exchangeRate && (
+                        {type === 'crypto' && assetValue.price && assetValue.price > 0 && exchangeRate && (
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             {formatIDR(assetValue.price * exchangeRate)}
                           </span>
                         )}
                         {/* Always show change percentage if price data is available */}
-                        {price && (
+                        {price && price.price && price.price > 0 && (
                           <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             change > 0 
                               ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
@@ -669,13 +708,13 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     
                     <td className="px-6 py-5 text-right">
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {assetValue.valueIDR ? formatPrice(assetValue.valueIDR, 'IDR', true) : t('notAvailable')}
+                        {assetValue.price && assetValue.price > 0 ? formatPrice(assetValue.valueIDR, 'IDR', true) : t('notAvailable')}
                       </span>
                     </td>
                     
                     <td className="hidden lg:table-cell px-6 py-5 text-right">
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {assetValue.valueUSD ? formatPrice(assetValue.valueUSD, 'USD') : t('notAvailable')}
+                        {assetValue.price && assetValue.price > 0 ? formatPrice(assetValue.valueUSD, 'USD') : t('notAvailable')}
                       </span>
                     </td>
                     
@@ -769,14 +808,20 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       <div className="flex flex-col items-end space-y-1">
                         {/* IDR Gain/Loss */}
                         <span className={`text-sm font-semibold ${getGainColor(realTimeGain)}`}>
-                          {realTimeGain !== undefined && realTimeGain !== null ? (realTimeGain === 0 ? 'Rp 0' : formatPrice(realTimeGain, 'IDR', true)) : '-'}
+                          {assetValue.price && assetValue.price > 0 ? 
+                            (realTimeGain === 0 ? 'Rp 0' : formatPrice(realTimeGain, 'IDR', true)) : 
+                            t('notAvailable')
+                          }
                         </span>
                         {/* USD Gain/Loss */}
                         <span className={`text-xs ${getGainColor(realTimeGain)}`}>
-                          {realTimeGain !== undefined && realTimeGain !== null ? (realTimeGain === 0 ? '$ 0' : formatPrice(realTimeGainUSD, 'USD')) : '-'}
+                          {assetValue.price && assetValue.price > 0 ? 
+                            (realTimeGain === 0 ? '$ 0' : formatPrice(realTimeGainUSD, 'USD')) : 
+                            t('notAvailable')
+                          }
                         </span>
                         {/* Percentage */}
-                        {realTimeGain !== undefined && realTimeGain !== null && realTimeGainPercentage !== 0 && (
+                        {assetValue.price && assetValue.price > 0 && realTimeGainPercentage !== 0 && (
                           <span className={`text-xs font-medium ${getGainColor(realTimeGainPercentage)}`}>
                             ({realTimeGainPercentage > 0 ? '+' : ''}{realTimeGainPercentage.toFixed(2)}%)
                           </span>
