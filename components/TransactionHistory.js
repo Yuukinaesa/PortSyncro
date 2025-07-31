@@ -164,12 +164,19 @@ export default function TransactionHistory({
   const formatNumberForCSV = (value, currency) => {
     if (!value || isNaN(value)) return currency === 'USD' ? '0.00' : '0';
     
+    // Convert to number and round to avoid floating point precision issues
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    
     if (currency === 'IDR') {
-      // Use Indonesian format for IDR (dots for thousands, comma for decimal)
-      return formatNumber(value, 0);
+      // For IDR, format with dot as thousands separator
+      const rounded = Math.round(num);
+      return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     } else {
-      // Use US format for USD (comma for thousands, period for decimal) without dollar sign
-      return formatNumberUSD(value, 2); // Always use 2 decimal places for USD
+      // For USD, format with comma as thousands separator and 2 decimal places
+      return num.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
     }
   };
   

@@ -342,16 +342,23 @@ export default function Portfolio({
   const gains = calculateGains();
 
   // Export portfolio to CSV
-  // Format number for CSV export (without currency symbol) - same as TransactionHistory
+    // Format number for CSV export (without currency symbol) - same as TransactionHistory
   const formatNumberForCSV = (value, currency) => {
     if (!value || isNaN(value)) return currency === 'USD' ? '0.00' : '0';
     
+    // Convert to number and round to avoid floating point precision issues
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    
     if (currency === 'IDR') {
-      // Use Indonesian format for IDR (dots for thousands, comma for decimal)
-      return formatNumber(value, 0);
+      // For IDR, format with dot as thousands separator
+      const rounded = Math.round(num);
+      return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     } else {
-      // Use US format for USD (comma for thousands, period for decimal) without dollar sign
-      return formatNumberUSD(value, 2); // Always use 2 decimal places for USD
+      // For USD, format with comma as thousands separator and 2 decimal places
+      return num.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
     }
   };
 
@@ -359,7 +366,7 @@ export default function Portfolio({
     try {
       const BOM = '\uFEFF';
       
-      // Language-aware headers
+      // Language-aware headers with semicolon separation
       const headers = language === 'id' 
         ? ['Aset', 'Tipe', 'Jumlah', 'Harga Rata-rata', 'Harga Sekarang', 'Nilai IDR', 'Nilai USD', 'Gain/Loss IDR', 'Gain/Loss USD']
         : ['Asset', 'Type', 'Amount', 'Avg Price', 'Current Price', 'IDR Value', 'USD Value', 'Gain/Loss IDR', 'Gain/Loss USD'];
@@ -369,13 +376,13 @@ export default function Portfolio({
       // Add stocks
       assets.stocks.forEach(stock => {
         const tickerKey = `${stock.ticker}.JK`;
-        const currentPrice = prices[tickerKey]?.price || stock.price || 0;
+        const currentPrice = prices[tickerKey]?.price || stock.currentPrice || 0;
         const shareCount = stock.lots * 100;
         const currentValueIDR = currentPrice * shareCount;
         const currentValueUSD = exchangeRate && exchangeRate > 0 ? currentValueIDR / exchangeRate : 0;
         const costBasis = stock.avgPrice * shareCount;
         const gainIDR = currentValueIDR - costBasis;
-        const gainUSD = currentValueUSD - (costBasis / (exchangeRate || 1));
+        const gainUSD = exchangeRate && exchangeRate > 0 ? gainIDR / exchangeRate : 0;
         
         const row = [
           `"${stock.ticker}"`,
@@ -393,10 +400,10 @@ export default function Portfolio({
       
       // Add crypto
       assets.crypto.forEach(crypto => {
-        const currentPrice = prices[crypto.symbol]?.price || crypto.price || 0;
+        const currentPrice = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
         const currentValueUSD = currentPrice * crypto.amount;
         const currentValueIDR = exchangeRate && exchangeRate > 0 ? currentValueUSD * exchangeRate : 0;
-        const costBasis = crypto.totalCost || 0;
+        const costBasis = crypto.totalCost || (crypto.avgPrice * crypto.amount);
         const gainUSD = currentValueUSD - costBasis;
         const gainIDR = exchangeRate && exchangeRate > 0 ? gainUSD * exchangeRate : 0;
         
