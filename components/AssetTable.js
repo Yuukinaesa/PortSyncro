@@ -429,7 +429,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         
         const row = [
           `"${type === 'stock' ? asset.ticker : asset.symbol}"`,
-          `"${amount}"`,
+          `"${type === 'stock' ? asset.lots : amount}"`,
           formatNumberForCSV(assetValue.price, asset.currency || (type === 'crypto' ? 'USD' : 'IDR')),
           formatNumberForCSV(assetValue.valueIDR, 'IDR'),
           formatNumberForCSV(assetValue.valueUSD, 'USD'),

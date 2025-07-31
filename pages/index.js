@@ -506,7 +506,7 @@ export default function Home() {
     updatePrices(false); // Pass false for non-immediate update
     
     const exchangeInterval = setInterval(updateExchangeRate, 60000); // 1 minute
-    const priceInterval = setInterval(() => updatePrices(false), 60000); // 1 minute
+    const priceInterval = setInterval(() => updatePrices(false), 30000); // 30 seconds for more frequent updates
 
     return () => {
       clearInterval(exchangeInterval);
@@ -526,6 +526,23 @@ export default function Home() {
       return () => clearTimeout(timeoutId);
     }
   }, [assets.stocks.length, assets.crypto.length]); // Only trigger on length changes
+
+  // ADDED: Auto-refresh when missing prices detected
+  useEffect(() => {
+    const hasAssets = assets.stocks.length + assets.crypto.length > 0;
+    const hasPrices = Object.keys(prices).length > 0;
+    const missingPrices = hasAssets && hasPrices && Object.keys(prices).length < (assets.stocks.length + assets.crypto.length);
+    
+    if (missingPrices && !pricesLoading) {
+      console.log('Auto-refreshing due to missing prices detected');
+      const autoRefreshTimer = setTimeout(() => {
+        console.log('Executing auto-refresh for missing prices');
+        fetchPricesImmediate(); // Use immediate fetch for missing prices
+      }, 2000); // Auto-refresh after 2 seconds
+      
+      return () => clearTimeout(autoRefreshTimer);
+    }
+  }, [prices, assets.stocks.length, assets.crypto.length, pricesLoading, fetchPricesImmediate]);
 
   // Fetch prices for assets - removed to prevent infinite loops
   // Prices are now fetched via intervals and manual refresh only

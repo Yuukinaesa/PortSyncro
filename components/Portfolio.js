@@ -118,6 +118,22 @@ export default function Portfolio({
       console.error('Error during refresh:', error);
     }
   }, [onRefreshPrices, onRefreshExchangeRate, fetchPrices, fetchRate]);
+
+  // Auto-refresh when missing prices detected
+  useEffect(() => {
+    const hasAssets = assets.stocks.length + assets.crypto.length > 0;
+    const hasPrices = Object.keys(prices).length > 0;
+    const missingPrices = hasAssets && hasPrices && Object.keys(prices).length < (assets.stocks.length + assets.crypto.length);
+    
+    if (missingPrices && !debouncedLoading) {
+      console.log('Auto-refreshing due to missing prices');
+      const autoRefreshTimer = setTimeout(() => {
+        handleRefresh();
+      }, 3000); // Auto-refresh after 3 seconds
+      
+      return () => clearTimeout(autoRefreshTimer);
+    }
+  }, [prices, assets.stocks.length, assets.crypto.length, debouncedLoading, handleRefresh]);
   
   // Handle sell functionality
   const handleSellStock = (index, asset, amountToSell) => {
@@ -794,7 +810,7 @@ export default function Portfolio({
                 <FiInfo className="w-5 h-5 text-blue-500" />
                 <div className="flex-1">
                   <p className="font-medium text-blue-800 dark:text-blue-200">{t('updatingPriceData')}</p>
-                  <p className="text-sm mt-1 text-blue-600 dark:text-blue-300">{t('priceUpdateInfo')}</p>
+                  <p className="text-sm mt-1 text-blue-600 dark:text-blue-300">Auto-refresh dalam 3 detik untuk memperbarui data yang hilang...</p>
                   <div className="mt-2 text-xs text-blue-500 dark:text-blue-400">
                     <p>Available prices: {Object.keys(prices).length}</p>
                     <p>Total assets: {assets.stocks.length + assets.crypto.length}</p>
@@ -805,7 +821,7 @@ export default function Portfolio({
                   onClick={handleRefresh}
                   className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors"
                 >
-                  Refresh
+                  Refresh Now
                 </button>
               </div>
             </div>
