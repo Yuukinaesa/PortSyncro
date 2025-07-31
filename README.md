@@ -6,6 +6,8 @@ A modern portfolio management application built with Next.js and Tailwind CSS, d
 
 **Sinkronisasi Portofolio yang Mudah untuk Kripto dan Saham**
 
+![PortSyncro Logo](public/img/mainlogo.png)
+
 ## 🚀 Features
 
 - **Portfolio Management**: Track Indonesian stocks and cryptocurrency investments
@@ -19,6 +21,25 @@ A modern portfolio management application built with Next.js and Tailwind CSS, d
 - **Responsive Design**: Works on desktop, tablet, and mobile
 - **Beautiful UI/UX**: Dribbble-inspired design with smooth animations
 - **Indonesian Market Focus**: Optimized for Indonesian Stock Exchange (IDX) stocks
+
+## 📱 Application Screenshots
+
+### Dashboard & Portfolio Overview
+![Dashboard](public/img/dashboard.png)
+
+### Asset Management
+![Add Asset](public/img/addasset.png)
+![Asset View](public/img/asset.png)
+
+### Average Price Calculator
+![Calculator Step 1](public/img/avgcalc1.png)
+![Calculator Step 2](public/img/avgcalc2.png)
+
+### Transaction History
+![History](public/img/history.png)
+
+### Authentication
+![Login](public/img/login.png)
 
 ## 🛠️ Tech Stack
 
