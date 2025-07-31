@@ -4,7 +4,7 @@ A modern portfolio management application built with Next.js and Tailwind CSS, d
 
 **Easy Portfolio Synchronization for Cryptocurrencies and Stocks**
 
-![PortSyncro Logo](public/img/mainlogo.png)
+<img src="public/img/mainlogo.png" alt="PortSyncro Logo" width="200">
 
 ## 🚀 Features
 
@@ -20,13 +20,13 @@ A modern portfolio management application built with Next.js and Tailwind CSS, d
 
 ## 📱 Screenshots
 
-| Dashboard | Asset Management | Calculator |
+| Dashboard | Asset Management | Asset View |
 |-----------|------------------|------------|
-| ![Dashboard](public/img/dashboard.png) | ![Add Asset](public/img/addasset.png) | ![Calculator](public/img/avgcalc1.png) |
+| ![Dashboard](public/img/dashboard.png) | ![Add Asset](public/img/addasset.png) | ![Asset](public/img/asset.png) |
 
-| History | Login |
-|---------|-------|
-| ![History](public/img/history.png) | ![Login](public/img/login.png) |
+| Average Price Calculator | History | Login |
+|-------------------------|---------|-------|
+| ![Average Price Calculator](public/img/avgcalc1.png) | ![History](public/img/history.png) | ![Login](public/img/login.png) |
 
 ## 🛠️ Tech Stack
 
