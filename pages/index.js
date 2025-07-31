@@ -1767,8 +1767,8 @@ export default function Home() {
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-dark-900 dark:via-dark-800 dark:to-dark-900 text-gray-800 dark:text-white transition-all duration-300">
         <Head>
-          <title>PortSyncro | Easy Portfolio Synchronization for Cryptocurrencies and Stocks</title>
-          <meta name="description" content="Easy Portfolio Synchronization for Cryptocurrencies and Stocks" />
+          <title>PortSyncro | {t('tagline')}</title>
+          <meta name="description" content={t('tagline')} />
           <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         </Head>
         
@@ -1782,7 +1782,7 @@ export default function Home() {
                   PortSyncro
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base lg:text-lg mt-1 animate-fade-in">
-                  Easy Portfolio Synchronization for Cryptocurrencies and Stocks
+                  {t('tagline')}
                 </p>
               </div>
             </div>
@@ -1831,8 +1831,7 @@ export default function Home() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                <span className="hidden sm:inline">{t('averagePriceCalculator')}</span>
-                <span className="sm:hidden">Calculator</span>
+                <span>{t('averagePriceCalculator')}</span>
               </button>
               
 
@@ -1944,7 +1943,7 @@ export default function Home() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                           </svg>
                           <span className="hidden sm:inline">{t('averagePriceCalculator')}</span>
-                          <span className="sm:hidden">Calculator</span>
+                          <span className="sm:hidden">{t('averagePriceCalculator')}</span>
                         </button>
                         <button
                           onClick={() => setActiveTab('portfolio')}
