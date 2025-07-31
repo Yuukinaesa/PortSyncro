@@ -64,16 +64,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     const validTransactions = txs.filter(tx => tx.type !== 'delete');
     if (validTransactions.length === 0) {
       console.log(`Skipping ${ticker} - no valid transactions (only delete transactions)`);
-      // Don't return null - check if we have existing asset to preserve
-      const existingAsset = currentAssets.stocks.find(s => s.ticker === ticker);
-      if (existingAsset) {
-        console.log(`Preserving existing asset ${ticker} despite no valid transactions`);
-        return {
-          ...existingAsset,
-          currentPrice: currentPrice
-        };
-      }
-      return null; // Only skip if no existing asset
+      return null; // Don't preserve existing assets when no valid transactions
     }
     
     const pos = calculatePositionFromTransactions(validTransactions, currentPrice);
@@ -129,16 +120,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     const validTransactions = txs.filter(tx => tx.type !== 'delete');
     if (validTransactions.length === 0) {
       console.log(`Skipping ${symbol} - no valid transactions (only delete transactions)`);
-      // Don't return null - check if we have existing asset to preserve
-      const existingAsset = currentAssets.crypto.find(c => c.symbol === symbol);
-      if (existingAsset) {
-        console.log(`Preserving existing asset ${symbol} despite no valid transactions`);
-        return {
-          ...existingAsset,
-          currentPrice: currentPrice
-        };
-      }
-      return null; // Only skip if no existing asset
+      return null; // Don't preserve existing assets when no valid transactions
     }
     
     const pos = calculatePositionFromTransactions(validTransactions, currentPrice);
@@ -186,50 +168,8 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     };
   }).filter(Boolean); // Remove null entries
 
-  // CRITICAL FIX: Preserve existing assets that are not in current transactions
-  // This prevents portfolio from being cleared when transactions are deleted
-  const existingStocks = currentAssets.stocks || [];
-  const existingCrypto = currentAssets.crypto || [];
-  
-  // Add existing stocks that are not in the new stocks list
-  existingStocks.forEach(existingStock => {
-    const existsInNew = stocks.some(stock => stock.ticker === existingStock.ticker);
-    if (!existsInNew) {
-      console.log(`Preserving existing stock ${existingStock.ticker} that's not in current transactions`);
-      stocks.push({
-        ...existingStock,
-        currentPrice: prices[existingStock.ticker] || prices[`${existingStock.ticker}.JK`]?.price || existingStock.currentPrice || 0,
-        // Ensure all required fields are present
-        ticker: existingStock.ticker,
-        lots: existingStock.lots,
-        avgPrice: existingStock.avgPrice,
-        currency: existingStock.currency || 'IDR',
-        type: 'stock'
-      });
-    } else {
-      console.log(`Stock ${existingStock.ticker} already exists in new list, skipping duplicate`);
-    }
-  });
-  
-  // Add existing crypto that are not in the new crypto list
-  existingCrypto.forEach(existingCrypto => {
-    const existsInNew = crypto.some(c => c.symbol === existingCrypto.symbol);
-    if (!existsInNew) {
-      console.log(`Preserving existing crypto ${existingCrypto.symbol} that's not in current transactions`);
-      crypto.push({
-        ...existingCrypto,
-        currentPrice: prices[existingCrypto.symbol]?.price || existingCrypto.currentPrice || 0,
-        // Ensure all required fields are present
-        symbol: existingCrypto.symbol,
-        amount: existingCrypto.amount,
-        avgPrice: existingCrypto.avgPrice,
-        currency: existingCrypto.currency || 'USD',
-        type: 'crypto'
-      });
-    } else {
-      console.log(`Crypto ${existingCrypto.symbol} already exists in new list, skipping duplicate`);
-    }
-  });
+  // REMOVED: Preserve existing assets logic to prevent duplicates
+  // Assets should only be built from transactions to ensure consistency
 
   return { stocks, crypto };
 }
@@ -321,81 +261,111 @@ export default function Home() {
         return;
       }
     
-    // Filter out US stocks and invalid data
-    const validStocks = assets.stocks.filter(stock => {
-      if (!stock || !stock.ticker || !stock.ticker.trim()) return false;
+      console.log('Fetching prices for assets:', {
+        stocks: assets.stocks.map(s => s.ticker),
+        crypto: assets.crypto.map(c => c.symbol)
+      });
+    
+      // Filter out US stocks and invalid data
+      const validStocks = assets.stocks.filter(stock => {
+        if (!stock || !stock.ticker || !stock.ticker.trim()) {
+          console.log('Filtering out invalid stock:', stock);
+          return false;
+        }
+        
+        // Remove US stocks that we removed
+        const usStockTickers = ['TSLA', 'NVDA', 'MSTR', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'INVALID'];
+        const tickerUpper = stock.ticker.toUpperCase();
+        
+        // Only allow valid IDX stocks (4 characters or less, not US stocks)
+        const isValid = tickerUpper.length <= 4 && !usStockTickers.includes(tickerUpper);
+        if (!isValid) {
+          console.log('Filtering out stock:', stock.ticker, 'reason: invalid format or US stock');
+        }
+        return isValid;
+      });
+    
+      const stockTickers = validStocks
+        .map(stock => `${stock.ticker}.JK`);
+        
+      const cryptoSymbols = assets.crypto
+        .filter(crypto => {
+          if (!crypto || !crypto.symbol || !crypto.symbol.trim() || crypto.symbol.toUpperCase() === 'INVALID') {
+            console.log('Filtering out invalid crypto:', crypto);
+            return false;
+          }
+          return true;
+        })
+        .map(crypto => crypto.symbol);
+    
+      console.log('Valid tickers for API:', { stockTickers, cryptoSymbols });
+    
+      if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
+        console.log('No valid tickers to fetch');
+        return;
+      }
+    
+      // Validate data before sending
+      const requestData = {
+        stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
+        crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim())
+      };
+    
+      // Additional validation
+      if (requestData.stocks.length === 0 && requestData.crypto.length === 0) {
+        console.log('No valid request data after filtering');
+        return;
+      }
+    
+      // Validate each ticker/symbol format
+      const invalidStocks = requestData.stocks.filter(ticker => !ticker.includes('.JK'));
+      const invalidCrypto = requestData.crypto.filter(symbol => !symbol || symbol.length === 0);
+    
+      if (invalidStocks.length > 0 || invalidCrypto.length > 0) {
+        console.error('Invalid data format:', { invalidStocks, invalidCrypto });
+        return;
+      }
+    
+      console.log('Sending API request with data:', requestData);
+    
+      const response = await fetch('/api/prices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...requestData,
+          exchangeRate: exchangeRate
+        }),
+      });
+    
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        // Don't throw error, just log it and continue
+        console.warn(`API error: ${response.status} - ${errorText}`);
+        return; // Exit early without throwing
+      }
+    
+      const data = await response.json();
+      console.log('API response received:', {
+        receivedPrices: Object.keys(data.prices),
+        expectedPrices: [...stockTickers, ...cryptoSymbols],
+        missingPrices: [...stockTickers, ...cryptoSymbols].filter(key => !data.prices[key])
+      });
       
-      // Remove US stocks that we removed
-      const usStockTickers = ['TSLA', 'NVDA', 'MSTR', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'INVALID'];
-      const tickerUpper = stock.ticker.toUpperCase();
-      
-      // Only allow valid IDX stocks (4 characters or less, not US stocks)
-      return tickerUpper.length <= 4 && !usStockTickers.includes(tickerUpper);
-    });
-    
-    const stockTickers = validStocks
-      .map(stock => `${stock.ticker}.JK`);
-      
-    const cryptoSymbols = assets.crypto
-      .filter(crypto => crypto && crypto.symbol && crypto.symbol.trim() && crypto.symbol.toUpperCase() !== 'INVALID')
-      .map(crypto => crypto.symbol);
-    
-    if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
-      return;
+      setPrices(data.prices);
+    } catch (error) {
+      console.error('Error fetching prices:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        stockTickers,
+        cryptoSymbols
+      });
+    } finally {
+      setPricesLoading(false);
     }
-    
-    // Validate data before sending
-    const requestData = {
-      stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
-      crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim())
-    };
-    
-    // Additional validation
-    if (requestData.stocks.length === 0 && requestData.crypto.length === 0) {
-      return;
-    }
-    
-    // Validate each ticker/symbol format
-    const invalidStocks = requestData.stocks.filter(ticker => !ticker.includes('.JK'));
-    const invalidCrypto = requestData.crypto.filter(symbol => !symbol || symbol.length === 0);
-    
-    if (invalidStocks.length > 0 || invalidCrypto.length > 0) {
-      console.error('Invalid data format:', { invalidStocks, invalidCrypto });
-      return;
-    }
-    
-    const response = await fetch('/api/prices', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...requestData,
-        exchangeRate: exchangeRate
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error Response:', errorText);
-      // Don't throw error, just log it and continue
-      console.warn(`API error: ${response.status} - ${errorText}`);
-      return; // Exit early without throwing
-    }
-    
-    const data = await response.json();
-    setPrices(data.prices);
-  } catch (error) {
-    console.error('Error fetching prices:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      stockTickers,
-      cryptoSymbols
-    });
-  } finally {
-    setPricesLoading(false);
-  }
   }, [assets, exchangeRate]);
 
   // Direct fetch prices function for immediate refresh (bypasses debounce)
@@ -623,41 +593,32 @@ export default function Home() {
       return;
     }
     
-    // Additional protection: skip rebuild if there are any manual updates in the last 60 seconds
-    if (lastManualUpdate && (Date.now() - lastManualUpdate.timestamp) < 60000) {
-      const isPriceRefresh = lastManualUpdate.type === 'price_refresh';
-      if (!isPriceRefresh) {
-        console.log('Skipping portfolio rebuild - manual update detected within 60s');
-        console.log('Manual update type:', lastManualUpdate.type);
-        console.log('Manual update operation:', lastManualUpdate.operation);
-        return;
+    // ENHANCED PROTECTION: Check for manual updates with protection duration
+    if (lastManualUpdate) {
+      const timeSinceUpdate = Date.now() - lastManualUpdate.timestamp;
+      const protectionDuration = lastManualUpdate.protectionDuration || 30000; // Default 30 seconds
+      
+      if (timeSinceUpdate < protectionDuration) {
+        const isPriceRefresh = lastManualUpdate.type === 'price_refresh';
+        if (!isPriceRefresh) {
+          console.log(`Skipping portfolio rebuild - manual update protection active (${Math.round(protectionDuration/1000)}s)`);
+          console.log('Manual update type:', lastManualUpdate.type);
+          console.log('Manual update operation:', lastManualUpdate.operation);
+          console.log(`Time since update: ${Math.round(timeSinceUpdate/1000)}s`);
+          return;
+        } else {
+          console.log('Allowing rebuild after manual price refresh');
+        }
       }
     }
     
-    // If we have a recent manual update (within last 30 seconds), skip rebuild entirely
-    // But allow rebuild if prices were just refreshed manually
-    if (lastManualUpdate && (Date.now() - lastManualUpdate.timestamp) < 30000) {
-      // Check if this is a price refresh (not a manual asset update)
-      const isPriceRefresh = lastManualUpdate.type === 'price_refresh';
-      if (!isPriceRefresh) {
-        console.log('Skipping rebuild - recent manual update detected (30s protection)');
-        console.log('Manual update type:', lastManualUpdate.type);
-        console.log('Manual update operation:', lastManualUpdate.operation);
-        return;
-      } else {
-        console.log('Allowing rebuild after manual price refresh');
-      }
+    // Skip rebuilding if transactions are empty (to preserve portfolio when transactions are deleted)
+    if (!transactions || transactions.length === 0) {
+      console.log('Skipping portfolio rebuild - no transactions available');
+      return;
     }
-    
-      // Skip rebuilding if transactions are empty (to preserve portfolio when transactions are deleted)
-  if (!transactions || transactions.length === 0) {
-    console.log('Skipping portfolio rebuild - no transactions available');
-    // Don't return here - preserve existing portfolio
-    return;
-  }
     
     // Skip rebuilding if we already have assets and transactions are being deleted
-    // This prevents portfolio from being cleared when transactions are deleted
     if (assets.stocks.length > 0 || assets.crypto.length > 0) {
       const hasBuyTransactions = transactions.some(tx => tx.type === 'buy');
       const hasDeleteTransactions = transactions.some(tx => tx.type === 'delete');
@@ -677,7 +638,6 @@ export default function Home() {
       }
       
       // Additional protection: if we have assets and the number of transactions is decreasing
-      // (which happens when transactions are deleted), preserve the portfolio
       const currentTransactionCount = transactions.length;
       const currentAssetCount = assets.stocks.length + assets.crypto.length;
       
@@ -687,11 +647,7 @@ export default function Home() {
         return;
       }
       
-      // NEW: Check if we're deleting transaction history (not portfolio assets)
-      // If we have existing assets and transactions are being deleted from history,
-      // we should preserve the portfolio and not rebuild
-      // If we have assets but transactions are being deleted (which happens when deleting transaction history),
-      // preserve the existing portfolio
+      // Check if we're deleting transaction history
       if (currentAssetCount > 0 && currentTransactionCount < previousTransactionCount) {
         console.log('Skipping portfolio rebuild - transaction history deletion detected, preserving existing portfolio');
         setPortfolioProtected(true);
@@ -705,8 +661,7 @@ export default function Home() {
       return;
     }
     
-    // ADDITIONAL PROTECTION: If we have existing assets and transactions are being deleted,
-    // don't rebuild to prevent portfolio loss
+    // Check for recent deletions
     if (assets.stocks.length > 0 || assets.crypto.length > 0) {
       const hasRecentDeletions = transactions.some(tx => 
         tx.type === 'delete' && 
@@ -720,73 +675,60 @@ export default function Home() {
       }
     }
     
-    // Direct rebuild without debounce
-    if (transactions && prices && Object.keys(prices).length > 0) {
-      try {
-        console.log('Building assets from transactions and prices');
-        // Get current assets from state to preserve manual prices
-        setAssets(currentAssets => {
-          const newAssets = buildAssetsFromTransactions(transactions, prices, currentAssets);
-          console.log('New assets built:', newAssets);
+          // Direct rebuild without debounce
+      if (transactions && prices && Object.keys(prices).length > 0) {
+        try {
+          console.log('Building assets from transactions and prices');
+          console.log('Current transactions:', transactions.map(tx => `${tx.type} ${tx.assetType} ${tx.ticker || tx.symbol} ${tx.amount}`));
           
-          // Reset portfolio protection when rebuilding successfully
-          setPortfolioProtected(false);
-          
-          // Filter out assets with zero amount (fully sold)
-          const filteredStocks = newAssets.stocks.filter(stock => {
-            const isValid = stock.lots > 0;
-            if (!isValid) {
-              console.log(`Filtering out stock ${stock.ticker} - lots: ${stock.lots}`);
-            }
-            return isValid;
-          });
-          const filteredCrypto = newAssets.crypto.filter(crypto => {
-            const isValid = crypto.amount > 0;
-            if (!isValid) {
-              console.log(`Filtering out crypto ${crypto.symbol} - amount: ${crypto.amount}`);
-            }
-            return isValid;
-          });
-          
-          const filteredAssets = {
-            stocks: filteredStocks,
-            crypto: filteredCrypto
-          };
-          
-          console.log('Filtered assets (removed zero amounts):', filteredAssets);
-          
-          // CRITICAL FIX: If we have existing assets but new assets are empty after filtering,
-          // preserve the existing assets instead of clearing them
-          if (currentAssets.stocks.length > 0 || currentAssets.crypto.length > 0) {
-            if (filteredAssets.stocks.length === 0 && filteredAssets.crypto.length === 0) {
-              console.log('WARNING: New assets are empty but current assets exist. Preserving current assets.');
-              console.log('Current assets:', currentAssets);
-              console.log('This might indicate transaction deletion. Keeping existing portfolio.');
-              return currentAssets; // Preserve existing assets
-            }
-          }
-          
-          // Only update if the new assets are different from current assets
-          const stocksChanged = JSON.stringify(currentAssets.stocks) !== JSON.stringify(filteredAssets.stocks);
-          const cryptoChanged = JSON.stringify(currentAssets.crypto) !== JSON.stringify(filteredAssets.crypto);
-          
-          if (stocksChanged || cryptoChanged) {
-            console.log('Assets changed, updating portfolio');
+          // Get current assets from state to preserve manual prices
+          setAssets(currentAssets => {
+            const newAssets = buildAssetsFromTransactions(transactions, prices, currentAssets);
+            console.log('New assets built:', newAssets);
+            
+            // Reset portfolio protection when rebuilding successfully
+            setPortfolioProtected(false);
+            
+            // Filter out assets with zero amount (fully sold)
+            const filteredStocks = newAssets.stocks.filter(stock => {
+              const isValid = stock.lots > 0;
+              if (!isValid) {
+                console.log(`Filtering out stock ${stock.ticker} - lots: ${stock.lots} (fully sold)`);
+              }
+              return isValid;
+            });
+            const filteredCrypto = newAssets.crypto.filter(crypto => {
+              const isValid = crypto.amount > 0;
+              if (!isValid) {
+                console.log(`Filtering out crypto ${crypto.symbol} - amount: ${crypto.amount} (fully sold)`);
+              }
+              return isValid;
+            });
+            
+            const filteredAssets = {
+              stocks: filteredStocks,
+              crypto: filteredCrypto
+            };
+            
+            console.log('Filtered assets (removed zero amounts):', filteredAssets);
+            
+            // REMOVED: Preserve existing assets when new assets are empty
+            // This was causing sold assets to remain in portfolio
+            
+            // Always update with filtered assets to ensure sold assets are removed
+            console.log('Updating portfolio with filtered assets');
             console.log('Previous stocks:', currentAssets.stocks.map(s => `${s.ticker}: ${s.lots}`));
             console.log('New stocks:', filteredAssets.stocks.map(s => `${s.ticker}: ${s.lots}`));
             console.log('Previous crypto:', currentAssets.crypto.map(c => `${c.symbol}: ${c.amount}`));
             console.log('New crypto:', filteredAssets.crypto.map(c => `${c.symbol}: ${c.amount}`));
+            
             return filteredAssets;
-          } else {
-            console.log('No changes detected, keeping current assets');
-            return currentAssets;
-          }
-        });
-      } catch (error) {
-        console.error('Error building assets from transactions:', error);
-        // Don't use fallback to prevent overriding manual updates
+          });
+        } catch (error) {
+          console.error('Error building assets from transactions:', error);
+          // Don't use fallback to prevent overriding manual updates
+        }
       }
-    }
     
     // No cleanup needed since we removed debounce
   }, [transactions, prices, isUpdatingPortfolio, lastManualUpdate, portfolioProtected, previousTransactionCount]); // Removed assets from dependency array to prevent infinite loop
@@ -1450,6 +1392,7 @@ export default function Home() {
     try {
       setSellingLoading(true);
       setIsUpdatingPortfolio(true);
+      
       // Get current price from prices state using correct ticker format
       const tickerKey = `${asset.ticker}.JK`;
       
@@ -1505,25 +1448,57 @@ export default function Home() {
         valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : 0;
       }
 
-      // Update the stock amount
-      const updatedStocks = [...assets.stocks];
-      const remainingAmount = updatedStocks[index].lots - amountToSell;
+      // Calculate remaining amount and update portfolio
+      const remainingAmount = asset.lots - amountToSell;
+      let newAssets;
 
       if (remainingAmount <= 0) {
         // Remove the stock if selling all
-        updatedStocks.splice(index, 1);
+        const updatedStocks = assets.stocks.filter((_, i) => i !== index);
+        newAssets = {
+          ...assets,
+          stocks: updatedStocks
+        };
       } else {
-        // Update the remaining amount
+        // Update the remaining amount with proper calculations
+        const updatedStocks = [...assets.stocks];
+        const remainingShares = remainingAmount * 100;
+        const remainingValueIDR = remainingShares * priceData.price;
+        const remainingValueUSD = exchangeRate && exchangeRate > 0 ? remainingValueIDR / exchangeRate : 0;
+        
         updatedStocks[index] = {
-          ...updatedStocks[index],
+          ...asset,
           lots: remainingAmount,
-          shares: remainingAmount * 100,
-          valueIDR: remainingAmount * 100 * priceData.price,
-          valueUSD: exchangeRate && exchangeRate > 0 ? (remainingAmount * 100 * priceData.price) / exchangeRate : 0
+          shares: remainingShares,
+          currentPrice: priceData.price,
+          porto: remainingValueIDR,
+          valueIDR: remainingValueIDR,
+          valueUSD: remainingValueUSD,
+          // Recalculate gain/loss
+          totalCost: asset.avgPrice * remainingShares,
+          gain: remainingValueIDR - (asset.avgPrice * remainingShares)
+        };
+        
+        newAssets = {
+          ...assets,
+          stocks: updatedStocks
         };
       }
 
-      // Add transaction (SELL) - always use addDoc to Firestore
+      // Set manual update flag BEFORE updating assets
+      setLastManualUpdate({
+        timestamp: Date.now(),
+        type: 'manual_update',
+        operation: 'sell_stock',
+        ticker: asset.ticker,
+        amount: amountToSell,
+        protectionDuration: 15000 // 15 seconds protection
+      });
+
+      // Update assets state
+      setAssets(newAssets);
+
+      // Add transaction (SELL) to Firestore
       const now = new Date();
       const formattedDate = now.toLocaleString('id-ID', {
         day: 'numeric',
@@ -1533,15 +1508,16 @@ export default function Home() {
         minute: '2-digit',
         second: '2-digit'
       });
+      
       const transactionData = {
         type: 'sell',
         ticker: asset.ticker,
         amount: amountToSell,
         price: priceData.price,
-        avgPrice: asset.avgPrice, // Use the static average price from the asset
+        avgPrice: asset.avgPrice,
         valueIDR,
         valueUSD,
-        timestamp: now.toISOString(),
+        timestamp: serverTimestamp(), // Use serverTimestamp for consistency
         assetType: 'stock',
         currency: priceData.currency,
         shares: shareCount,
@@ -1550,28 +1526,20 @@ export default function Home() {
         status: 'completed'
       };
 
-      const newAssets = {
-        ...assets,
-        stocks: updatedStocks
-      };
-      
-      setAssets(newAssets);
-      setLastManualUpdate({
-        timestamp: Date.now(),
-        type: 'manual_update',
-        assets: newAssets,
-        operation: 'sell_stock',
-        ticker: asset.ticker,
-        amount: amountToSell
-      });
-
-      // Save to Firestore if user is logged in
+      // Save transaction to Firestore
       if (user) {
         await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
       }
 
-      // Remove success notification - just close the modal silently
-      setConfirmModal(null);
+      // Show success notification
+      setConfirmModal({
+        isOpen: true,
+        title: 'Success',
+        message: `Berhasil menjual ${amountToSell} lot ${asset.ticker}`,
+        type: 'success',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModal(null)
+      });
 
     } catch (error) {
       console.error('Error selling stock:', error);
@@ -1584,14 +1552,10 @@ export default function Home() {
       });
     } finally {
       setSellingLoading(false);
-      // Keep the flag active longer to prevent rebuild interference
+      // Keep protection active for longer
       setTimeout(() => {
         setIsUpdatingPortfolio(false);
-        // Clear the last manual update after a longer delay
-        setTimeout(() => {
-          setLastManualUpdate(null);
-        }, 5000);
-      }, 5000);
+      }, 10000); // 10 seconds
     }
   };
 
@@ -1599,6 +1563,7 @@ export default function Home() {
     try {
       setSellingLoading(true);
       setIsUpdatingPortfolio(true);
+      
       const crypto = assets.crypto[index];
       if (!crypto) return;
 
@@ -1648,44 +1613,55 @@ export default function Home() {
       const valueUSD = priceData.price * amountToSell;
       const valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : 0;
 
-      // Update asset
-      const updatedAmount = crypto.amount - amountToSell;
+      // Calculate remaining amount and update portfolio
+      const remainingAmount = crypto.amount - amountToSell;
       let newAssets;
       
-      if (updatedAmount <= 0) {
+      if (remainingAmount <= 0) {
         // Remove crypto if selling all
-        const updatedCrypto = [...assets.crypto];
-        updatedCrypto.splice(index, 1);
+        const updatedCrypto = assets.crypto.filter((_, i) => i !== index);
         newAssets = {
           ...assets,
           crypto: updatedCrypto
         };
       } else {
-        // Update remaining amount
+        // Update remaining amount with proper calculations
         const updatedCrypto = [...assets.crypto];
+        const remainingValueUSD = remainingAmount * priceData.price;
+        const remainingValueIDR = exchangeRate && exchangeRate > 0 ? remainingValueUSD * exchangeRate : 0;
+        
         updatedCrypto[index] = {
           ...crypto,
-          amount: updatedAmount,
-          valueUSD: updatedAmount * priceData.price,
-          valueIDR: exchangeRate && exchangeRate > 0 ? (updatedAmount * priceData.price) * exchangeRate : 0
+          amount: remainingAmount,
+          currentPrice: priceData.price,
+          porto: remainingValueUSD,
+          valueUSD: remainingValueUSD,
+          valueIDR: remainingValueIDR,
+          // Recalculate gain/loss
+          totalCost: crypto.avgPrice * remainingAmount,
+          gain: remainingValueUSD - (crypto.avgPrice * remainingAmount)
         };
+        
         newAssets = {
           ...assets,
           crypto: updatedCrypto
         };
       }
-      
-      setAssets(newAssets);
+
+      // Set manual update flag BEFORE updating assets
       setLastManualUpdate({
         timestamp: Date.now(),
         type: 'manual_update',
-        assets: newAssets,
         operation: 'sell_crypto',
         symbol: crypto.symbol,
-        amount: amountToSell
+        amount: amountToSell,
+        protectionDuration: 15000 // 15 seconds protection
       });
 
-      // Add transaction (SELL) - always use addDoc to Firestore
+      // Update assets state
+      setAssets(newAssets);
+
+      // Add transaction (SELL) to Firestore
       const now = new Date();
       const formattedDate = now.toLocaleString('id-ID', {
         day: 'numeric',
@@ -1695,29 +1671,37 @@ export default function Home() {
         minute: '2-digit',
         second: '2-digit'
       });
+      
       const transaction = {
         type: 'sell',
         assetType: 'crypto',
         symbol: crypto.symbol,
         amount: amountToSell,
         price: priceData.price,
-        avgPrice: crypto.avgPrice, // Use the static average price from the asset
+        avgPrice: crypto.avgPrice,
         valueIDR,
         valueUSD,
-        timestamp: now.toISOString(),
+        timestamp: serverTimestamp(), // Use serverTimestamp for consistency
         date: formattedDate,
         currency: 'USD',
         userId: user ? user.uid : null,
         status: 'completed'
       };
 
-      // Save to Firestore if user is logged in
+      // Save transaction to Firestore
       if (user) {
         await addDoc(collection(db, 'users', user.uid, 'transactions'), transaction);
       }
 
-      // Remove success notification - just close the modal silently
-      setConfirmModal(null);
+      // Show success notification
+      setConfirmModal({
+        isOpen: true,
+        title: 'Success',
+        message: `Berhasil menjual ${amountToSell} ${crypto.symbol}`,
+        type: 'success',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModal(null)
+      });
 
     } catch (error) {
       console.error('Error selling crypto:', error);
@@ -1730,14 +1714,10 @@ export default function Home() {
       });
     } finally {
       setSellingLoading(false);
-      // Keep the flag active longer to prevent rebuild interference
+      // Keep protection active for longer
       setTimeout(() => {
         setIsUpdatingPortfolio(false);
-        // Clear the last manual update after a longer delay
-        setTimeout(() => {
-          setLastManualUpdate(null);
-        }, 10000); // Increased to 10 seconds
-      }, 7000); // Increased to 7 seconds
+      }, 10000); // 10 seconds
     }
   };
 

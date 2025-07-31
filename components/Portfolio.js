@@ -762,10 +762,21 @@ export default function Portfolio({
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
               <div className="flex items-center gap-3">
                 <FiInfo className="w-5 h-5 text-blue-500" />
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-blue-800 dark:text-blue-200">{t('updatingPriceData')}</p>
                   <p className="text-sm mt-1 text-blue-600 dark:text-blue-300">{t('priceUpdateInfo')}</p>
+                  <div className="mt-2 text-xs text-blue-500 dark:text-blue-400">
+                    <p>Available prices: {Object.keys(prices).length}</p>
+                    <p>Total assets: {assets.stocks.length + assets.crypto.length}</p>
+                    <p>Missing: {(assets.stocks.length + assets.crypto.length) - Object.keys(prices).length}</p>
+                  </div>
                 </div>
+                <button 
+                  onClick={handleRefresh}
+                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors"
+                >
+                  Refresh
+                </button>
               </div>
             </div>
           )}
