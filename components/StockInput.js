@@ -30,8 +30,20 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       // Validate ticker format for IDX (should be 2-4 characters, letters only)
       const normalizedTicker = ticker.trim().toUpperCase();
       
+      // Enhanced validation for IDX stocks
       if (!/^[A-Z]{2,4}$/.test(normalizedTicker)) {
         throw new Error(t('invalidStockFormat'));
+      }
+      
+      // Additional validation: check for common invalid patterns
+      const invalidPatterns = ['TEST', 'DEMO', 'NULL', 'NONE', 'INVALID'];
+      if (invalidPatterns.includes(normalizedTicker)) {
+        throw new Error('Invalid stock code format');
+      }
+      
+      // Check for numbers in ticker (IDX stocks should be letters only)
+      if (/\d/.test(normalizedTicker)) {
+        throw new Error('Stock code should contain only letters');
       }
 
       // Format tickers for IDX

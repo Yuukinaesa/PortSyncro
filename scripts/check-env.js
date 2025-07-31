@@ -71,21 +71,46 @@ function checkEnvironmentVariables() {
   
   // Check if Firebase config looks valid
   const firebaseKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  if (firebaseKey && firebaseKey.length < 20) {
-    console.log('   ⚠️  Firebase API key seems too short - please verify');
-    allValid = false;
+  if (firebaseKey) {
+    if (firebaseKey.length < 20) {
+      console.log('   ⚠️  Firebase API key seems too short - please verify');
+      allValid = false;
+    }
+    if (!firebaseKey.startsWith('AIza')) {
+      console.log('   ⚠️  Firebase API key format seems invalid - should start with "AIza"');
+      allValid = false;
+    }
   }
   
   // Check if project ID looks valid
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  if (projectId && projectId.includes(' ')) {
-    console.log('   ⚠️  Firebase project ID contains spaces - please verify');
+  if (projectId) {
+    if (projectId.includes(' ')) {
+      console.log('   ⚠️  Firebase project ID contains spaces - please verify');
+      allValid = false;
+    }
+    if (projectId.length < 5) {
+      console.log('   ⚠️  Firebase project ID seems too short - please verify');
+      allValid = false;
+    }
+  }
+  
+  // Check auth domain format
+  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+  if (authDomain && !authDomain.includes('.firebaseapp.com')) {
+    console.log('   ⚠️  Firebase auth domain format seems invalid - should end with ".firebaseapp.com"');
     allValid = false;
   }
   
   // Check for demo account
   if (process.env.NEXT_PUBLIC_DEMO_EMAIL && process.env.NEXT_PUBLIC_DEMO_PASSWORD) {
     console.log('   ✅ Demo account configured');
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(process.env.NEXT_PUBLIC_DEMO_EMAIL)) {
+      console.log('   ⚠️  Demo email format seems invalid');
+      allValid = false;
+    }
   } else {
     console.log('   ℹ️  Demo account not configured (optional)');
   }

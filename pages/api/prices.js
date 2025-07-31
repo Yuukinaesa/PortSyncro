@@ -51,29 +51,39 @@ export default async function handler(req, res) {
   // API called with stocks and crypto
   
   try {
-    // Buat Promise untuk fetch data secara parallel
+    // Buat Promise untuk fetch data secara parallel dengan error handling
     const stockPromise = stocks && stocks.length > 0 
-      ? fetchStockPrices(stocks) 
+      ? fetchStockPrices(stocks).catch(error => {
+          console.error('Error fetching stock prices:', error);
+          return {}; // Return empty object on error
+        })
       : Promise.resolve({});
       
     const cryptoPromise = crypto && crypto.length > 0 
-      ? fetchCryptoPrices(crypto) 
+      ? fetchCryptoPrices(crypto).catch(error => {
+          console.error('Error fetching crypto prices:', error);
+          return {}; // Return empty object on error
+        })
       : Promise.resolve({});
     
     console.log('Starting parallel fetch for stocks:', stocks, 'crypto:', crypto);
     
-    // Fetch data secara parallel untuk kecepatan
-    const [stockPrices, cryptoPrices] = await Promise.all([
+    // Fetch data secara parallel untuk kecepatan dengan proper error handling
+    const [stockPrices, cryptoPrices] = await Promise.allSettled([
       stockPromise,
       cryptoPromise
     ]);
     
-    console.log('Fetch completed. Stock prices:', stockPrices, 'Crypto prices:', cryptoPrices);
+    // Extract results from Promise.allSettled
+    const stockResult = stockPrices.status === 'fulfilled' ? stockPrices.value : {};
+    const cryptoResult = cryptoPrices.status === 'fulfilled' ? cryptoPrices.value : {};
+    
+    console.log('Fetch completed. Stock prices:', stockResult, 'Crypto prices:', cryptoResult);
     
     // Gabungkan semua data harga
     const prices = {
-      ...stockPrices,
-      ...cryptoPrices
+      ...stockResult,
+      ...cryptoResult
     };
     
     console.log('Combined prices:', prices);
@@ -89,7 +99,7 @@ export default async function handler(req, res) {
     res.status(200).json(response);
   } catch (error) {
     console.error('Error in /api/prices:', error);
-    console.error('Error stack:', error.stack);
+    // Remove error.stack from production response for security
     console.error('Request body:', req.body);
     
     res.status(500).json({ 

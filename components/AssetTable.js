@@ -261,7 +261,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
   const handleSaveAvgPrice = (index, asset) => {
     const normalizedPrice = normalizeNumberInput(newAvgPrice);
     const price = parseFloat(normalizedPrice);
-    if (isNaN(price) || price < 0) {
+    if (isNaN(price) || price <= 0) {
       setConfirmModal({
         isOpen: true,
         title: 'Peringatan',
@@ -277,6 +277,17 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         isOpen: true,
         title: 'Error',
         message: 'Data aset tidak valid',
+        type: 'error'
+      });
+      return;
+    }
+
+    // Additional validation for price sanity
+    if (price > 1000000000) { // 1 billion limit
+      setConfirmModal({
+        isOpen: true,
+        title: 'Peringatan',
+        message: 'Harga terlalu tinggi. Pastikan format input benar.',
         type: 'error'
       });
       return;
@@ -315,9 +326,21 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     });
 
     if (onUpdate) {
-      // Use asset identifier instead of index to avoid sorting issues
-      const assetId = type === 'stock' ? asset.ticker : asset.symbol;
-      onUpdate(assetId, updatedAsset);
+      // For both stocks and crypto, pass symbol/ticker and updated asset
+      if (type === 'stock') {
+        onUpdate(asset.ticker, updatedAsset);
+      } else {
+        onUpdate(asset.symbol, updatedAsset);
+      }
+      
+      // Show success feedback
+      setConfirmModal({
+        isOpen: true,
+        title: 'Berhasil',
+        message: `Harga rata-rata ${type === 'stock' ? asset.ticker : asset.symbol} berhasil diperbarui`,
+        type: 'success',
+        onConfirm: () => setConfirmModal(null)
+      });
     }
     
     setEditingAvgPrice(null);
@@ -785,8 +808,17 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                               const value = e.target.value.replace(/[^0-9.,]/g, '');
                               setNewAvgPrice(value);
                             }}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSaveAvgPrice(index, asset);
+                              } else if (e.key === 'Escape') {
+                                handleCancelEditAvgPrice();
+                              }
+                            }}
                             className="w-20 sm:w-24 px-2 sm:px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                             min="0"
+                            placeholder="0"
+                            autoFocus
                           />
                           <button
                             onClick={() => handleSaveAvgPrice(index, asset)}

@@ -128,12 +128,15 @@ export default function Portfolio({
     if (missingPrices && !debouncedLoading) {
       console.log('Auto-refreshing due to missing prices');
       const autoRefreshTimer = setTimeout(() => {
-        handleRefresh();
+        // Call parent refresh functions directly to avoid dependency issues
+        if (onRefreshPrices) {
+          onRefreshPrices(true); // Pass immediate=true for auto-refresh
+        }
       }, 3000); // Auto-refresh after 3 seconds
       
       return () => clearTimeout(autoRefreshTimer);
     }
-  }, [prices, assets.stocks.length, assets.crypto.length, debouncedLoading]); // Removed handleRefresh dependency
+  }, [prices, assets.stocks.length, assets.crypto.length, debouncedLoading, onRefreshPrices]);
   
   // Handle sell functionality
   const handleSellStock = (index, asset, amountToSell) => {

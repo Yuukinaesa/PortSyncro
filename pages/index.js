@@ -39,24 +39,36 @@ const cleanUndefinedValues = (obj) => {
   return cleaned;
 };
 
-// Tambahkan fungsi untuk membangun ulang aset dari transaksi
+// Tambahkan fungsi untuk membangun ulang aset dari transaksi dengan optimasi
 function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [] }) {
-  const stocksMap = {};
-  const cryptoMap = {};
+  // Early return if no transactions
+  if (!transactions || transactions.length === 0) {
+    return { stocks: [], crypto: [] };
+  }
+  
+  // Use Map for better performance with large datasets
+  const stocksMap = new Map();
+  const cryptoMap = new Map();
 
-  transactions.forEach(tx => {
-    if (tx.assetType === 'stock') {
-      const key = tx.ticker.toUpperCase();
-      if (!stocksMap[key]) stocksMap[key] = [];
-      stocksMap[key].push(tx);
-    } else if (tx.assetType === 'crypto') {
-      const key = tx.symbol.toUpperCase();
-      if (!cryptoMap[key]) cryptoMap[key] = [];
-      cryptoMap[key].push(tx);
-    }
-  });
+  // Process transactions in batches for better performance
+  const batchSize = 100;
+  for (let i = 0; i < transactions.length; i += batchSize) {
+    const batch = transactions.slice(i, i + batchSize);
+    
+    batch.forEach(tx => {
+      if (tx.assetType === 'stock' && tx.ticker) {
+        const key = tx.ticker.toUpperCase();
+        if (!stocksMap.has(key)) stocksMap.set(key, []);
+        stocksMap.get(key).push(tx);
+      } else if (tx.assetType === 'crypto' && tx.symbol) {
+        const key = tx.symbol.toUpperCase();
+        if (!cryptoMap.has(key)) cryptoMap.set(key, []);
+        cryptoMap.get(key).push(tx);
+      }
+    });
+  }
 
-  const stocks = Object.entries(stocksMap).map(([ticker, txs]) => {
+  const stocks = Array.from(stocksMap.entries()).map(([ticker, txs]) => {
     const priceObj = prices[ticker] || prices[`${ticker}.JK`];
     const currentPrice = priceObj ? priceObj.price : 0;
     
@@ -112,7 +124,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     };
   }).filter(Boolean); // Remove null entries
 
-  const crypto = Object.entries(cryptoMap).map(([symbol, txs]) => {
+  const crypto = Array.from(cryptoMap.entries()).map(([symbol, txs]) => {
     const priceObj = prices[symbol];
     const currentPrice = priceObj ? priceObj.price : 0;
     
@@ -758,6 +770,18 @@ export default function Home() {
             // Reset portfolio protection when rebuilding successfully
             setPortfolioProtected(false);
             
+            // Force UI update by triggering a re-render
+            setTimeout(() => {
+              console.log('Forcing UI update after portfolio rebuild');
+              setLastManualUpdate({
+                timestamp: Date.now(),
+                type: 'portfolio_rebuild',
+                operation: 'auto_rebuild'
+              });
+            }, 100);
+            
+            return newAssets;
+            
             // Filter out assets with zero amount (fully sold)
             const filteredStocks = newAssets.stocks.filter(stock => {
               const isValid = stock.lots > 0;
@@ -992,16 +1016,28 @@ export default function Home() {
       });
 
       // Force refresh prices after adding stock to ensure data consistency
-      setTimeout(() => {
+      setTimeout(async () => {
         console.log('Force refreshing prices after adding stock');
         // Set flag to prevent unwanted rebuilds
         setIsUpdatingPortfolio(true);
-        fetchPricesImmediate();
-        // Clear flag after refresh
-        setTimeout(() => {
-          setIsUpdatingPortfolio(false);
-          console.log('Portfolio update protection cleared for stock');
-        }, 2000);
+        
+        try {
+          await fetchPricesImmediate();
+          // Force rebuild portfolio after price update
+          setLastManualUpdate({
+            timestamp: Date.now(),
+            type: 'price_refresh',
+            operation: 'post_add_stock'
+          });
+        } catch (error) {
+          console.error('Error during post-add refresh:', error);
+        } finally {
+          // Clear flag after refresh
+          setTimeout(() => {
+            setIsUpdatingPortfolio(false);
+            console.log('Portfolio update protection cleared for stock');
+          }, 2000);
+        }
       }, 500);
 
     } catch (error) {
@@ -1186,16 +1222,28 @@ export default function Home() {
       });
 
       // Force refresh prices after adding crypto to ensure data consistency
-      setTimeout(() => {
+      setTimeout(async () => {
         console.log('Force refreshing prices after adding crypto');
         // Set flag to prevent unwanted rebuilds
         setIsUpdatingPortfolio(true);
-        fetchPricesImmediate();
-        // Clear flag after refresh
-        setTimeout(() => {
-          setIsUpdatingPortfolio(false);
-          console.log('Portfolio update protection cleared for crypto');
-        }, 2000);
+        
+        try {
+          await fetchPricesImmediate();
+          // Force rebuild portfolio after price update
+          setLastManualUpdate({
+            timestamp: Date.now(),
+            type: 'price_refresh',
+            operation: 'post_add_crypto'
+          });
+        } catch (error) {
+          console.error('Error during post-add refresh:', error);
+        } finally {
+          // Clear flag after refresh
+          setTimeout(() => {
+            setIsUpdatingPortfolio(false);
+            console.log('Portfolio update protection cleared for crypto');
+          }, 2000);
+        }
       }, 500);
 
     } catch (error) {
@@ -1232,6 +1280,12 @@ export default function Home() {
       // Get the original stock to preserve all data
       const originalStock = prev.stocks[stockIndex];
       
+      // Validate that originalStock exists
+      if (!originalStock) {
+        console.error('Original stock not found for ticker:', ticker);
+        return prev; // Return unchanged state
+      }
+      
       // Get the most current price from prices state
       const currentPrice = prices[`${updatedStock.ticker}.JK`]?.price || 0;
       const currentValue = currentPrice * updatedStock.lots; // Calculate based on lots
@@ -1246,10 +1300,10 @@ export default function Home() {
         totalCost: totalCost,
         gain: gain,
         // Ensure all required fields are present and correct
-        ticker: updatedStock.ticker || originalStock.ticker,
-        lots: updatedStock.lots || originalStock.lots,
+        ticker: updatedStock.ticker || originalStock?.ticker,
+        lots: updatedStock.lots || originalStock?.lots,
         avgPrice: updatedStock.avgPrice,
-        currency: updatedStock.currency || originalStock.currency || 'IDR',
+        currency: updatedStock.currency || originalStock?.currency || 'IDR',
         type: 'stock'
       };
       
@@ -1259,9 +1313,9 @@ export default function Home() {
         original: originalStock,
         updated: finalStock,
         ticker: finalStock.ticker,
-        originalTicker: originalStock.ticker,
+        originalTicker: originalStock?.ticker || 'unknown',
         updatedTicker: finalStock.ticker,
-        tickerChanged: originalStock.ticker !== finalStock.ticker
+        tickerChanged: originalStock?.ticker !== finalStock.ticker
       });
       
       return {
@@ -1280,18 +1334,30 @@ export default function Home() {
     });
   };
   
-  const updateCrypto = (index, updatedCrypto) => {
+  const updateCrypto = (symbol, updatedCrypto) => {
     console.log('updateCrypto called:', {
-      index,
+      symbol,
       updatedCrypto,
       currentCrypto: assets.crypto
     });
     
     setAssets(prev => {
+      const cryptoIndex = prev.crypto.findIndex(crypto => crypto.symbol === symbol);
+      if (cryptoIndex === -1) {
+        console.error('Crypto not found:', symbol);
+        return prev;
+      }
+      
       const updatedCryptos = [...prev.crypto];
       
       // Get the original crypto to preserve all data
-      const originalCrypto = prev.crypto[index];
+      const originalCrypto = prev.crypto[cryptoIndex];
+      
+      // Validate that originalCrypto exists
+      if (!originalCrypto) {
+        console.error('Original crypto not found at index:', index);
+        return prev; // Return unchanged state
+      }
       
       // Get the most current price from prices state
       const currentPrice = prices[updatedCrypto.symbol]?.price || 0;
@@ -1307,22 +1373,22 @@ export default function Home() {
         totalCost: totalCost,
         gain: gain,
         // Ensure all required fields are present and correct
-        symbol: updatedCrypto.symbol || originalCrypto.symbol,
-        amount: updatedCrypto.amount || originalCrypto.amount,
+        symbol: updatedCrypto.symbol || originalCrypto?.symbol,
+        amount: updatedCrypto.amount || originalCrypto?.amount,
         avgPrice: updatedCrypto.avgPrice,
-        currency: updatedCrypto.currency || originalCrypto.currency || 'USD',
+        currency: updatedCrypto.currency || originalCrypto?.currency || 'USD',
         type: 'crypto'
       };
       
-      updatedCryptos[index] = finalCrypto;
+      updatedCryptos[cryptoIndex] = finalCrypto;
       
       console.log('Crypto updated:', {
         original: originalCrypto,
         updated: finalCrypto,
         symbol: finalCrypto.symbol,
-        originalSymbol: originalCrypto.symbol,
+        originalSymbol: originalCrypto?.symbol || 'unknown',
         updatedSymbol: finalCrypto.symbol,
-        symbolChanged: originalCrypto.symbol !== finalCrypto.symbol
+        symbolChanged: originalCrypto?.symbol !== finalCrypto.symbol
       });
       
       return {

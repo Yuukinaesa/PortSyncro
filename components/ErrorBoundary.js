@@ -15,6 +15,12 @@ class ErrorBoundary extends React.Component {
     // Log error to console for debugging
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     
+    // Log additional context for debugging
+    if (error.message.includes('Cannot read properties of undefined')) {
+      console.error('This appears to be a null/undefined reference error');
+      console.error('Error location:', errorInfo.componentStack);
+    }
+    
     // Update state with error details
     this.setState({
       error: error,
@@ -44,6 +50,13 @@ class ErrorBoundary extends React.Component {
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               We encountered an unexpected error. Please try refreshing the page or contact support if the problem persists.
             </p>
+            
+            {/* Show error ID in production for debugging */}
+            {process.env.NODE_ENV === 'production' && this.state.error && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Error ID: {this.state.error.name || 'Unknown'}
+              </p>
+            )}
             
             <div className="space-y-3">
               <button

@@ -43,23 +43,27 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!symbol) {
-      setError(t('enterCryptoSymbol'));
-      return;
-    }
-    
-    // Validasi jumlah
-    const normalizedAmount = normalizeNumberInput(amount);
-    const amountValue = parseFloat(normalizedAmount);
-    if (isNaN(amountValue) || amountValue <= 0) {
-      setError(t('enterValidAmount'));
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     
     try {
+      if (!symbol) {
+        throw new Error(t('enterCryptoSymbol'));
+      }
+      
+      // Validasi jumlah
+      const normalizedAmount = normalizeNumberInput(amount);
+      const amountValue = parseFloat(normalizedAmount);
+      if (isNaN(amountValue) || amountValue <= 0) {
+        throw new Error(t('enterValidAmount'));
+      }
+      
+            // Enhanced validation for crypto symbol
+      const normalizedSymbol = symbol.trim().toUpperCase();
+      if (!/^[A-Z0-9]{1,10}$/.test(normalizedSymbol)) {
+        throw new Error('Invalid crypto symbol format');
+      }
+      
       // Fetch current price
       const price = await fetchCryptoPrice(symbol.toUpperCase());
       
