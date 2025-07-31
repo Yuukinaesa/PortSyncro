@@ -98,7 +98,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     
     return {
       ticker,
-      lots: pos.amount, // untuk saham, 1 lot = 100 saham (IDX)
+      lots: pos.amount, // untuk saham, amount sudah dalam format lots
       avgPrice: finalAvgPrice,
       totalCost: finalTotalCost,
       gain: finalGain,
@@ -613,8 +613,8 @@ export default function Home() {
       setPreviousTransactionCount(newTransactions.length);
       setTransactions(newTransactions);
       
-      // ADDED: Auto-refresh prices when transactions change
-      if (newTransactions.length > 0) {
+      // ADDED: Auto-refresh prices when transactions change (with protection)
+      if (newTransactions.length > 0 && !isUpdatingPortfolio) {
         setTimeout(() => {
           console.log('Auto-refreshing prices due to transactions change');
           updatePrices(false);
@@ -865,14 +865,13 @@ export default function Home() {
       });
 
       // Calculate values based on currency
-      // For IDX stocks: 1 lot = 100 shares
-      const totalShares = stock.lots * 100;
+      // For IDX stocks: price is per share, but we calculate based on lots
       let valueIDR, valueUSD;
       if (stock.currency === 'IDR') {
-        valueIDR = stock.price * totalShares;
+        valueIDR = stock.price * stock.lots; // Calculate based on lots, not total shares
         valueUSD = exchangeRate && exchangeRate > 0 ? valueIDR / exchangeRate : 0;
       } else {
-        valueUSD = stock.price * totalShares;
+        valueUSD = stock.price * stock.lots; // Calculate based on lots, not total shares
         valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : 0;
       }
       
@@ -889,7 +888,6 @@ export default function Home() {
         timestamp: serverTimestamp(),
         currency: stock.currency,
         status: 'completed',
-        shares: totalShares,
         userId: user.uid,
         ...(stock.entry && { entry: stock.entry })
       };
@@ -909,7 +907,6 @@ export default function Home() {
       const updatedStock = {
         ticker: stock.ticker,
         lots: stock.lots,
-        shares: totalShares,
         currentPrice: stock.price, // Use currentPrice for the asset
         avgPrice: stock.price, // Use purchase price as average price
         purchasePrice: stock.price,
@@ -922,10 +919,15 @@ export default function Home() {
         ...(stock.entry && { entry: stock.entry })
       };
       
-      // Update local state
+      // Set flag to prevent unwanted rebuilds during add operation
+      setIsUpdatingPortfolio(true);
+      
+      // Update local state and save to Firestore in one operation
       const normalizedNewTicker = stock.ticker.toUpperCase();
       setAssets(prev => {
         const existingStockIndex = prev.stocks.findIndex(s => s.ticker.toUpperCase() === normalizedNewTicker);
+        let newStocks;
+        
         if (existingStockIndex >= 0) {
           const updatedStocks = [...prev.stocks];
           const existingStock = updatedStocks[existingStockIndex];
@@ -938,7 +940,6 @@ export default function Home() {
           updatedStocks[existingStockIndex] = {
             ...existingStock,
             lots: totalLots,
-            shares: existingStock.shares + totalShares,
             avgPrice: newAvgPrice, // Use calculated weighted average
             valueIDR: existingStock.valueIDR + valueIDR,
             valueUSD: existingStock.valueUSD + valueUSD,
@@ -946,26 +947,18 @@ export default function Home() {
             currentPrice: stock.price, // Use currentPrice for the asset
             ticker: normalizedNewTicker // always store normalized
           };
-          return {
-            ...prev,
-            stocks: updatedStocks
-          };
-        }
-        return {
-          ...prev,
-          stocks: [...prev.stocks, {
+          newStocks = updatedStocks;
+        } else {
+          newStocks = [...prev.stocks, {
             ...updatedStock,
             ticker: normalizedNewTicker,
             ...(stock.entry && { entry: stock.entry })
-          }]
-        };
-      });
+          }];
+        }
 
-      // Save assets to Firestore using the updated state
-      const userRef = doc(db, 'users', user.uid);
-      setAssets(prev => {
+        // Prepare assets for Firestore
         const currentAssets = {
-          stocks: prev.stocks.map(stock => ({
+          stocks: newStocks.map(stock => ({
             ...stock,
             type: 'stock',
             userId: user.uid,
@@ -984,16 +977,37 @@ export default function Home() {
         // Clean undefined values before saving
         const cleanedAssets = cleanUndefinedValues(currentAssets);
 
-        // Save to Firestore
+        // Save to Firestore asynchronously
+        const userRef = doc(db, 'users', user.uid);
         updateDoc(userRef, {
           assets: cleanedAssets
+        }).catch(error => {
+          console.error('Error saving assets to Firestore:', error);
         });
 
-        return prev; // Return unchanged state since we're just saving
+        return {
+          ...prev,
+          stocks: newStocks
+        };
       });
+
+      // Force refresh prices after adding stock to ensure data consistency
+      setTimeout(() => {
+        console.log('Force refreshing prices after adding stock');
+        // Set flag to prevent unwanted rebuilds
+        setIsUpdatingPortfolio(true);
+        fetchPricesImmediate();
+        // Clear flag after refresh
+        setTimeout(() => {
+          setIsUpdatingPortfolio(false);
+          console.log('Portfolio update protection cleared for stock');
+        }, 2000);
+      }, 500);
 
     } catch (error) {
       console.error('Error in addStock:', error);
+      // Clear protection flag on error
+      setIsUpdatingPortfolio(false);
       setConfirmModal({
         isOpen: true,
         title: 'Error',
@@ -1099,10 +1113,15 @@ export default function Home() {
         ...(crypto.entry && { entry: crypto.entry })
       };
       
-      // Update local state
+      // Set flag to prevent unwanted rebuilds during add operation
+      setIsUpdatingPortfolio(true);
+      
+      // Update local state and save to Firestore in one operation
       const normalizedNewSymbol = crypto.symbol.toUpperCase();
       setAssets(prev => {
         const existingCryptoIndex = prev.crypto.findIndex(c => c.symbol.toUpperCase() === normalizedNewSymbol);
+        let newCrypto;
+        
         if (existingCryptoIndex >= 0) {
           const updatedCrypto = [...prev.crypto];
           const existingCrypto = updatedCrypto[existingCryptoIndex];
@@ -1122,24 +1141,16 @@ export default function Home() {
             currentPrice: cryptoPrice.price, // Use currentPrice for the asset
             symbol: normalizedNewSymbol // always store normalized
           };
-          return {
-            ...prev,
-            crypto: updatedCrypto
-          };
-        }
-        return {
-          ...prev,
-          crypto: [...prev.crypto, {
+          newCrypto = updatedCrypto;
+        } else {
+          newCrypto = [...prev.crypto, {
             ...updatedCrypto,
             symbol: normalizedNewSymbol,
             ...(crypto.entry && { entry: crypto.entry })
-          }]
-        };
-      });
+          }];
+        }
 
-      // Save assets to Firestore using the updated state
-      const userRef = doc(db, 'users', user.uid);
-      setAssets(prev => {
+        // Prepare assets for Firestore
         const currentAssets = {
           stocks: prev.stocks.map(stock => ({
             ...stock,
@@ -1148,7 +1159,7 @@ export default function Home() {
             currency: stock.currency || 'IDR',
             lastUpdate: stock.lastUpdate || formattedDate
           })),
-          crypto: prev.crypto.map(crypto => ({
+          crypto: newCrypto.map(crypto => ({
             ...crypto,
             type: 'crypto',
             userId: user.uid,
@@ -1160,16 +1171,37 @@ export default function Home() {
         // Clean undefined values before saving
         const cleanedAssets = cleanUndefinedValues(currentAssets);
 
-        // Save to Firestore
+        // Save to Firestore asynchronously
+        const userRef = doc(db, 'users', user.uid);
         updateDoc(userRef, {
           assets: cleanedAssets
+        }).catch(error => {
+          console.error('Error saving assets to Firestore:', error);
         });
 
-        return prev; // Return unchanged state since we're just saving
+        return {
+          ...prev,
+          crypto: newCrypto
+        };
       });
+
+      // Force refresh prices after adding crypto to ensure data consistency
+      setTimeout(() => {
+        console.log('Force refreshing prices after adding crypto');
+        // Set flag to prevent unwanted rebuilds
+        setIsUpdatingPortfolio(true);
+        fetchPricesImmediate();
+        // Clear flag after refresh
+        setTimeout(() => {
+          setIsUpdatingPortfolio(false);
+          console.log('Portfolio update protection cleared for crypto');
+        }, 2000);
+      }, 500);
 
     } catch (error) {
       console.error('Error in addCrypto:', error);
+      // Clear protection flag on error
+      setIsUpdatingPortfolio(false);
       setConfirmModal({
         isOpen: true,
         title: 'Error',
@@ -1202,9 +1234,8 @@ export default function Home() {
       
       // Get the most current price from prices state
       const currentPrice = prices[`${updatedStock.ticker}.JK`]?.price || 0;
-      const totalShares = updatedStock.lots * 100; // 1 lot = 100 shares for IDX
-      const currentValue = currentPrice * totalShares;
-      const totalCost = updatedStock.avgPrice * totalShares;
+      const currentValue = currentPrice * updatedStock.lots; // Calculate based on lots
+      const totalCost = updatedStock.avgPrice * updatedStock.lots; // Calculate based on lots
       const gain = currentValue - totalCost;
       
       const finalStock = {
