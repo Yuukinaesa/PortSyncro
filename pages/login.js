@@ -22,10 +22,16 @@ export default function Login() {
   const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
 
-  // Reset error when inputs change
+  // Reset error when inputs change (but not immediately)
   useEffect(() => {
-    if (error) setError(null);
-  }, [email, password, error]);
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000); // Clear error after 5 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, [email, password]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -46,6 +52,9 @@ export default function Login() {
           break;
         case 'auth/invalid-email':
           setError(t('invalidEmail'));
+          break;
+        case 'auth/invalid-credential':
+          setError(t('invalidCredential'));
           break;
         case 'auth/too-many-requests':
           setError(t('tooManyRequests'));
@@ -84,11 +93,11 @@ export default function Login() {
       if (error.message === 'Demo account credentials not configured') {
         setError('Demo account is not available');
       } else if (error.code === 'auth/invalid-credential') {
-        setError('Invalid demo credentials. This could be due to: 1) Incorrect email/password in environment variables, 2) Demo account not created in Firebase, or 3) Environment variables not properly configured.');
+        setError(t('demoInvalidCredential'));
       } else if (error.code === 'auth/user-not-found') {
-        setError('Demo account not found. Please ensure the demo account exists in your Firebase project.');
+        setError(t('demoUserNotFound'));
       } else if (error.code === 'auth/wrong-password') {
-        setError('Incorrect demo password. Please check your environment variables.');
+        setError(t('demoWrongPassword'));
       } else {
         setError(t('demoLoginFailed') + ': ' + error.message);
       }
