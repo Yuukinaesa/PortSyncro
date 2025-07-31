@@ -133,7 +133,7 @@ export default function Portfolio({
       
       return () => clearTimeout(autoRefreshTimer);
     }
-  }, [prices, assets.stocks.length, assets.crypto.length, debouncedLoading, handleRefresh]);
+  }, [prices, assets.stocks.length, assets.crypto.length, debouncedLoading]); // Removed handleRefresh dependency
   
   // Handle sell functionality
   const handleSellStock = (index, asset, amountToSell) => {

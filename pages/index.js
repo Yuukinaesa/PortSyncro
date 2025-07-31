@@ -251,7 +251,7 @@ export default function Home() {
     checkAuth();
   }, [user, authLoading, router, getUserPortfolio]);
 
-  // Direct price fetching function (no debounce)
+    // Direct price fetching function (no debounce)
   const fetchPrices = useCallback(async () => {
     setPricesLoading(true);
     try {
@@ -270,6 +270,12 @@ export default function Home() {
       const validStocks = assets.stocks.filter(stock => {
         if (!stock || !stock.ticker || !stock.ticker.trim()) {
           console.log('Filtering out invalid stock:', stock);
+          return false;
+        }
+        
+        // Validate stock data
+        if (stock.lots <= 0 || stock.avgPrice <= 0) {
+          console.log('Filtering out stock with invalid data:', stock);
           return false;
         }
         
@@ -294,6 +300,13 @@ export default function Home() {
             console.log('Filtering out invalid crypto:', crypto);
             return false;
           }
+          
+          // Validate crypto data
+          if (crypto.amount <= 0 || crypto.avgPrice <= 0) {
+            console.log('Filtering out crypto with invalid data:', crypto);
+            return false;
+          }
+          
           return true;
         })
         .map(crypto => crypto.symbol);
@@ -542,7 +555,7 @@ export default function Home() {
       
       return () => clearTimeout(autoRefreshTimer);
     }
-  }, [prices, assets.stocks.length, assets.crypto.length, pricesLoading, fetchPricesImmediate]);
+  }, [prices, assets.stocks.length, assets.crypto.length, pricesLoading]); // Removed fetchPricesImmediate dependency
 
   // Fetch prices for assets - removed to prevent infinite loops
   // Prices are now fetched via intervals and manual refresh only
