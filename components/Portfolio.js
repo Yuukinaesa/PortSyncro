@@ -492,26 +492,26 @@ export default function Portfolio({
       </div>
 
       {/* Dashboard Cards - Minimalist */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
         {/* Total Portfolio Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex justify-between items-center mb-3 sm:mb-4">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('totalPortfolio')}</h3>
-            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <FiDollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {formatIDR(totals.totalIDR)}
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">{formatUSD(totals.totalUSD)}</div>
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">{formatUSD(totals.totalUSD)}</div>
           {totals.totalAssetsWithChange > 0 && (
             <>
-              <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
-                <div className="space-y-2">
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-3 sm:pt-4">
+                <div className="space-y-1 sm:space-y-2">
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {t('yesterday')}: {formatIDR(totals.totalPreviousDayIDR)} 
-                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                    <span className={`ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
                       totals.changeIDR >= 0 
                         ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
                         : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
@@ -521,7 +521,7 @@ export default function Portfolio({
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {t('yesterday')}: {formatUSD(totals.totalPreviousDayUSD)} 
-                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                    <span className={`ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
                       totals.changeUSD >= 0 
                         ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
                         : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
@@ -536,21 +536,21 @@ export default function Portfolio({
         </div>
         
         {/* Stocks Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex justify-between items-center mb-3 sm:mb-4">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('stocks')}</h3>
-            <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <FiTrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <FiTrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {formatIDR(totals.totalStocksIDR)}
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">{formatUSD(totals.totalStocksUSD)}</div>
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">{formatUSD(totals.totalStocksUSD)}</div>
           
           {/* Stocks Gain/Loss */}
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-4 mb-4">
-            <div className="space-y-2">
+          <div className="border-t border-gray-100 dark:border-gray-800 pt-3 sm:pt-4 mb-3 sm:mb-4">
+            <div className="space-y-1 sm:space-y-2">
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {t('gainLoss')}: <span className={`font-medium ${getGainColor(gains.stocksGain)}`}>
                   {formatIDR(gains.stocksGain)} ({formatUSD(gains.stocksGain / (exchangeRate || 1))})
@@ -566,31 +566,31 @@ export default function Portfolio({
             </div>
           </div>
           
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2 sm:mb-3">
             <div 
               className="bg-blue-500 h-2 rounded-full transition-all duration-500" 
               style={{ width: `${totals.stocksPercent}%` }}
             ></div>
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{totals.stocksPercent.toFixed(1)}% {t('fromPortfolio')}</div>
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{totals.stocksPercent.toFixed(1)}% {t('fromPortfolio')}</div>
         </div>
         
         {/* Crypto Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex justify-between items-center mb-3 sm:mb-4">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('crypto')}</h3>
-            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <FiActivity className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+              <FiActivity className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {formatIDR(totals.totalCryptoIDR)}
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">{formatUSD(totals.totalCryptoUSD)}</div>
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">{formatUSD(totals.totalCryptoUSD)}</div>
           
           {/* Crypto Gain/Loss */}
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-4 mb-4">
-            <div className="space-y-2">
+          <div className="border-t border-gray-100 dark:border-gray-800 pt-3 sm:pt-4 mb-3 sm:mb-4">
+            <div className="space-y-1 sm:space-y-2">
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {t('gainLoss')}: <span className={`font-medium ${getGainColor(gains.cryptoGainUSD)}`}>
                   {formatIDR(gains.cryptoGainIDR)} ({formatUSD(gains.cryptoGainUSD)})
@@ -606,35 +606,35 @@ export default function Portfolio({
             </div>
           </div>
           
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2 sm:mb-3">
             <div 
               className="bg-purple-500 h-2 rounded-full transition-all duration-500" 
               style={{ width: `${totals.cryptoPercent}%` }}
             ></div>
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</div>
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</div>
         </div>
         
         {/* Total Gain/Loss Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex justify-between items-center mb-3 sm:mb-4">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('totalGainLoss')}</h3>
-            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <FiTrendingUp className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <FiTrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-400" />
             </div>
           </div>
           
           {/* Main Gain/Loss Value */}
-          <div className={`text-2xl font-bold mb-2 ${getGainColor(gains.totalGain)}`}>
+          <div className={`text-xl sm:text-2xl font-bold mb-2 ${getGainColor(gains.totalGain)}`}>
             {formatIDR(gains.totalGain)}
           </div>
-          <div className={`text-sm mb-4 ${getGainColor(gains.totalGainUSD)}`}>{formatUSD(gains.totalGainUSD)}</div>
+          <div className={`text-xs sm:text-sm mb-3 sm:mb-4 ${getGainColor(gains.totalGainUSD)}`}>{formatUSD(gains.totalGainUSD)}</div>
           
           {/* Percentage and Progress Bar */}
           {gains.totalCost > 0 && (
-            <div className="mb-4">
+            <div className="mb-3 sm:mb-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   {gains.gainPercent >= 0 ? '+' : ''}{gains.gainPercent.toFixed(2)}%
                 </span>
                 <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -657,10 +657,10 @@ export default function Portfolio({
           
           {/* Performance Indicator */}
           {gains.totalCost > 0 && (
-            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-100 dark:border-gray-800">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">{t('performance')}</span>
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                <div className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
                   gains.gainPercent >= 0 
                     ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
                     : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
@@ -683,14 +683,14 @@ export default function Portfolio({
       </div>
 
       {/* Action Bar - Minimalist */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center space-x-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6">
+        <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:space-x-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('portfolio')}</h2>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setActiveAssetTab('all')}
-                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                   activeAssetTab === 'all'
                     ? 'bg-blue-500 text-white'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -700,7 +700,7 @@ export default function Portfolio({
               </button>
               <button
                 onClick={() => setActiveAssetTab('stocks')}
-                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                   activeAssetTab === 'stocks'
                     ? 'bg-blue-500 text-white'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -710,7 +710,7 @@ export default function Portfolio({
               </button>
               <button
                 onClick={() => setActiveAssetTab('crypto')}
-                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                   activeAssetTab === 'crypto'
                     ? 'bg-blue-500 text-white'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -721,34 +721,37 @@ export default function Portfolio({
             </div>
           </div>
           
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
               onClick={handleRefresh}
               disabled={loading}
-              className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50"
+              className="px-3 sm:px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50"
               title="Refresh semua data (harga saham, kripto, dan kurs USD/IDR)"
             >
               <FiRefreshCw className="w-4 h-4" />
               <span className="hidden sm:inline">Refresh All</span>
+              <span className="sm:hidden">Refresh</span>
             </button>
             
             <button
               onClick={exportPortfolioToCSV}
               disabled={assets.stocks.length === 0 && assets.crypto.length === 0}
-              className="px-4 py-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50"
+              className="px-3 sm:px-4 py-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50"
               title={t('exportPortfolio')}
             >
               <FiDownload className="w-4 h-4" />
               <span className="hidden sm:inline">{t('export')}</span>
+              <span className="sm:hidden">Export</span>
             </button>
             
             <button
               onClick={onAddAsset}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 flex items-center gap-2 text-sm"
+              className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 flex items-center gap-2 text-sm"
               title={t('addAsset')}
             >
               <FiPlusCircle className="w-4 h-4" />
               <span className="hidden sm:inline">{t('add')}</span>
+              <span className="sm:hidden">Add</span>
             </button>
           </div>
         </div>

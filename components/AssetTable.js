@@ -508,15 +508,15 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
       {/* Minimalist Table Container */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto scrollbar-table">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-800">
                 <th 
-                  className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
+                  className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
                   onClick={() => handleSort('name')}
                 >
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1 sm:space-x-2">
                     <span>{type === 'stock' ? t('stock') : t('crypto')}</span>
                     {getSortIcon('name') && (
                       <span className="text-blue-500 font-medium">{getSortIcon('name')}</span>
@@ -524,10 +524,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
+                  className="px-4 sm:px-6 py-3 sm:py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
                   onClick={() => handleSort('amount')}
                 >
-                  <div className="flex items-center justify-end space-x-2">
+                  <div className="flex items-center justify-end space-x-1 sm:space-x-2">
                     <span>{t('amount')}</span>
                     {getSortIcon('amount') && (
                       <span className="text-blue-500 font-medium">{getSortIcon('amount')}</span>
@@ -535,10 +535,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
+                  className="px-4 sm:px-6 py-3 sm:py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
                   onClick={() => handleSort('currentPrice')}
                 >
-                  <div className="flex items-center justify-end space-x-2">
+                  <div className="flex items-center justify-end space-x-1 sm:space-x-2">
                     <span>{t('currentPrice')}</span>
                     {getSortIcon('currentPrice') && (
                       <span className="text-blue-500 font-medium">{getSortIcon('currentPrice')}</span>
@@ -546,34 +546,34 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
+                  className="px-4 sm:px-6 py-3 sm:py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
                   onClick={() => handleSort('idrValue')}
                 >
-                  <div className="flex items-center justify-end space-x-2">
+                  <div className="flex items-center justify-end space-x-1 sm:space-x-2">
                     <span>{t('idrValue')}</span>
                     {getSortIcon('idrValue') && (
                       <span className="text-blue-500 font-medium">{getSortIcon('idrValue')}</span>
                     )}
                   </div>
                 </th>
-                <th className="hidden lg:table-cell px-6 py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
+                <th className="hidden lg:table-cell px-4 sm:px-6 py-3 sm:py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
                   onClick={() => handleSort('usdValue')}
                 >
-                  <div className="flex items-center justify-end space-x-2">
+                  <div className="flex items-center justify-end space-x-1 sm:space-x-2">
                     <span>{t('usdValue')}</span>
                     {getSortIcon('usdValue') && (
                       <span className="text-blue-500 font-medium">{getSortIcon('usdValue')}</span>
                     )}
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 sm:py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t('action')}
                 </th>
                 <th 
-                  className="px-6 py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
+                  className="px-4 sm:px-6 py-3 sm:py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
                   onClick={() => handleSort('avgPrice')}
                 >
-                  <div className="flex items-center justify-end space-x-2">
+                  <div className="flex items-center justify-end space-x-1 sm:space-x-2">
                     <span>{t('avgPrice')}</span>
                     {getSortIcon('avgPrice') && (
                       <span className="text-blue-500 font-medium">{getSortIcon('avgPrice')}</span>
@@ -581,10 +581,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
+                  className="px-4 sm:px-6 py-3 sm:py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
                   onClick={() => handleSort('gainLoss')}
                 >
-                  <div className="flex items-center justify-end space-x-2">
+                  <div className="flex items-center justify-end space-x-1 sm:space-x-2">
                     <span>{t('gainLoss')}</span>
                     {getSortIcon('gainLoss') && (
                       <span className="text-blue-500 font-medium">{getSortIcon('gainLoss')}</span>
@@ -634,9 +634,9 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                 
                 return (
                   <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200">
-                    <td className="px-6 py-5">
+                    <td className="px-4 sm:px-6 py-4 sm:py-5">
                       <div className="flex items-center">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold text-sm ${
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white font-semibold text-sm ${
                           type === 'stock' 
                             ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
                             : 'bg-gradient-to-br from-purple-500 to-purple-600'
@@ -645,7 +645,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             {(type === 'stock' ? asset.ticker : asset.symbol).charAt(0).toUpperCase()}
                           </span>
                         </div>
-                        <div className="ml-4 min-w-0 flex-1">
+                        <div className="ml-3 sm:ml-4 min-w-0 flex-1">
                           <span className="text-sm font-semibold text-gray-900 dark:text-white block truncate">
                             {type === 'stock' ? asset.ticker : asset.symbol}
                           </span>
@@ -658,7 +658,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       </div>
                     </td>
                     
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-4 sm:px-6 py-4 sm:py-5 text-right">
                       {sellingIndex === index ? (
                         <input
                           type="text"
@@ -669,7 +669,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             const value = e.target.value.replace(/[^0-9.,]/g, '');
                             setSellAmount(value);
                           }}
-                          className="w-20 px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                          className="w-16 sm:w-20 px-2 sm:px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                           min="0"
                         />
                       ) : (
@@ -679,7 +679,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       )}
                     </td>
                     
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-4 sm:px-6 py-4 sm:py-5 text-right">
                       <div className="flex flex-col items-end space-y-1">
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
                           {assetValue.price && assetValue.price > 0 ? formatPrice(assetValue.price, asset.currency || (type === 'crypto' ? 'USD' : 'IDR')) : t('notAvailable')}
@@ -692,7 +692,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                         )}
                         {/* Always show change percentage if price data is available */}
                         {price && price.price && price.price > 0 && (
-                          <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          <div className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
                             change > 0 
                               ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
                               : change < 0 
@@ -706,32 +706,32 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       </div>
                     </td>
                     
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-4 sm:px-6 py-4 sm:py-5 text-right">
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">
                         {assetValue.price && assetValue.price > 0 ? formatPrice(assetValue.valueIDR, 'IDR', true) : t('notAvailable')}
                       </span>
                     </td>
                     
-                    <td className="hidden lg:table-cell px-6 py-5 text-right">
+                    <td className="hidden lg:table-cell px-4 sm:px-6 py-4 sm:py-5 text-right">
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">
                         {assetValue.price && assetValue.price > 0 ? formatPrice(assetValue.valueUSD, 'USD') : t('notAvailable')}
                       </span>
                     </td>
                     
-                    <td className="px-6 py-5 text-center">
-                      <div className="flex space-x-2 justify-center">
+                    <td className="px-4 sm:px-6 py-4 sm:py-5 text-center">
+                      <div className="flex space-x-1 sm:space-x-2 justify-center">
                         {sellingIndex === index ? (
                           <>
                             <button
                               onClick={() => handleSaveSell(index, asset)}
-                              className="w-8 h-8 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200"
+                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200"
                               title="Konfirmasi Jual"
                             >
                               ✓
                             </button>
                             <button
                               onClick={handleCancelSell}
-                              className="w-8 h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
+                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
                               title="Batal"
                             >
                               ✕
@@ -741,14 +741,14 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           <>
                             <button
                               onClick={() => handleSellClick(index, asset)}
-                              className="px-3 py-1.5 text-xs font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200"
+                              className="px-2 sm:px-3 py-1.5 text-xs font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200"
                               title="Jual aset"
                             >
                               Jual
                             </button>
                             <button
                               onClick={() => handleDeleteClick(index, asset)}
-                              className="w-8 h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
+                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
                               title="Hapus aset"
                             >
                               🗑️
@@ -758,9 +758,9 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       </div>
                     </td>
                     
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-4 sm:px-6 py-4 sm:py-5 text-right">
                       {editingAvgPrice === index ? (
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1 sm:space-x-2">
                           <input
                             type="text"
                             inputMode="decimal"
@@ -770,26 +770,26 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                               const value = e.target.value.replace(/[^0-9.,]/g, '');
                               setNewAvgPrice(value);
                             }}
-                            className="w-24 px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                            className="w-20 sm:w-24 px-2 sm:px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                             min="0"
                           />
                           <button
                             onClick={() => handleSaveAvgPrice(index, asset)}
-                            className="w-8 h-8 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200"
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200"
                             title="Simpan"
                           >
                             ✓
                           </button>
                           <button
                             onClick={handleCancelEditAvgPrice}
-                            className="w-8 h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
                             title="Batal"
                           >
                             ✕
                           </button>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-end space-x-2">
+                        <div className="flex items-center justify-end space-x-1 sm:space-x-2">
                           <span className="text-sm font-medium text-gray-900 dark:text-white">
                             {asset.avgPrice ? formatPrice(asset.avgPrice, asset.currency || (type === 'crypto' ? 'USD' : 'IDR')) : '-'}
                           </span>
@@ -804,7 +804,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       )}
                     </td>
                     
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-4 sm:px-6 py-4 sm:py-5 text-right">
                       <div className="flex flex-col items-end space-y-1">
                         {/* IDR Gain/Loss */}
                         <span className={`text-sm font-semibold ${getGainColor(realTimeGain)}`}>

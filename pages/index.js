@@ -1831,7 +1831,8 @@ export default function Home() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                {t('averagePriceCalculator')}
+                <span className="hidden sm:inline">{t('averagePriceCalculator')}</span>
+                <span className="sm:hidden">Calculator</span>
               </button>
               
 
@@ -1871,10 +1872,10 @@ export default function Home() {
           ) : (
             <>
               {activeTab === 'add' ? (
-                <div className="space-y-8">
+                <div className="space-y-6 sm:space-y-8">
                   {/* Add Asset Header */}
                   <div className="text-center">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2">
                       {t('addAsset')}
                     </h2>
                     <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">
@@ -1883,20 +1884,20 @@ export default function Home() {
                   </div>
                   
                   {/* Asset Forms Grid */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
                     {/* Stock Input Card */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 sm:p-8 hover:shadow-md transition-shadow duration-200">
-                      <div className="flex items-center mb-6">
-                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mr-4">
-                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 lg:p-8 hover:shadow-md transition-shadow duration-200">
+                      <div className="flex items-center mb-4 sm:mb-6">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mr-3 sm:mr-4">
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                           </svg>
                         </div>
                         <div>
-                          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
                             {t('addStock')}
                           </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                             {t('addStockDesc') || 'Add Indonesian stocks to your portfolio'}
                           </p>
                         </div>
@@ -1905,18 +1906,18 @@ export default function Home() {
                     </div>
                     
                     {/* Crypto Input Card */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 sm:p-8 hover:shadow-md transition-shadow duration-200">
-                      <div className="flex items-center mb-6">
-                        <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mr-4">
-                          <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 lg:p-8 hover:shadow-md transition-shadow duration-200">
+                      <div className="flex items-center mb-4 sm:mb-6">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mr-3 sm:mr-4">
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
                         <div>
-                          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
                             {t('addCrypto')}
                           </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                             {t('addCryptoDesc') || 'Add cryptocurrencies to your portfolio'}
                           </p>
                         </div>
@@ -1926,32 +1927,34 @@ export default function Home() {
                   </div>
                   
                   {/* Quick Actions */}
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl p-6 sm:p-8 border border-blue-100 dark:border-blue-800">
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl p-4 sm:p-6 lg:p-8 border border-blue-100 dark:border-blue-800">
                     <div className="text-center">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 sm:mb-3">
                         {t('quickActions') || 'Quick Actions'}
                       </h3>
-                      <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">
+                      <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-4 sm:mb-6">
                         {t('quickActionsDesc') || 'Need help calculating average prices or managing your portfolio?'}
                       </p>
-                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
                         <button
                           onClick={() => setShowAverageCalculator(true)}
-                          className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                          className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 text-sm"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                           </svg>
-                          {t('averagePriceCalculator')}
+                          <span className="hidden sm:inline">{t('averagePriceCalculator')}</span>
+                          <span className="sm:hidden">Calculator</span>
                         </button>
                         <button
                           onClick={() => setActiveTab('portfolio')}
-                          className="px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                          className="px-4 sm:px-6 py-2 sm:py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 text-sm"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                           </svg>
-                          {t('viewPortfolio') || 'View Portfolio'}
+                          <span className="hidden sm:inline">{t('viewPortfolio') || 'View Portfolio'}</span>
+                          <span className="sm:hidden">Portfolio</span>
                         </button>
                       </div>
                     </div>
@@ -1992,49 +1995,49 @@ export default function Home() {
         
         {/* Data Sources Information */}
         <section className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
-          <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+          <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
             <div className="max-w-4xl mx-auto">
-              <h3 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800 dark:text-white text-center">
+              <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-3 sm:mb-4 text-gray-800 dark:text-white text-center">
                 {t('dataSources')}
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
                 {/* Stock Data */}
-                <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center mb-3">
-                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-3">
-                      <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center mb-2 sm:mb-3">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
+                      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
                     </div>
-                    <h4 className="font-semibold text-gray-800 dark:text-white">{t('stockData')}</h4>
+                    <h4 className="font-semibold text-gray-800 dark:text-white text-sm sm:text-base">{t('stockData')}</h4>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('stockDataSource')}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{t('stockDataSource')}</p>
                 </div>
 
                 {/* Crypto Data */}
-                <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center mb-3">
-                    <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center mr-3">
-                      <svg className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center mb-2 sm:mb-3">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
+                      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <h4 className="font-semibold text-gray-800 dark:text-white">{t('cryptoData')}</h4>
+                    <h4 className="font-semibold text-gray-800 dark:text-white text-sm sm:text-base">{t('cryptoData')}</h4>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('cryptoDataSource')}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{t('cryptoDataSource')}</p>
                 </div>
 
                 {/* Exchange Rate */}
-                <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center mb-3">
-                    <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mr-3">
-                      <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center mb-2 sm:mb-3">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
+                      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
                       </svg>
                     </div>
-                    <h4 className="font-semibold text-gray-800 dark:text-white">{t('exchangeRate')}</h4>
+                    <h4 className="font-semibold text-gray-800 dark:text-white text-sm sm:text-base">{t('exchangeRate')}</h4>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('exchangeRateSource')}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{t('exchangeRateSource')}</p>
                 </div>
               </div>
               
@@ -2043,8 +2046,8 @@ export default function Home() {
           </div>
         </section>
         
-        <footer className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800">
-          <p className="text-sm">{t('copyright', { year: new Date().getFullYear() })}</p>
+        <footer className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 lg:py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-xs sm:text-sm">{t('copyright', { year: new Date().getFullYear() })}</p>
         </footer>
         
         {/* Modal for confirmations and errors */}
