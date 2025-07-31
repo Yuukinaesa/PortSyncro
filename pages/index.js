@@ -355,6 +355,12 @@ export default function Home() {
       });
       
       setPrices(data.prices);
+      
+      // ADDED: Auto-refresh exchange rate when prices are updated
+      setTimeout(() => {
+        console.log('Auto-refreshing exchange rate after price update');
+        updateExchangeRate();
+      }, 1000); // 1 second delay
     } catch (error) {
       console.error('Error fetching prices:', error);
       console.error('Error details:', {
@@ -366,7 +372,7 @@ export default function Home() {
     } finally {
       setPricesLoading(false);
     }
-  }, [assets, exchangeRate]);
+  }, [assets.stocks.length, assets.crypto.length, exchangeRate]); // Only depend on length, not entire objects
 
   // Direct fetch prices function for immediate refresh (bypasses debounce)
   const fetchPricesImmediate = useCallback(async () => {
@@ -442,6 +448,12 @@ export default function Home() {
       
       const data = await response.json();
       setPrices(data.prices);
+      
+      // ADDED: Auto-refresh exchange rate when prices are updated (immediate)
+      setTimeout(() => {
+        console.log('Auto-refreshing exchange rate after immediate price update');
+        updateExchangeRate();
+      }, 1000); // 1 second delay
     } catch (error) {
       console.error('Error fetching prices:', error);
       console.error('Error details:', {
@@ -453,7 +465,7 @@ export default function Home() {
     } finally {
       setPricesLoading(false);
     }
-  }, [assets, exchangeRate]);
+  }, [assets.stocks.length, assets.crypto.length, exchangeRate]); // Only depend on length, not entire objects
 
   // Update exchange rate function
   const updateExchangeRate = useCallback(async () => {
@@ -485,22 +497,35 @@ export default function Home() {
         fetchPrices();
       }
     }
-  }, [assets.stocks.length, assets.crypto.length, fetchPrices, fetchPricesImmediate]);
+  }, [fetchPrices, fetchPricesImmediate]); // Remove assets dependency to prevent infinite loop
 
   // Set up intervals for exchange rate and price updates
   useEffect(() => {
     // Initial fetch
     updateExchangeRate();
-    updatePrices();
+    updatePrices(false); // Pass false for non-immediate update
     
     const exchangeInterval = setInterval(updateExchangeRate, 60000); // 1 minute
-    const priceInterval = setInterval(updatePrices, 60000); // 1 minute
+    const priceInterval = setInterval(() => updatePrices(false), 60000); // 1 minute
 
     return () => {
       clearInterval(exchangeInterval);
       clearInterval(priceInterval);
     };
-  }, [updateExchangeRate, updatePrices]); // Add missing dependencies
+  }, []); // Remove dependencies to prevent infinite loops
+
+  // ADDED: Auto-refresh prices when assets change
+  useEffect(() => {
+    if (assets.stocks.length > 0 || assets.crypto.length > 0) {
+      // Debounce auto-refresh to prevent excessive API calls
+      const timeoutId = setTimeout(() => {
+        console.log('Auto-refreshing prices due to assets change');
+        updatePrices(false);
+      }, 1000); // 1 second debounce
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [assets.stocks.length, assets.crypto.length]); // Only trigger on length changes
 
   // Fetch prices for assets - removed to prevent infinite loops
   // Prices are now fetched via intervals and manual refresh only
@@ -514,15 +539,10 @@ export default function Home() {
     };
 
     savePortfolio();
-  }, [assets, user, loading, authLoading, saveUserPortfolio]);
+  }, [assets.stocks.length, assets.crypto.length, user, loading, authLoading, saveUserPortfolio]); // Only depend on length, not entire objects
 
-  // Update portfolio value calculation
-  useEffect(() => {
-    if (prices && exchangeRate) {
-      const { totalValueIDR, totalValueUSD } = calculatePortfolioValue(assets, prices, exchangeRate);
-      // Update any state or UI that depends on portfolio value
-    }
-  }, [assets, prices, exchangeRate]);
+  // Update portfolio value calculation - REMOVED to prevent infinite loops
+  // Portfolio value is calculated on-demand in the UI components
 
   // Fetch transactions
   useEffect(() => {
@@ -562,6 +582,14 @@ export default function Home() {
       
       setPreviousTransactionCount(newTransactions.length);
       setTransactions(newTransactions);
+      
+      // ADDED: Auto-refresh prices when transactions change
+      if (newTransactions.length > 0) {
+        setTimeout(() => {
+          console.log('Auto-refreshing prices due to transactions change');
+          updatePrices(false);
+        }, 1000); // 1 second debounce
+      }
     }, (error) => {
       console.error('Error in transaction listener:', error);
       setConfirmModal({
@@ -578,13 +606,19 @@ export default function Home() {
       console.log('Cleaning up transaction listener');
       unsubscribe();
     };
-  }, [user, previousTransactionCount, assets.stocks.length, assets.crypto.length]);
+  }, [user]); // Remove problematic dependencies
 
   // Pada bagian useEffect yang update assets berdasarkan transaksi dan harga
   useEffect(() => {
     // Clear any existing timeout
     if (rebuildTimeoutRef.current) {
       clearTimeout(rebuildTimeoutRef.current);
+    }
+    
+    // ADDED: Prevent infinite loop by checking if we're already rebuilding
+    if (rebuildTimeoutRef.current) {
+      console.log('Skipping portfolio rebuild - rebuild already in progress');
+      return;
     }
     
     // Skip rebuilding if we're currently updating portfolio manually
@@ -596,7 +630,7 @@ export default function Home() {
     // ENHANCED PROTECTION: Check for manual updates with protection duration
     if (lastManualUpdate) {
       const timeSinceUpdate = Date.now() - lastManualUpdate.timestamp;
-      const protectionDuration = lastManualUpdate.protectionDuration || 30000; // Default 30 seconds
+      const protectionDuration = lastManualUpdate.protectionDuration || 1000; // Changed to 1 second
       
       if (timeSinceUpdate < protectionDuration) {
         const isPriceRefresh = lastManualUpdate.type === 'price_refresh';
@@ -681,6 +715,11 @@ export default function Home() {
           console.log('Building assets from transactions and prices');
           console.log('Current transactions:', transactions.map(tx => `${tx.type} ${tx.assetType} ${tx.ticker || tx.symbol} ${tx.amount}`));
           
+          // ADDED: Set rebuild flag to prevent concurrent rebuilds (1 second)
+          rebuildTimeoutRef.current = setTimeout(() => {
+            rebuildTimeoutRef.current = null;
+          }, 1000);
+          
           // Get current assets from state to preserve manual prices
           setAssets(currentAssets => {
             const newAssets = buildAssetsFromTransactions(transactions, prices, currentAssets);
@@ -731,7 +770,7 @@ export default function Home() {
       }
     
     // No cleanup needed since we removed debounce
-  }, [transactions, prices, isUpdatingPortfolio, lastManualUpdate, portfolioProtected, previousTransactionCount]); // Removed assets from dependency array to prevent infinite loop
+  }, [transactions, prices, isUpdatingPortfolio, lastManualUpdate, portfolioProtected]); // Remove previousTransactionCount to prevent infinite loop
 
   const addTransaction = async (transaction) => {
     try {

@@ -38,6 +38,26 @@ export default function Portfolio({
   }, [propPrices]);
   const [loading, setLoading] = useState(false);
   const isPriceLoading = pricesLoading || loading;
+  
+  // ADDED: Prevent excessive loading state
+  const [lastLoadingTime, setLastLoadingTime] = useState(0);
+  const [debouncedLoading, setDebouncedLoading] = useState(false);
+  
+  // Debounce loading state to prevent flickering (1 second)
+  useEffect(() => {
+    if (isPriceLoading) {
+      setLastLoadingTime(Date.now());
+      setDebouncedLoading(true);
+    } else {
+      const timeSinceLoading = Date.now() - lastLoadingTime;
+      if (timeSinceLoading > 1000) { // Only hide loading after 1 second
+        setDebouncedLoading(false);
+      } else {
+        const timer = setTimeout(() => setDebouncedLoading(false), 1000 - timeSinceLoading);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isPriceLoading, lastLoadingTime]);
   const [lastUpdate, setLastUpdate] = useState('');
   const [error, setError] = useState(null);
   const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
@@ -748,7 +768,7 @@ export default function Portfolio({
       )}
         
       {/* Loading State - Minimalist */}
-      {isPriceLoading && assets.stocks.length + assets.crypto.length > 0 ? (
+      {debouncedLoading && assets.stocks.length + assets.crypto.length > 0 ? (
         <div className="flex justify-center items-center py-12">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
@@ -758,7 +778,7 @@ export default function Portfolio({
       ) : (
         <>
           {/* Info Panel - Minimalist */}
-          {!isPriceLoading && Object.keys(prices).length < (assets.stocks.length + assets.crypto.length) && (
+          {!debouncedLoading && Object.keys(prices).length > 0 && Object.keys(prices).length < (assets.stocks.length + assets.crypto.length) && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
               <div className="flex items-center gap-3">
                 <FiInfo className="w-5 h-5 text-blue-500" />
@@ -793,7 +813,7 @@ export default function Portfolio({
                   onUpdate={onUpdateStock}
                   onSell={handleSellStock}
                   onDelete={onDeleteStock}
-                  loading={isPriceLoading || sellingLoading}
+                  loading={debouncedLoading || sellingLoading}
                 />
               ) : activeAssetTab === 'stocks' ? (
                 <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
@@ -821,7 +841,7 @@ export default function Portfolio({
                   onUpdate={onUpdateCrypto}
                   onSell={handleSellCrypto}
                   onDelete={onDeleteCrypto}
-                  loading={isPriceLoading || sellingLoading}
+                  loading={debouncedLoading || sellingLoading}
                 />
               ) : activeAssetTab === 'crypto' ? (
                 <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
