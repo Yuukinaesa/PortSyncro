@@ -1,20 +1,20 @@
 // pages/api/prices.js
 import { fetchStockPrices, fetchCryptoPrices } from '../../lib/fetchPrices';
 
-// Simple in-memory rate limiting (use Redis in production)
+// Enhanced rate limiting with user-based tracking
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 30; // 30 requests per minute
+const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requests per minute
 
-function checkRateLimit(ip) {
+function checkRateLimit(identifier) {
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW;
   
-  if (!rateLimitMap.has(ip)) {
-    rateLimitMap.set(ip, []);
+  if (!rateLimitMap.has(identifier)) {
+    rateLimitMap.set(identifier, []);
   }
   
-  const requests = rateLimitMap.get(ip);
+  const requests = rateLimitMap.get(identifier);
   const validRequests = requests.filter(timestamp => timestamp > windowStart);
   
   if (validRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
@@ -22,35 +22,63 @@ function checkRateLimit(ip) {
   }
   
   validRequests.push(now);
-  rateLimitMap.set(ip, validRequests);
+  rateLimitMap.set(identifier, validRequests);
   return true;
 }
 
+// Clean up old entries periodically to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW;
+  
+  for (const [identifier, requests] of rateLimitMap.entries()) {
+    const validRequests = requests.filter(timestamp => timestamp > windowStart);
+    if (validRequests.length === 0) {
+      rateLimitMap.delete(identifier);
+    } else {
+      rateLimitMap.set(identifier, validRequests);
+    }
+  }
+}, 60000); // Clean up every minute
+
 export default async function handler(req, res) {
   console.log('API /prices called with method:', req.method);
-  console.log('Request body:', req.body);
   
   if (req.method !== 'POST') {
     console.log('Method not allowed:', req.method);
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
   
-  // Rate limiting
+  // Enhanced rate limiting - prefer user ID over IP for better isolation
   const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
-  if (!checkRateLimit(clientIP)) {
+  
+  // Try to get user ID from request body or headers
+  const { stocks, crypto, exchangeRate, userId } = req.body;
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
+  // Create a unique identifier: prefer user ID, fallback to IP + user agent
+  const rateLimitIdentifier = userId ? `user_${userId}` : `ip_${clientIP}_${userAgent.substring(0, 50)}`;
+  
+  if (!checkRateLimit(rateLimitIdentifier)) {
+    console.log(`Rate limit exceeded for: ${rateLimitIdentifier}`);
     return res.status(429).json({ 
       message: 'Too many requests. Please try again later.',
       retryAfter: 60
     });
   }
   
-  const { stocks, crypto, exchangeRate } = req.body;
-  
   console.log('Processing request with:', { stocks, crypto, exchangeRate });
   
-  // API called with stocks and crypto
-  
   try {
+    // Validate input
+    if (!stocks && !crypto) {
+      return res.status(400).json({ 
+        message: 'No stocks or crypto symbols provided',
+        prices: {},
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     // Buat Promise untuk fetch data secara parallel dengan error handling
     const stockPromise = stocks && stocks.length > 0 
       ? fetchStockPrices(stocks).catch(error => {

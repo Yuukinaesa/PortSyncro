@@ -1,5 +1,5 @@
 // pages/index.js
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import Portfolio from '../components/Portfolio';
 import StockInput from '../components/StockInput';
@@ -12,14 +12,14 @@ import { useRouter } from 'next/router';
 import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { FiLogOut, FiUser } from 'react-icons/fi';
-// Removed debounce import
-import { useRef } from 'react';
-import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD } from '../lib/utils';
+import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
 import TransactionHistory from '../components/TransactionHistory';
 import { fetchExchangeRate } from '../lib/fetchPrices';
 import Modal from '../components/Modal';
 import AveragePriceCalculator from '../components/AveragePriceCalculator';
+import refreshOptimizer from '../lib/refreshOptimizer';
+import { usePortfolioState } from '../lib/usePortfolioState';
 
 // Helper function to clean undefined values from objects
 const cleanUndefinedValues = (obj) => {
@@ -39,11 +39,19 @@ const cleanUndefinedValues = (obj) => {
   return cleaned;
 };
 
-// Tambahkan fungsi untuk membangun ulang aset dari transaksi dengan optimasi
+// Simplified function to build assets from transactions
 function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [] }) {
+  console.log('buildAssetsFromTransactions called with:', {
+    transactionsLength: transactions?.length || 0,
+    pricesKeys: Object.keys(prices || {}),
+    currentAssetsStocks: currentAssets?.stocks?.length || 0,
+    currentAssetsCrypto: currentAssets?.crypto?.length || 0
+  });
+  
   // Early return if no transactions
   if (!transactions || transactions.length === 0) {
-    return { stocks: [], crypto: [] };
+    console.log('No transactions, returning current assets');
+    return currentAssets;
   }
   
   // Use Map for better performance with large datasets
@@ -69,14 +77,14 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
   }
 
   const stocks = Array.from(stocksMap.entries()).map(([ticker, txs]) => {
-    const priceObj = prices[ticker] || prices[`${ticker}.JK`];
+    const priceObj = prices[`${ticker}.JK`] || prices[ticker];
     const currentPrice = priceObj ? priceObj.price : 0;
     
-    // Skip delete transactions when building assets - they don't affect portfolio
+    // Skip delete transactions when building assets
     const validTransactions = txs.filter(tx => tx.type !== 'delete');
     if (validTransactions.length === 0) {
       console.log(`Skipping ${ticker} - no valid transactions (only delete transactions)`);
-      return null; // Don't preserve existing assets when no valid transactions
+      return null;
     }
     
     const pos = calculatePositionFromTransactions(validTransactions, currentPrice);
@@ -84,55 +92,35 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     // Check if the asset is fully sold (amount <= 0)
     if (pos.amount <= 0) {
       console.log(`Skipping ${ticker} - fully sold (amount: ${pos.amount})`);
-      return null; // Skip this asset
+      return null;
     }
     
     // Check if there's a manually set average price in current assets
-    const existingAsset = currentAssets.stocks.find(s => s.ticker === ticker);
+    const existingAsset = currentAssets?.stocks?.find(s => s.ticker.toUpperCase() === ticker.toUpperCase());
     const useManualAvgPrice = existingAsset && existingAsset.avgPrice && existingAsset.avgPrice !== pos.avgPrice;
     
-    // Use manually set average price if it exists and is different from calculated
-    const finalAvgPrice = useManualAvgPrice ? existingAsset.avgPrice : pos.avgPrice;
-    const finalTotalCost = finalAvgPrice * pos.amount;
-    const finalGain = pos.porto - finalTotalCost;
-    
-    // If we have an existing asset with manual edits, preserve all its data
-    if (existingAsset && useManualAvgPrice) {
-      console.log(`Preserving manual edits for ${ticker} - using existing asset data`);
-      return {
-        ...existingAsset, // Preserve ALL existing data
-        currentPrice: currentPrice, // Only update current price
-        porto: pos.porto, // Update portfolio value
-        totalCost: finalTotalCost, // Update total cost
-        gain: finalGain // Update gain/loss
-      };
-    }
-    
     return {
-      ticker,
-      lots: pos.amount, // untuk saham, amount sudah dalam format lots
-      avgPrice: finalAvgPrice,
-      totalCost: finalTotalCost,
-      gain: finalGain,
+      ticker: ticker,
+      lots: pos.amount,
+      avgPrice: useManualAvgPrice ? existingAsset.avgPrice : pos.avgPrice,
+      totalCost: pos.totalCost,
+      currentPrice: currentPrice,
+      gain: pos.gain,
       porto: pos.porto,
-      currentPrice: currentPrice, // Use currentPrice instead of price
-      currency: priceObj ? priceObj.currency : 'IDR',
-      type: 'stock',
-      transactions: validTransactions,
-      // Only add entry if it exists and is not undefined
-      ...(pos.entryPrice && pos.entryPrice !== undefined && { entry: pos.entryPrice })
+      gainPercentage: pos.gainPercentage || 0,
+      lastUpdate: new Date().toISOString()
     };
-  }).filter(Boolean); // Remove null entries
+  }).filter(Boolean);
 
   const crypto = Array.from(cryptoMap.entries()).map(([symbol, txs]) => {
     const priceObj = prices[symbol];
     const currentPrice = priceObj ? priceObj.price : 0;
     
-    // Skip delete transactions when building assets - they don't affect portfolio
+    // Skip delete transactions when building assets
     const validTransactions = txs.filter(tx => tx.type !== 'delete');
     if (validTransactions.length === 0) {
       console.log(`Skipping ${symbol} - no valid transactions (only delete transactions)`);
-      return null; // Don't preserve existing assets when no valid transactions
+      return null;
     }
     
     const pos = calculatePositionFromTransactions(validTransactions, currentPrice);
@@ -140,85 +128,69 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     // Check if the asset is fully sold (amount <= 0)
     if (pos.amount <= 0) {
       console.log(`Skipping ${symbol} - fully sold (amount: ${pos.amount})`);
-      return null; // Skip this asset
+      return null;
     }
     
     // Check if there's a manually set average price in current assets
-    const existingAsset = currentAssets.crypto.find(c => c.symbol === symbol);
+    const existingAsset = currentAssets?.crypto?.find(c => c.symbol.toUpperCase() === symbol.toUpperCase());
     const useManualAvgPrice = existingAsset && existingAsset.avgPrice && existingAsset.avgPrice !== pos.avgPrice;
     
-    // Use manually set average price if it exists and is different from calculated
-    const finalAvgPrice = useManualAvgPrice ? existingAsset.avgPrice : pos.avgPrice;
-    const finalTotalCost = finalAvgPrice * pos.amount;
-    const finalGain = pos.porto - finalTotalCost;
-    
-    // If we have an existing asset with manual edits, preserve all its data
-    if (existingAsset && useManualAvgPrice) {
-      console.log(`Preserving manual edits for ${symbol} - using existing asset data`);
-      return {
-        ...existingAsset, // Preserve ALL existing data
-        currentPrice: currentPrice, // Only update current price
-        porto: pos.porto, // Update portfolio value
-        totalCost: finalTotalCost, // Update total cost
-        gain: finalGain // Update gain/loss
-      };
-    }
-    
     return {
-      symbol,
+      symbol: symbol,
       amount: pos.amount,
-      avgPrice: finalAvgPrice,
-      totalCost: finalTotalCost,
-      gain: finalGain,
+      avgPrice: useManualAvgPrice ? existingAsset.avgPrice : pos.avgPrice,
+      totalCost: pos.totalCost,
+      currentPrice: currentPrice,
+      gain: pos.gain,
       porto: pos.porto,
-      currentPrice: currentPrice, // Use currentPrice instead of price
-      currency: 'USD',
-      type: 'crypto',
-      transactions: validTransactions,
-      // Only add entry if it exists and is not undefined
-      ...(pos.entryPrice && pos.entryPrice !== undefined && { entry: pos.entryPrice })
+      gainPercentage: pos.gainPercentage || 0,
+      lastUpdate: new Date().toISOString()
     };
-  }).filter(Boolean); // Remove null entries
+  }).filter(Boolean);
 
-  // REMOVED: Preserve existing assets logic to prevent duplicates
-  // Assets should only be built from transactions to ensure consistency
-
-  return { stocks, crypto };
+  return {
+    stocks: stocks,
+    crypto: crypto
+  };
 }
 
 export default function Home() {
-  const [assets, setAssets] = useState({
-    stocks: [],
-    crypto: []
-  });
-  const [activeTab, setActiveTab] = useState('portfolio'); // portfolio, add, history
+  const [activeTab, setActiveTab] = useState('portfolio');
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading, logout, getUserPortfolio, saveUserPortfolio } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
-  const [prices, setPrices] = useState({});
-  const [exchangeRate, setExchangeRate] = useState(null); // Aktifkan kembali untuk konversi crypto
-  const [transactions, setTransactions] = useState([]);
   const [confirmModal, setConfirmModal] = useState(null);
   const [sellingLoading, setSellingLoading] = useState(false);
   const [pricesLoading, setPricesLoading] = useState(false);
-  const [isUpdatingPortfolio, setIsUpdatingPortfolio] = useState(false);
-  const [lastManualUpdate, setLastManualUpdate] = useState(null);
-  const rebuildTimeoutRef = useRef(null);
-  const [portfolioProtected, setPortfolioProtected] = useState(false);
   const [showAverageCalculator, setShowAverageCalculator] = useState(false);
-  const [previousTransactionCount, setPreviousTransactionCount] = useState(0);
-
-  // Log initial state
-  // console.log('Home component initialized with:', {
-  //   assets,
-  //   transactions: transactions.length,
-  //   prices: Object.keys(prices).length,
-  //   user: !!user,
-  //   loading,
-  //   authLoading,
-  //   exchangeRate
-  // });
+  
+  // Use Portfolio State Manager
+  const {
+    assets,
+    transactions,
+    prices,
+    exchangeRate,
+    lastUpdate,
+    isInitialized,
+    isLoading: portfolioLoading,
+    initialize: initializePortfolio,
+    updateTransactions,
+    updatePrices,
+    updateExchangeRate,
+    addTransaction,
+    deleteAsset,
+    getAsset,
+    getPortfolioSummary,
+    rebuildPortfolio
+  } = usePortfolioState();
+  
+  // Add missing isUpdatingPortfolio variable
+  const isUpdatingPortfolio = portfolioLoading;
+  
+  // Add refs for intervals
+  const refreshIntervalRef = useRef(null);
+  const exchangeIntervalRef = useRef(null);
 
   // Memoize formatPrice function
   const formatPrice = useCallback((value, currency = 'IDR') => {
@@ -228,10 +200,8 @@ export default function Home() {
       }
       
       if (currency === 'IDR') {
-        // Use Indonesian format for IDR (dots for thousands, comma for decimal)
         return formatIDR(value, 0);
       } else {
-        // Use US format for USD (comma for thousands, period for decimal)
         return formatUSD(value, 2);
       }
     } catch (error) {
@@ -250,7 +220,10 @@ export default function Home() {
           try {
             setLoading(true);
             const portfolio = await getUserPortfolio();
-            setAssets(portfolio);
+            console.log('Loaded portfolio from Firestore:', portfolio);
+            
+            // Initialize portfolio state manager
+            initializePortfolio(portfolio);
           } catch (error) {
             console.error("Error loading portfolio:", error);
           } finally {
@@ -261,97 +234,61 @@ export default function Home() {
     };
 
     checkAuth();
-  }, [user, authLoading, router, getUserPortfolio]);
+  }, [user, authLoading, router, getUserPortfolio, initializePortfolio]);
 
-    // Direct price fetching function (no debounce)
-  const fetchPrices = useCallback(async () => {
+  // Simplified price fetching function with debouncing and refresh optimizer
+  const fetchPrices = useCallback(async (immediate = false) => {
+    if (pricesLoading && !immediate) {
+      console.log('Skipping fetch - already loading prices');
+      return; // Prevent concurrent requests
+    }
+    
+    // Use refresh optimizer to prevent excessive calls
+    if (!immediate) {
+      await refreshOptimizer.triggerRefresh(async () => {
+        await performPriceFetch();
+      });
+    } else {
+      await performPriceFetch();
+    }
+  }, [exchangeRate, assets, pricesLoading, user?.uid, updatePrices]);
+
+  // Separate function for actual price fetching
+  const performPriceFetch = useCallback(async () => {
     setPricesLoading(true);
+    
     try {
-      // Validate assets structure
-      if (!assets || !assets.stocks || !assets.crypto) {
-        console.error('Invalid assets structure:', assets);
+      if (!assets) {
+        console.log('No assets to fetch prices for');
         return;
       }
     
-      console.log('Fetching prices for assets:', {
-        stocks: assets.stocks.map(s => s.ticker),
-        crypto: assets.crypto.map(c => c.symbol)
-      });
-    
-      // Filter out US stocks and invalid data
-      const validStocks = assets.stocks.filter(stock => {
-        if (!stock || !stock.ticker || !stock.ticker.trim()) {
-          console.log('Filtering out invalid stock:', stock);
-          return false;
-        }
+      // Filter valid stocks
+      const validStocks = (assets?.stocks || []).filter(stock => {
+        if (!stock || !stock.ticker || !stock.ticker.trim()) return false;
+        if (stock.lots <= 0) return false; // Remove avgPrice check
         
-        // Validate stock data
-        if (stock.lots <= 0 || stock.avgPrice <= 0) {
-          console.log('Filtering out stock with invalid data:', stock);
-          return false;
-        }
-        
-        // Remove US stocks that we removed
         const usStockTickers = ['TSLA', 'NVDA', 'MSTR', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'INVALID'];
         const tickerUpper = stock.ticker.toUpperCase();
-        
-        // Only allow valid IDX stocks (4 characters or less, not US stocks)
-        const isValid = tickerUpper.length <= 4 && !usStockTickers.includes(tickerUpper);
-        if (!isValid) {
-          console.log('Filtering out stock:', stock.ticker, 'reason: invalid format or US stock');
-        }
-        return isValid;
+        return tickerUpper.length <= 4 && !usStockTickers.includes(tickerUpper);
       });
     
-      const stockTickers = validStocks
-        .map(stock => `${stock.ticker}.JK`);
-        
-      const cryptoSymbols = assets.crypto
-        .filter(crypto => {
-          if (!crypto || !crypto.symbol || !crypto.symbol.trim() || crypto.symbol.toUpperCase() === 'INVALID') {
-            console.log('Filtering out invalid crypto:', crypto);
-            return false;
-          }
-          
-          // Validate crypto data
-          if (crypto.amount <= 0 || crypto.avgPrice <= 0) {
-            console.log('Filtering out crypto with invalid data:', crypto);
-            return false;
-          }
-          
-          return true;
-        })
+      const stockTickers = validStocks.map(stock => `${stock.ticker}.JK`);
+      const cryptoSymbols = (assets?.crypto || [])
+        .filter(crypto => crypto && crypto.symbol && crypto.symbol.trim() && crypto.symbol.toUpperCase() !== 'INVALID')
         .map(crypto => crypto.symbol);
-    
-      console.log('Valid tickers for API:', { stockTickers, cryptoSymbols });
     
       if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
         console.log('No valid tickers to fetch');
         return;
       }
     
-      // Validate data before sending
       const requestData = {
         stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
         crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim())
       };
     
-      // Additional validation
-      if (requestData.stocks.length === 0 && requestData.crypto.length === 0) {
-        console.log('No valid request data after filtering');
-        return;
-      }
-    
-      // Validate each ticker/symbol format
-      const invalidStocks = requestData.stocks.filter(ticker => !ticker.includes('.JK'));
-      const invalidCrypto = requestData.crypto.filter(symbol => !symbol || symbol.length === 0);
-    
-      if (invalidStocks.length > 0 || invalidCrypto.length > 0) {
-        console.error('Invalid data format:', { invalidStocks, invalidCrypto });
-        return;
-      }
-    
-      console.log('Sending API request with data:', requestData);
+      console.log('Fetching prices for:', requestData);
     
       const response = await fetch('/api/prices', {
         method: 'POST',
@@ -360,233 +297,131 @@ export default function Home() {
         },
         body: JSON.stringify({
           ...requestData,
-          exchangeRate: exchangeRate
+          exchangeRate: exchangeRate,
+          userId: user?.uid || null
         }),
       });
     
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', errorText);
-        // Don't throw error, just log it and continue
-        console.warn(`API error: ${response.status} - ${errorText}`);
-        return; // Exit early without throwing
-      }
-    
-      const data = await response.json();
-      console.log('API response received:', {
-        receivedPrices: Object.keys(data.prices),
-        expectedPrices: [...stockTickers, ...cryptoSymbols],
-        missingPrices: [...stockTickers, ...cryptoSymbols].filter(key => !data.prices[key])
-      });
-      
-      setPrices(data.prices);
-      
-      // ADDED: Auto-refresh exchange rate when prices are updated
-      setTimeout(() => {
-        console.log('Auto-refreshing exchange rate after price update');
-        updateExchangeRate();
-      }, 1000); // 1 second delay
-    } catch (error) {
-      console.error('Error fetching prices:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        stockTickers,
-        cryptoSymbols
-      });
-    } finally {
-      setPricesLoading(false);
-    }
-  }, [assets.stocks.length, assets.crypto.length, exchangeRate]); // Only depend on length, not entire objects
-
-  // Direct fetch prices function for immediate refresh (bypasses debounce)
-  const fetchPricesImmediate = useCallback(async () => {
-    setPricesLoading(true);
-    try {
-      // Validate assets structure
-      if (!assets || !assets.stocks || !assets.crypto) {
-        console.error('Invalid assets structure:', assets);
+        if (response.status === 429) {
+          console.warn('Rate limit hit, will retry later');
+          return; // Don't throw error for rate limiting
+        }
+        console.warn(`API error: ${response.status}`);
         return;
       }
     
-      // Filter out US stocks and invalid data
-      const validStocks = assets.stocks.filter(stock => {
-        if (!stock || !stock.ticker || !stock.ticker.trim()) return false;
-        
-        // Remove US stocks that we removed
-        const usStockTickers = ['TSLA', 'NVDA', 'MSTR', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'INVALID'];
-        const tickerUpper = stock.ticker.toUpperCase();
-        
-        // Only allow valid IDX stocks (4 characters or less, not US stocks)
-        return tickerUpper.length <= 4 && !usStockTickers.includes(tickerUpper);
-      });
-      
-      const stockTickers = validStocks
-        .map(stock => `${stock.ticker}.JK`);
-        
-      const cryptoSymbols = assets.crypto
-        .filter(crypto => crypto && crypto.symbol && crypto.symbol.trim() && crypto.symbol.toUpperCase() !== 'INVALID')
-        .map(crypto => crypto.symbol);
-      
-      if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
-        return;
-      }
-      
-      // Validate data before sending
-      const requestData = {
-        stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
-        crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim())
-      };
-      
-      // Additional validation
-      if (requestData.stocks.length === 0 && requestData.crypto.length === 0) {
-        return;
-      }
-      
-      // Validate each ticker/symbol format
-      const invalidStocks = requestData.stocks.filter(ticker => !ticker.includes('.JK'));
-      const invalidCrypto = requestData.crypto.filter(symbol => !symbol || symbol.length === 0);
-      
-      if (invalidStocks.length > 0 || invalidCrypto.length > 0) {
-        console.error('Invalid data format:', { invalidStocks, invalidCrypto });
-        return;
-      }
-      
-      const response = await fetch('/api/prices', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...requestData,
-          exchangeRate: exchangeRate
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', errorText);
-        // Don't throw error, just log it and continue
-        console.warn(`API error: ${response.status} - ${errorText}`);
-        return; // Exit early without throwing
-      }
-      
       const data = await response.json();
-      setPrices(data.prices);
+      console.log('Received prices:', data.prices);
+      updatePrices(data.prices);
       
-      // ADDED: Auto-refresh exchange rate when prices are updated (immediate)
+      // Force portfolio value update after price update
       setTimeout(() => {
-        console.log('Auto-refreshing exchange rate after immediate price update');
-        updateExchangeRate();
-      }, 1000); // 1 second delay
+        rebuildPortfolio();
+      }, 100);
+      
     } catch (error) {
       console.error('Error fetching prices:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        stockTickers,
-        cryptoSymbols
-      });
     } finally {
       setPricesLoading(false);
     }
-  }, [assets.stocks.length, assets.crypto.length, exchangeRate]); // Only depend on length, not entire objects
+  }, [exchangeRate, assets, user?.uid, updatePrices]);
 
   // Update exchange rate function
-  const updateExchangeRate = useCallback(async () => {
+  const fetchExchangeRateData = useCallback(async () => {
     try {
       const rateData = await fetchExchangeRate();
       if (rateData && rateData.rate) {
-        setExchangeRate(rateData.rate);
-      } else {
-        throw new Error('Invalid exchange rate data received');
+        updateExchangeRate(rateData.rate);
       }
     } catch (error) {
       console.error('Error fetching exchange rate:', error);
-      setExchangeRate(null);
+      updateExchangeRate(null);
     }
-  }, []);
+  }, [updateExchangeRate]);
+
+  // Refresh prices function - SIMPLIFIED (removed to prevent infinite loops)
+  // const refreshPrices = useCallback(async () => {
+  //   console.log('REFRESH PRICES triggered');
+  //   
+  //   // Use refresh optimizer to prevent excessive calls
+  //   await refreshOptimizer.triggerRefresh(async () => {
+  //     await fetchPrices();
+  //   });
+  // }, [fetchPrices]);
+
+  // Manual trigger for immediate refresh
+  const triggerImmediateRefresh = useCallback(async () => {
+    console.log('Manual refresh triggered');
+    try {
+      await fetchPrices(true); // Force immediate refresh
+      rebuildPortfolio();
+      console.log('Manual refresh completed');
+    } catch (error) {
+      console.error('Error in manual refresh:', error);
+    }
+  }, [fetchPrices, rebuildPortfolio]);
 
   // Update prices function
-  const updatePrices = useCallback(async (immediate = false) => {
-    if (assets.stocks.length > 0 || assets.crypto.length > 0) {
-      if (immediate) {
-        // For manual refresh, use direct fetch function
-        await fetchPricesImmediate();
-        // Force rebuild assets after manual refresh
-        setLastManualUpdate({
-          timestamp: Date.now(),
-          type: 'price_refresh'
-        });
-      } else {
+  const triggerPriceUpdate = useCallback(async () => {
+    if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
+      await fetchPrices();
+    }
+  }, [fetchPrices, assets]);
+
+  // Set up intervals for exchange rate and price updates - FIXED
+  useEffect(() => {
+    // Only set up intervals after initialization
+    if (!isInitialized) return;
+    
+    console.log('Setting up refresh intervals - isInitialized:', isInitialized);
+    
+    // Initial refresh when component mounts
+    fetchExchangeRateData();
+    
+    // Initial refresh only when assets are available - ONCE ONLY
+    const initialRefreshTimer = setTimeout(() => {
+      if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
+        console.log('INITIAL REFRESH triggered (first time only)');
         fetchPrices();
       }
-    }
-  }, [fetchPrices, fetchPricesImmediate]); // Remove assets dependency to prevent infinite loop
-
-  // Set up intervals for exchange rate and price updates
-  useEffect(() => {
-    // Initial fetch
-    updateExchangeRate();
-    updatePrices(false); // Pass false for non-immediate update
+    }, 2000); // Reduced delay for faster initial load
     
-    const exchangeInterval = setInterval(updateExchangeRate, 60000); // 1 minute
-    const priceInterval = setInterval(() => updatePrices(false), 30000); // 30 seconds for more frequent updates
+    // Exchange rate update every 1 minute
+    exchangeIntervalRef.current = setInterval(fetchExchangeRateData, 60000);
+    
+    // Price refresh every 30 seconds (only if assets exist) - more frequent but less intrusive
+    refreshIntervalRef.current = setInterval(() => {
+      if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
+        console.log('AUTOMATIC REFRESH triggered (30 second interval)');
+        fetchPrices();
+      }
+    }, 30000); // Refresh every 30 seconds
 
     return () => {
-      clearInterval(exchangeInterval);
-      clearInterval(priceInterval);
-    };
-  }, []); // Remove dependencies to prevent infinite loops
-
-  // ADDED: Auto-refresh prices when assets change
-  useEffect(() => {
-    if (assets.stocks.length > 0 || assets.crypto.length > 0) {
-      // Debounce auto-refresh to prevent excessive API calls
-      const timeoutId = setTimeout(() => {
-        console.log('Auto-refreshing prices due to assets change');
-        updatePrices(false);
-      }, 1000); // 1 second debounce
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [assets.stocks.length, assets.crypto.length]); // Only trigger on length changes
-
-  // ADDED: Auto-refresh when missing prices detected
-  useEffect(() => {
-    const hasAssets = assets.stocks.length + assets.crypto.length > 0;
-    const hasPrices = Object.keys(prices).length > 0;
-    const missingPrices = hasAssets && hasPrices && Object.keys(prices).length < (assets.stocks.length + assets.crypto.length);
-    
-    if (missingPrices && !pricesLoading) {
-      console.log('Auto-refreshing due to missing prices detected');
-      const autoRefreshTimer = setTimeout(() => {
-        console.log('Executing auto-refresh for missing prices');
-        fetchPricesImmediate(); // Use immediate fetch for missing prices
-      }, 2000); // Auto-refresh after 2 seconds
-      
-      return () => clearTimeout(autoRefreshTimer);
-    }
-  }, [prices, assets.stocks.length, assets.crypto.length, pricesLoading]); // Removed fetchPricesImmediate dependency
-
-  // Fetch prices for assets - removed to prevent infinite loops
-  // Prices are now fetched via intervals and manual refresh only
-
-  // Save portfolio to Firebase whenever it changes
-  useEffect(() => {
-    const savePortfolio = async () => {
-      if (user && !loading && !authLoading) {
-        await saveUserPortfolio(assets);
+      console.log('Cleaning up refresh intervals');
+      clearTimeout(initialRefreshTimer);
+      if (exchangeIntervalRef.current) {
+        clearInterval(exchangeIntervalRef.current);
+        exchangeIntervalRef.current = null;
       }
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+      // Reset refresh optimizer on cleanup
+      refreshOptimizer.reset();
     };
+  }, [isInitialized, assets?.stocks?.length, assets?.crypto?.length]); // Fixed dependencies
 
-    savePortfolio();
-  }, [assets.stocks.length, assets.crypto.length, user, loading, authLoading, saveUserPortfolio]); // Only depend on length, not entire objects
+  // Save portfolio to Firestore whenever assets change
+  useEffect(() => {
+    if (user && !loading && !authLoading && saveUserPortfolio && assets && isInitialized) {
+      saveUserPortfolio(assets);
+    }
+  }, [assets, user, loading, authLoading, saveUserPortfolio, isInitialized]);
 
-  // Update portfolio value calculation - REMOVED to prevent infinite loops
-  // Portfolio value is calculated on-demand in the UI components
-
-  // Fetch transactions
+  // Fetch transactions and update portfolio state
   useEffect(() => {
     if (!user) {
       console.log('No user found, skipping transaction fetch');
@@ -604,7 +439,6 @@ export default function Home() {
       const newTransactions = snapshot.docs.map(doc => {
         const data = doc.data();
         const timestamp = data.timestamp;
-        // Convert Firestore timestamp to ISO string
         const timestampISO = timestamp ? (timestamp.toDate ? timestamp.toDate().toISOString() : timestamp) : new Date().toISOString();
         
         return {
@@ -614,250 +448,21 @@ export default function Home() {
         };
       });
       
-      console.log('Processed transactions:', newTransactions);
-      
-      // Check if transactions are being deleted (count is decreasing)
-      if (newTransactions.length < previousTransactionCount && (assets.stocks.length > 0 || assets.crypto.length > 0)) {
-        console.log('Transaction count decreased, protecting portfolio from rebuild');
-        setPortfolioProtected(true);
-      }
-      
-      setPreviousTransactionCount(newTransactions.length);
-      setTransactions(newTransactions);
-      
-      // ADDED: Auto-refresh prices when transactions change (with protection)
-      if (newTransactions.length > 0 && !isUpdatingPortfolio) {
-        setTimeout(() => {
-          console.log('Auto-refreshing prices due to transactions change');
-          updatePrices(false);
-        }, 1000); // 1 second debounce
-      }
+      // Update portfolio state manager
+      updateTransactions(newTransactions);
     }, (error) => {
       console.error('Error in transaction listener:', error);
-      setConfirmModal({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to load transactions: ' + error.message,
-        type: 'error',
-        confirmText: 'OK',
-        onConfirm: () => setConfirmModal(null)
-      });
     });
 
     return () => {
       console.log('Cleaning up transaction listener');
       unsubscribe();
     };
-  }, [user]); // Remove problematic dependencies
+  }, [user, updateTransactions]);
 
-  // Pada bagian useEffect yang update assets berdasarkan transaksi dan harga
-  useEffect(() => {
-    // Clear any existing timeout
-    if (rebuildTimeoutRef.current) {
-      clearTimeout(rebuildTimeoutRef.current);
-    }
-    
-    // ADDED: Prevent infinite loop by checking if we're already rebuilding
-    if (rebuildTimeoutRef.current) {
-      console.log('Skipping portfolio rebuild - rebuild already in progress');
-      return;
-    }
-    
-    // Skip rebuilding if we're currently updating portfolio manually
-    if (isUpdatingPortfolio) {
-      console.log('Skipping portfolio rebuild - manual update in progress');
-      return;
-    }
-    
-    // ENHANCED PROTECTION: Check for manual updates with protection duration
-    if (lastManualUpdate) {
-      const timeSinceUpdate = Date.now() - lastManualUpdate.timestamp;
-      const protectionDuration = lastManualUpdate.protectionDuration || 1000; // Changed to 1 second
-      
-      if (timeSinceUpdate < protectionDuration) {
-        const isPriceRefresh = lastManualUpdate.type === 'price_refresh';
-        if (!isPriceRefresh) {
-          console.log(`Skipping portfolio rebuild - manual update protection active (${Math.round(protectionDuration/1000)}s)`);
-          console.log('Manual update type:', lastManualUpdate.type);
-          console.log('Manual update operation:', lastManualUpdate.operation);
-          console.log(`Time since update: ${Math.round(timeSinceUpdate/1000)}s`);
-          return;
-        } else {
-          console.log('Allowing rebuild after manual price refresh');
-        }
-      }
-    }
-    
-    // Skip rebuilding if transactions are empty (to preserve portfolio when transactions are deleted)
-    if (!transactions || transactions.length === 0) {
-      console.log('Skipping portfolio rebuild - no transactions available');
-      return;
-    }
-    
-    // Skip rebuilding if we already have assets and transactions are being deleted
-    if (assets.stocks.length > 0 || assets.crypto.length > 0) {
-      const hasBuyTransactions = transactions.some(tx => tx.type === 'buy');
-      const hasDeleteTransactions = transactions.some(tx => tx.type === 'delete');
-      
-      // If we have assets but no buy transactions, don't rebuild
-      if (!hasBuyTransactions) {
-        console.log('Skipping portfolio rebuild - no buy transactions but portfolio exists');
-        setPortfolioProtected(true);
-        return;
-      }
-      
-      // If we have delete transactions and assets exist, be more careful about rebuilding
-      if (hasDeleteTransactions) {
-        console.log('Skipping portfolio rebuild - delete transactions detected, preserving existing portfolio');
-        setPortfolioProtected(true);
-        return;
-      }
-      
-      // Additional protection: if we have assets and the number of transactions is decreasing
-      const currentTransactionCount = transactions.length;
-      const currentAssetCount = assets.stocks.length + assets.crypto.length;
-      
-      if (currentTransactionCount < currentAssetCount) {
-        console.log('Skipping portfolio rebuild - transaction count decreased, preserving existing portfolio');
-        setPortfolioProtected(true);
-        return;
-      }
-      
-      // Check if we're deleting transaction history
-      if (currentAssetCount > 0 && currentTransactionCount < previousTransactionCount) {
-        console.log('Skipping portfolio rebuild - transaction history deletion detected, preserving existing portfolio');
-        setPortfolioProtected(true);
-        return;
-      }
-    }
-    
-    // If portfolio is protected, don't rebuild
-    if (portfolioProtected) {
-      console.log('Skipping portfolio rebuild - portfolio is protected');
-      return;
-    }
-    
-    // Check for recent deletions
-    if (assets.stocks.length > 0 || assets.crypto.length > 0) {
-      const hasRecentDeletions = transactions.some(tx => 
-        tx.type === 'delete' && 
-        new Date(tx.timestamp) > new Date(Date.now() - 30000) // Last 30 seconds
-      );
-      
-      if (hasRecentDeletions) {
-        console.log('Skipping portfolio rebuild - recent deletions detected, protecting existing portfolio');
-        setPortfolioProtected(true);
-        return;
-      }
-    }
-    
-          // Direct rebuild without debounce
-      if (transactions && prices && Object.keys(prices).length > 0) {
-        try {
-          console.log('Building assets from transactions and prices');
-          console.log('Current transactions:', transactions.map(tx => `${tx.type} ${tx.assetType} ${tx.ticker || tx.symbol} ${tx.amount}`));
-          
-          // ADDED: Set rebuild flag to prevent concurrent rebuilds (1 second)
-          rebuildTimeoutRef.current = setTimeout(() => {
-            rebuildTimeoutRef.current = null;
-          }, 1000);
-          
-          // Get current assets from state to preserve manual prices
-          setAssets(currentAssets => {
-            const newAssets = buildAssetsFromTransactions(transactions, prices, currentAssets);
-            console.log('New assets built:', newAssets);
-            
-            // Reset portfolio protection when rebuilding successfully
-            setPortfolioProtected(false);
-            
-            // Force UI update by triggering a re-render
-            setTimeout(() => {
-              console.log('Forcing UI update after portfolio rebuild');
-              setLastManualUpdate({
-                timestamp: Date.now(),
-                type: 'portfolio_rebuild',
-                operation: 'auto_rebuild'
-              });
-            }, 100);
-            
-            return newAssets;
-            
-            // Filter out assets with zero amount (fully sold)
-            const filteredStocks = newAssets.stocks.filter(stock => {
-              const isValid = stock.lots > 0;
-              if (!isValid) {
-                console.log(`Filtering out stock ${stock.ticker} - lots: ${stock.lots} (fully sold)`);
-              }
-              return isValid;
-            });
-            const filteredCrypto = newAssets.crypto.filter(crypto => {
-              const isValid = crypto.amount > 0;
-              if (!isValid) {
-                console.log(`Filtering out crypto ${crypto.symbol} - amount: ${crypto.amount} (fully sold)`);
-              }
-              return isValid;
-            });
-            
-            const filteredAssets = {
-              stocks: filteredStocks,
-              crypto: filteredCrypto
-            };
-            
-            console.log('Filtered assets (removed zero amounts):', filteredAssets);
-            
-            // REMOVED: Preserve existing assets when new assets are empty
-            // This was causing sold assets to remain in portfolio
-            
-            // Always update with filtered assets to ensure sold assets are removed
-            console.log('Updating portfolio with filtered assets');
-            console.log('Previous stocks:', currentAssets.stocks.map(s => `${s.ticker}: ${s.lots}`));
-            console.log('New stocks:', filteredAssets.stocks.map(s => `${s.ticker}: ${s.lots}`));
-            console.log('Previous crypto:', currentAssets.crypto.map(c => `${c.symbol}: ${c.amount}`));
-            console.log('New crypto:', filteredAssets.crypto.map(c => `${c.symbol}: ${c.amount}`));
-            
-            return filteredAssets;
-          });
-        } catch (error) {
-          console.error('Error building assets from transactions:', error);
-          // Don't use fallback to prevent overriding manual updates
-        }
-      }
-    
-    // No cleanup needed since we removed debounce
-  }, [transactions, prices, isUpdatingPortfolio, lastManualUpdate, portfolioProtected]); // Remove previousTransactionCount to prevent infinite loop
 
-  const addTransaction = async (transaction) => {
-    try {
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-      
-      // Validate required fields
-      if (!transaction.price || isNaN(transaction.price)) {
-        throw new Error('Invalid price value');
-      }
-      
-      const transactionData = {
-        ...transaction,
-        userId: user.uid,
-        timestamp: serverTimestamp(),
-        price: Number(transaction.price),
-        total: Number(transaction.price) * Number(transaction.amount)
-      };
-      
-      const docRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
-      console.log('Transaction saved with ID:', docRef.id);
-      
-      // Reset portfolio protection when adding new transaction
-      setPortfolioProtected(false);
-      setPreviousTransactionCount(prev => prev + 1);
-      
-      return docRef.id;
-    } catch (error) {
-      console.error('Error adding transaction:', error);
-      throw error;
-    }
-  };
+
+  // This function is no longer needed as Firebase listener handles updates automatically
 
   const addStock = async (stock) => {
     try {
@@ -873,9 +478,7 @@ export default function Home() {
       }
 
       // Validate numeric values
-      if (isNaN(stock.lots) || stock.lots <= 0) {
-        throw new Error('Invalid lots value');
-      }
+      validateIDXLots(stock.lots);
 
       // Format timestamp
       const now = new Date();
@@ -892,10 +495,10 @@ export default function Home() {
       // For IDX stocks: price is per share, but we calculate based on lots
       let valueIDR, valueUSD;
       if (stock.currency === 'IDR') {
-        valueIDR = stock.price * stock.lots; // Calculate based on lots, not total shares
+        valueIDR = stock.price * stock.lots * 100; // Calculate based on shares (1 lot = 100 shares)
         valueUSD = exchangeRate && exchangeRate > 0 ? valueIDR / exchangeRate : 0;
       } else {
-        valueUSD = stock.price * stock.lots; // Calculate based on lots, not total shares
+        valueUSD = stock.price * stock.lots * 100; // Calculate based on shares (1 lot = 100 shares)
         valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : 0;
       }
       
@@ -904,7 +507,7 @@ export default function Home() {
         type: 'buy',
         assetType: 'stock',
         ticker: stock.ticker,
-        amount: stock.lots,
+        amount: stock.lots * 100, // Store amount in shares, not lots
         price: stock.price,
         valueIDR: valueIDR,
         valueUSD: valueUSD,
@@ -920,130 +523,26 @@ export default function Home() {
       const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
       console.log('Transaction saved with ID:', transactionRef.id);
       
-      // Update local state
-      setTransactions(prev => [{
-        id: transactionRef.id,
-        ...transactionData,
-        timestamp: now.toISOString()
-      }, ...prev]);
+      // The Firebase listener will automatically update the portfolio state
+      // No need to manually add to portfolio state manager
       
-      // Update assets with actual values
-      const updatedStock = {
-        ticker: stock.ticker,
-        lots: stock.lots,
-        currentPrice: stock.price, // Use currentPrice for the asset
-        avgPrice: stock.price, // Use purchase price as average price
-        purchasePrice: stock.price,
-        valueIDR: valueIDR,
-        valueUSD: valueUSD,
-        lastUpdate: formattedDate,
-        currency: stock.currency,
-        type: 'stock',
-        userId: user.uid,
-        ...(stock.entry && { entry: stock.entry })
-      };
-      
-      // Set flag to prevent unwanted rebuilds during add operation
-      setIsUpdatingPortfolio(true);
-      
-      // Update local state and save to Firestore in one operation
-      const normalizedNewTicker = stock.ticker.toUpperCase();
-      setAssets(prev => {
-        const existingStockIndex = prev.stocks.findIndex(s => s.ticker.toUpperCase() === normalizedNewTicker);
-        let newStocks;
-        
-        if (existingStockIndex >= 0) {
-          const updatedStocks = [...prev.stocks];
-          const existingStock = updatedStocks[existingStockIndex];
-          
-          // Calculate new average price based on weighted average
-          const totalLots = existingStock.lots + stock.lots;
-          const totalValue = (existingStock.avgPrice * existingStock.lots) + (stock.price * stock.lots);
-          const newAvgPrice = totalValue / totalLots;
-          
-          updatedStocks[existingStockIndex] = {
-            ...existingStock,
-            lots: totalLots,
-            avgPrice: newAvgPrice, // Use calculated weighted average
-            valueIDR: existingStock.valueIDR + valueIDR,
-            valueUSD: existingStock.valueUSD + valueUSD,
-            lastUpdate: formattedDate,
-            currentPrice: stock.price, // Use currentPrice for the asset
-            ticker: normalizedNewTicker // always store normalized
-          };
-          newStocks = updatedStocks;
-        } else {
-          newStocks = [...prev.stocks, {
-            ...updatedStock,
-            ticker: normalizedNewTicker,
-            ...(stock.entry && { entry: stock.entry })
-          }];
-        }
-
-        // Prepare assets for Firestore
-        const currentAssets = {
-          stocks: newStocks.map(stock => ({
-            ...stock,
-            type: 'stock',
-            userId: user.uid,
-            currency: stock.currency || 'IDR',
-            lastUpdate: stock.lastUpdate || formattedDate
-          })),
-          crypto: prev.crypto.map(crypto => ({
-            ...crypto,
-            type: 'crypto',
-            userId: user.uid,
-            currency: crypto.currency || 'USD',
-            lastUpdate: crypto.lastUpdate || formattedDate
-          }))
-        };
-
-        // Clean undefined values before saving
-        const cleanedAssets = cleanUndefinedValues(currentAssets);
-
-        // Save to Firestore asynchronously
-        const userRef = doc(db, 'users', user.uid);
-        updateDoc(userRef, {
-          assets: cleanedAssets
-        }).catch(error => {
-          console.error('Error saving assets to Firestore:', error);
-        });
-
-        return {
-          ...prev,
-          stocks: newStocks
-        };
-      });
-
-      // Force refresh prices after adding stock to ensure data consistency
+      // Refresh prices after adding stock
       setTimeout(async () => {
-        console.log('Force refreshing prices after adding stock');
-        // Set flag to prevent unwanted rebuilds
-        setIsUpdatingPortfolio(true);
-        
-        try {
-          await fetchPricesImmediate();
-          // Force rebuild portfolio after price update
-          setLastManualUpdate({
-            timestamp: Date.now(),
-            type: 'price_refresh',
-            operation: 'post_add_stock'
-          });
-        } catch (error) {
-          console.error('Error during post-add refresh:', error);
-        } finally {
-          // Clear flag after refresh
-          setTimeout(() => {
-            setIsUpdatingPortfolio(false);
-            console.log('Portfolio update protection cleared for stock');
-          }, 2000);
-        }
+        await fetchPrices(true);
       }, 500);
+      
+      // Show success notification
+      setConfirmModal({
+        isOpen: true,
+        title: 'Success',
+        message: `Berhasil menambahkan saham ${stock.ticker}`,
+        type: 'success',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModal(null)
+      });
 
     } catch (error) {
       console.error('Error in addStock:', error);
-      // Clear protection flag on error
-      setIsUpdatingPortfolio(false);
       setConfirmModal({
         isOpen: true,
         title: 'Error',
@@ -1072,7 +571,8 @@ export default function Home() {
         body: JSON.stringify({
           stocks: [],
           crypto: [crypto.symbol],
-          exchangeRate: exchangeRate
+          exchangeRate: exchangeRate,
+          userId: user?.uid || null
         }),
       });
       
@@ -1100,8 +600,8 @@ export default function Home() {
         second: '2-digit'
       });
       
-      // Calculate total value based on purchase price
-      const pricePerUnit = crypto.purchasePrice || cryptoPrice.price;
+      // Calculate total value based on current API price
+      const pricePerUnit = crypto.price || cryptoPrice.price;
       const totalValueUSD = pricePerUnit * crypto.amount;
       const totalValueIDR = exchangeRate && exchangeRate > 0 ? totalValueUSD * exchangeRate : 0;
       
@@ -1126,130 +626,26 @@ export default function Home() {
       const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
       console.log('Crypto transaction saved with ID:', transactionRef.id);
       
-      // Update local state
-      setTransactions(prev => [{
-        id: transactionRef.id,
-        ...transactionData,
-        timestamp: now.toISOString()
-      }, ...prev]);
+      // The Firebase listener will automatically update the portfolio state
+      // No need to manually add to portfolio state manager
       
-      // Update assets with actual values
-      const updatedCrypto = {
-        symbol: crypto.symbol,
-        amount: crypto.amount,
-        currentPrice: cryptoPrice.price, // Use currentPrice for the asset
-        avgPrice: pricePerUnit, // Use purchase price as average price
-        purchasePrice: pricePerUnit,
-        valueIDR: totalValueIDR,
-        valueUSD: totalValueUSD,
-        lastUpdate: formattedDate,
-        currency: 'USD',
-        type: 'crypto',
-        userId: user.uid,
-        ...(crypto.entry && { entry: crypto.entry })
-      };
-      
-      // Set flag to prevent unwanted rebuilds during add operation
-      setIsUpdatingPortfolio(true);
-      
-      // Update local state and save to Firestore in one operation
-      const normalizedNewSymbol = crypto.symbol.toUpperCase();
-      setAssets(prev => {
-        const existingCryptoIndex = prev.crypto.findIndex(c => c.symbol.toUpperCase() === normalizedNewSymbol);
-        let newCrypto;
-        
-        if (existingCryptoIndex >= 0) {
-          const updatedCrypto = [...prev.crypto];
-          const existingCrypto = updatedCrypto[existingCryptoIndex];
-          
-          // Calculate new average price based on weighted average
-          const totalAmount = existingCrypto.amount + crypto.amount;
-          const totalValue = (existingCrypto.avgPrice * existingCrypto.amount) + (pricePerUnit * crypto.amount);
-          const newAvgPrice = totalValue / totalAmount;
-          
-          updatedCrypto[existingCryptoIndex] = {
-            ...existingCrypto,
-            amount: totalAmount,
-            avgPrice: newAvgPrice, // Use calculated weighted average
-            valueIDR: existingCrypto.valueIDR + totalValueIDR,
-            valueUSD: existingCrypto.valueUSD + totalValueUSD,
-            lastUpdate: formattedDate,
-            currentPrice: cryptoPrice.price, // Use currentPrice for the asset
-            symbol: normalizedNewSymbol // always store normalized
-          };
-          newCrypto = updatedCrypto;
-        } else {
-          newCrypto = [...prev.crypto, {
-            ...updatedCrypto,
-            symbol: normalizedNewSymbol,
-            ...(crypto.entry && { entry: crypto.entry })
-          }];
-        }
-
-        // Prepare assets for Firestore
-        const currentAssets = {
-          stocks: prev.stocks.map(stock => ({
-            ...stock,
-            type: 'stock',
-            userId: user.uid,
-            currency: stock.currency || 'IDR',
-            lastUpdate: stock.lastUpdate || formattedDate
-          })),
-          crypto: newCrypto.map(crypto => ({
-            ...crypto,
-            type: 'crypto',
-            userId: user.uid,
-            currency: crypto.currency || 'USD',
-            lastUpdate: crypto.lastUpdate || formattedDate
-          }))
-        };
-
-        // Clean undefined values before saving
-        const cleanedAssets = cleanUndefinedValues(currentAssets);
-
-        // Save to Firestore asynchronously
-        const userRef = doc(db, 'users', user.uid);
-        updateDoc(userRef, {
-          assets: cleanedAssets
-        }).catch(error => {
-          console.error('Error saving assets to Firestore:', error);
-        });
-
-        return {
-          ...prev,
-          crypto: newCrypto
-        };
-      });
-
-      // Force refresh prices after adding crypto to ensure data consistency
+      // Refresh prices after adding crypto
       setTimeout(async () => {
-        console.log('Force refreshing prices after adding crypto');
-        // Set flag to prevent unwanted rebuilds
-        setIsUpdatingPortfolio(true);
-        
-        try {
-          await fetchPricesImmediate();
-          // Force rebuild portfolio after price update
-          setLastManualUpdate({
-            timestamp: Date.now(),
-            type: 'price_refresh',
-            operation: 'post_add_crypto'
-          });
-        } catch (error) {
-          console.error('Error during post-add refresh:', error);
-        } finally {
-          // Clear flag after refresh
-          setTimeout(() => {
-            setIsUpdatingPortfolio(false);
-            console.log('Portfolio update protection cleared for crypto');
-          }, 2000);
-        }
+        await fetchPrices(true);
       }, 500);
+      
+      // Show success notification
+      setConfirmModal({
+        isOpen: true,
+        title: 'Success',
+        message: `Berhasil menambahkan kripto ${crypto.symbol}`,
+        type: 'success',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModal(null)
+      });
 
     } catch (error) {
       console.error('Error in addCrypto:', error);
-      // Clear protection flag on error
-      setIsUpdatingPortfolio(false);
       setConfirmModal({
         isOpen: true,
         title: 'Error',
@@ -1261,328 +657,282 @@ export default function Home() {
     }
   };
 
+  // Portfolio State Manager handles all updates automatically
   const updateStock = (ticker, updatedStock) => {
-    console.log('updateStock called:', {
-      ticker,
-      updatedStock,
-      currentStocks: assets.stocks
-    });
+    console.log('updateStock called for:', ticker, updatedStock);
     
-    setAssets(prev => {
-      const stockIndex = prev.stocks.findIndex(stock => stock.ticker === ticker);
-      if (stockIndex === -1) {
-        console.error('Stock not found:', ticker);
-        return prev;
-      }
-      
-      const updatedStocks = [...prev.stocks];
-      
-      // Get the original stock to preserve all data
-      const originalStock = prev.stocks[stockIndex];
-      
-      // Validate that originalStock exists
-      if (!originalStock) {
-        console.error('Original stock not found for ticker:', ticker);
-        return prev; // Return unchanged state
-      }
-      
-      // Get the most current price from prices state
-      const currentPrice = prices[`${updatedStock.ticker}.JK`]?.price || 0;
-      const currentValue = currentPrice * updatedStock.lots; // Calculate based on lots
-      const totalCost = updatedStock.avgPrice * updatedStock.lots; // Calculate based on lots
-      const gain = currentValue - totalCost;
-      
-      const finalStock = {
-        ...originalStock, // Preserve ALL original data first
-        ...updatedStock, // Apply updates (mainly avgPrice)
-        currentPrice: currentPrice, // Always use the most current price
-        porto: currentValue,
-        totalCost: totalCost,
-        gain: gain,
-        // Ensure all required fields are present and correct
-        ticker: updatedStock.ticker || originalStock?.ticker,
-        lots: updatedStock.lots || originalStock?.lots,
-        avgPrice: updatedStock.avgPrice,
-        currency: updatedStock.currency || originalStock?.currency || 'IDR',
-        type: 'stock'
-      };
-      
-      updatedStocks[stockIndex] = finalStock;
-      
-      console.log('Stock updated:', {
-        original: originalStock,
-        updated: finalStock,
-        ticker: finalStock.ticker,
-        originalTicker: originalStock?.ticker || 'unknown',
-        updatedTicker: finalStock.ticker,
-        tickerChanged: originalStock?.ticker !== finalStock.ticker
-      });
-      
-      return {
-        ...prev,
-        stocks: updatedStocks
-      };
-    });
+    // Validate that lots is a whole number
+    validateIDXLots(updatedStock.lots);
     
-    // Set manual update flag with longer protection
-    setLastManualUpdate({
-      timestamp: Date.now(),
-      type: 'manual_update',
-      operation: 'update_stock',
-      ticker: updatedStock.ticker,
-      protectionDuration: 60000 // 60 seconds protection
-    });
+    // Create a transaction to update the average price
+    const updateTransaction = {
+      type: 'update',
+      assetType: 'stock',
+      ticker: ticker.toUpperCase(),
+      amount: updatedStock.lots * 100, // Convert lots to shares for transaction
+      price: updatedStock.avgPrice, // Use the new average price (per share)
+      valueIDR: updatedStock.lots * 100 * updatedStock.avgPrice, // Convert to shares
+      valueUSD: exchangeRate && exchangeRate > 0 ? (updatedStock.lots * 100 * updatedStock.avgPrice) / exchangeRate : 0,
+      date: new Date().toLocaleString('id-ID'),
+      timestamp: serverTimestamp(),
+      currency: 'IDR',
+      status: 'completed',
+      userId: user.uid,
+      description: 'Average price updated by user'
+    };
+    
+    console.log('Update transaction created:', updateTransaction);
+    
+    // Save to Firestore first
+    const saveToFirestore = async () => {
+      try {
+        const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), updateTransaction);
+        console.log('Update transaction saved to Firestore with ID:', transactionRef.id);
+        
+        // Add to portfolio state manager
+        addTransaction({
+          id: transactionRef.id,
+          ...updateTransaction,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Force portfolio rebuild with multiple attempts
+        console.log('Force portfolio rebuild after updating stock');
+        
+        // First attempt - immediate
+        rebuildPortfolio();
+        
+        // Second attempt - after a short delay
+        setTimeout(() => {
+          rebuildPortfolio();
+        }, 300);
+        
+        // Third attempt - ensure portfolio values are updated
+        setTimeout(() => {
+          rebuildPortfolio();
+        }, 800);
+        
+        // Force immediate refresh to update UI
+        setTimeout(async () => {
+          await triggerImmediateRefresh();
+        }, 500);
+        
+      } catch (error) {
+        console.error('Error saving update transaction to Firestore:', error);
+      }
+    };
+    
+    // Execute the save operation
+    saveToFirestore();
   };
-  
+
   const updateCrypto = (symbol, updatedCrypto) => {
-    console.log('updateCrypto called:', {
-      symbol,
-      updatedCrypto,
-      currentCrypto: assets.crypto
-    });
+    console.log('updateCrypto called for:', symbol, updatedCrypto);
     
-    setAssets(prev => {
-      const cryptoIndex = prev.crypto.findIndex(crypto => crypto.symbol === symbol);
-      if (cryptoIndex === -1) {
-        console.error('Crypto not found:', symbol);
-        return prev;
-      }
-      
-      const updatedCryptos = [...prev.crypto];
-      
-      // Get the original crypto to preserve all data
-      const originalCrypto = prev.crypto[cryptoIndex];
-      
-      // Validate that originalCrypto exists
-      if (!originalCrypto) {
-        console.error('Original crypto not found at index:', index);
-        return prev; // Return unchanged state
-      }
-      
-      // Get the most current price from prices state
-      const currentPrice = prices[updatedCrypto.symbol]?.price || 0;
-      const currentValue = currentPrice * updatedCrypto.amount;
-      const totalCost = updatedCrypto.avgPrice * updatedCrypto.amount;
-      const gain = currentValue - totalCost;
-      
-      const finalCrypto = {
-        ...originalCrypto, // Preserve ALL original data first
-        ...updatedCrypto, // Apply updates (mainly avgPrice)
-        currentPrice: currentPrice, // Always use the most current price
-        porto: currentValue,
-        totalCost: totalCost,
-        gain: gain,
-        // Ensure all required fields are present and correct
-        symbol: updatedCrypto.symbol || originalCrypto?.symbol,
-        amount: updatedCrypto.amount || originalCrypto?.amount,
-        avgPrice: updatedCrypto.avgPrice,
-        currency: updatedCrypto.currency || originalCrypto?.currency || 'USD',
-        type: 'crypto'
-      };
-      
-      updatedCryptos[cryptoIndex] = finalCrypto;
-      
-      console.log('Crypto updated:', {
-        original: originalCrypto,
-        updated: finalCrypto,
-        symbol: finalCrypto.symbol,
-        originalSymbol: originalCrypto?.symbol || 'unknown',
-        updatedSymbol: finalCrypto.symbol,
-        symbolChanged: originalCrypto?.symbol !== finalCrypto.symbol
-      });
-      
-      return {
-        ...prev,
-        crypto: updatedCryptos
-      };
-    });
+    // Create a transaction to update the average price
+    const updateTransaction = {
+      type: 'update',
+      assetType: 'crypto',
+      symbol: symbol.toUpperCase(),
+      amount: updatedCrypto.amount,
+      price: updatedCrypto.avgPrice, // Use the new average price (per unit)
+      valueIDR: exchangeRate && exchangeRate > 0 ? (updatedCrypto.amount * updatedCrypto.avgPrice) * exchangeRate : 0,
+      valueUSD: updatedCrypto.amount * updatedCrypto.avgPrice,
+      date: new Date().toLocaleString('id-ID'),
+      timestamp: serverTimestamp(),
+      currency: 'USD',
+      status: 'completed',
+      userId: user.uid,
+      description: 'Average price updated by user'
+    };
     
-    // Set manual update flag with longer protection
-    setLastManualUpdate({
-      timestamp: Date.now(),
-      type: 'manual_update',
-      operation: 'update_crypto',
-      symbol: updatedCrypto.symbol,
-      protectionDuration: 60000 // 60 seconds protection
-    });
+    console.log('Update transaction created:', updateTransaction);
+    
+    // Save to Firestore first
+    const saveToFirestore = async () => {
+      try {
+        const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), updateTransaction);
+        console.log('Update transaction saved to Firestore with ID:', transactionRef.id);
+        
+        // Add to portfolio state manager
+        addTransaction({
+          id: transactionRef.id,
+          ...updateTransaction,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Force portfolio rebuild with multiple attempts
+        console.log('Force portfolio rebuild after updating crypto');
+        
+        // First attempt - immediate
+        rebuildPortfolio();
+        
+        // Second attempt - after a short delay
+        setTimeout(() => {
+          rebuildPortfolio();
+        }, 300);
+        
+        // Third attempt - ensure portfolio values are updated
+        setTimeout(() => {
+          rebuildPortfolio();
+        }, 800);
+        
+        // Force immediate refresh to update UI
+        setTimeout(async () => {
+          await triggerImmediateRefresh();
+        }, 500);
+        
+      } catch (error) {
+        console.error('Error saving update transaction to Firestore:', error);
+      }
+    };
+    
+    // Execute the save operation
+    saveToFirestore();
   };
   
   const deleteStock = async (ticker) => {
     try {
-      setIsUpdatingPortfolio(true);
-      const stockIndex = assets.stocks.findIndex(stock => stock.ticker === ticker);
-      if (stockIndex === -1) {
+      console.log('DELETE stock:', ticker);
+      
+      // Check if stock exists
+      const stock = getAsset('stock', ticker);
+      if (!stock) {
         console.error('Stock not found:', ticker);
         return;
       }
       
-      const stockToDelete = assets.stocks[stockIndex];
-      
-      // Update local state first
-      const newAssets = {
-        ...assets,
-        stocks: assets.stocks.filter(stock => stock.ticker !== ticker)
+      // Add delete transaction to Firestore
+      const deleteTransaction = {
+        assetType: 'stock',
+        ticker: ticker.toUpperCase(),
+        type: 'delete',
+        amount: 0,
+        price: 0,
+        total: 0,
+        userId: user.uid,
+        timestamp: serverTimestamp(),
+        description: 'Asset deleted by user'
       };
       
-      setAssets(newAssets);
-      setLastManualUpdate({
-        timestamp: Date.now(),
-        type: 'manual_update',
-        assets: newAssets,
-        operation: 'delete_stock',
-        ticker: stockToDelete.ticker
-      });
-
-      // Record delete transaction
-      if (user && stockToDelete) {
-        const now = new Date();
-        const formattedDate = now.toLocaleString('id-ID', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit'
-        });
-
-        // Get current price for calculation
-        const priceData = prices[stockToDelete.ticker];
-        const price = priceData ? priceData.price : stockToDelete.price || 0;
-        const currency = priceData ? priceData.currency : stockToDelete.currency || 'IDR';
+      await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
+      
+      // Delete from portfolio state manager
+      deleteAsset('stock', ticker);
+      
+      // Force portfolio rebuild and refresh
+      console.log('Force portfolio rebuild after deleting stock');
+      
+      // Wait a bit for the transaction to be processed
+      setTimeout(async () => {
+        // Refresh prices to ensure UI updates
+        await fetchPrices(true); // Force immediate refresh
         
-        // Calculate values
-        const totalShares = currency === 'IDR' ? stockToDelete.lots * 100 : stockToDelete.lots;
-        let valueIDR, valueUSD;
-        if (currency === 'IDR') {
-          valueIDR = price * totalShares;
-          valueUSD = 1; // Hapus exchangeRate karena tidak diperlukan untuk saham IDX
-        } else {
-          valueUSD = price * totalShares;
-          valueIDR = 1; // Hapus exchangeRate karena tidak diperlukan untuk saham IDX
-        }
-
-        const transactionData = {
-          type: 'delete',
-          assetType: 'stock',
-          ticker: stockToDelete.ticker,
-          amount: stockToDelete.lots,
-          price: price,
-          valueIDR: valueIDR,
-          valueUSD: valueUSD,
-          timestamp: now.toISOString(),
-          date: formattedDate,
-          currency: currency,
-          shares: totalShares,
-          userId: user.uid,
-          status: 'completed'
-        };
-
-        // Save to Firestore
-        await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
-      }
+        // Force portfolio rebuild
+        rebuildPortfolio();
+      }, 100);
+      
+      // Show success notification
+      setConfirmModal({
+        isOpen: true,
+        title: 'Success',
+        message: `Berhasil menghapus saham ${ticker}`,
+        type: 'success',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModal(null)
+      });
+      
     } catch (error) {
       console.error('Error deleting stock:', error);
-    } finally {
-      // Keep the flag active longer to prevent rebuild interference
-      setTimeout(() => {
-        setIsUpdatingPortfolio(false);
-        // Clear the last manual update after a longer delay
-        setTimeout(() => {
-          setLastManualUpdate(null);
-        }, 5000);
-      }, 5000);
+      setConfirmModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Gagal menghapus saham: ' + error.message,
+        type: 'error',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModal(null)
+      });
     }
   };
   
   const deleteCrypto = async (symbol) => {
     try {
-      setIsUpdatingPortfolio(true);
-      const cryptoIndex = assets.crypto.findIndex(crypto => crypto.symbol === symbol);
-      if (cryptoIndex === -1) {
+      console.log('DELETE crypto:', symbol);
+      
+      // Check if crypto exists
+      const crypto = getAsset('crypto', symbol);
+      if (!crypto) {
         console.error('Crypto not found:', symbol);
         return;
       }
       
-      const cryptoToDelete = assets.crypto[cryptoIndex];
-      
-      // Update local state first
-      const newAssets = {
-        ...assets,
-        crypto: assets.crypto.filter(crypto => crypto.symbol !== symbol)
+      // Add delete transaction to Firestore
+      const deleteTransaction = {
+        assetType: 'crypto',
+        symbol: symbol.toUpperCase(),
+        type: 'delete',
+        amount: 0,
+        price: 0,
+        total: 0,
+        userId: user.uid,
+        timestamp: serverTimestamp(),
+        description: 'Asset deleted by user'
       };
       
-      setAssets(newAssets);
-      setLastManualUpdate({
-        timestamp: Date.now(),
-        type: 'manual_update',
-        assets: newAssets,
-        operation: 'delete_crypto',
-        symbol: cryptoToDelete.symbol
+      await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
+      
+      // Delete from portfolio state manager
+      deleteAsset('crypto', symbol);
+      
+      // Force portfolio rebuild and refresh
+      console.log('Force portfolio rebuild after deleting crypto');
+      
+      // Wait a bit for the transaction to be processed
+      setTimeout(async () => {
+        // Refresh prices to ensure UI updates
+        await fetchPrices(true); // Force immediate refresh
+        
+        // Force portfolio rebuild
+        rebuildPortfolio();
+      }, 100);
+      
+      // Show success notification
+      setConfirmModal({
+        isOpen: true,
+        title: 'Success',
+        message: `Berhasil menghapus kripto ${symbol}`,
+        type: 'success',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModal(null)
       });
 
-      // Record delete transaction
-      if (user && cryptoToDelete) {
-        const now = new Date();
-        const formattedDate = now.toLocaleString('id-ID', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit'
-        });
-
-        // Get current price for calculation
-        const priceData = prices[cryptoToDelete.symbol];
-        const price = priceData ? priceData.price : cryptoToDelete.price || 0;
-        
-        // Calculate values
-        const valueUSD = price * cryptoToDelete.amount;
-        const valueIDR = 1 * valueUSD; // Hapus exchangeRate karena tidak diperlukan untuk saham IDX
-
-        const transactionData = {
-          type: 'delete',
-          assetType: 'crypto',
-          symbol: cryptoToDelete.symbol,
-          amount: cryptoToDelete.amount,
-          price: price,
-          valueIDR: valueIDR,
-          valueUSD: valueUSD,
-          timestamp: now.toISOString(),
-          date: formattedDate,
-          currency: 'USD',
-          userId: user.uid,
-          status: 'completed'
-        };
-
-        // Save to Firestore
-        await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
-      }
     } catch (error) {
       console.error('Error deleting crypto:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Gagal menghapus kripto: ' + error.message,
+        type: 'error',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModal(null)
+      });
     } finally {
-      // Keep the flag active longer to prevent rebuild interference
-      setTimeout(() => {
-        setIsUpdatingPortfolio(false);
-        // Clear the last manual update after a longer delay
-        setTimeout(() => {
-          setLastManualUpdate(null);
-        }, 10000); // Increased to 10 seconds
-      }, 7000); // Increased to 7 seconds
+      // Portfolio state manager handles updates automatically
     }
   };
 
   const handleSellStock = async (ticker, asset, amountToSell) => {
     try {
       setSellingLoading(true);
-      setIsUpdatingPortfolio(true);
       
       // Find the stock index by ticker
-      const stockIndex = assets.stocks.findIndex(stock => stock.ticker === ticker);
+      const stockIndex = assets?.stocks?.findIndex(stock => stock.ticker === ticker);
       if (stockIndex === -1) {
         console.error('Stock not found:', ticker);
         return;
       }
+      
+      const stock = assets?.stocks?.[stockIndex];
       
       // Get current price from prices state using correct ticker format
       const tickerKey = `${asset.ticker}.JK`;
@@ -1606,13 +956,16 @@ export default function Home() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(requestData),
+            body: JSON.stringify({
+              ...requestData,
+              userId: user?.uid || null
+            }),
           });
           
           if (response.ok) {
             const data = await response.json();
             // Update prices state with fresh data
-            setPrices(prev => ({ ...prev, ...data.prices }));
+            updatePrices(data.prices);
             // Get the fresh price data
             priceData = data.prices[tickerKey];
           } else {
@@ -1639,55 +992,7 @@ export default function Home() {
         valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : 0;
       }
 
-      // Calculate remaining amount and update portfolio
-      const remainingAmount = asset.lots - amountToSell;
-      let newAssets;
-
-      if (remainingAmount <= 0) {
-        // Remove the stock if selling all
-        const updatedStocks = assets.stocks.filter(stock => stock.ticker !== ticker);
-        newAssets = {
-          ...assets,
-          stocks: updatedStocks
-        };
-      } else {
-        // Update the remaining amount with proper calculations
-        const updatedStocks = [...assets.stocks];
-        const remainingShares = remainingAmount * 100;
-        const remainingValueIDR = remainingShares * priceData.price;
-        const remainingValueUSD = exchangeRate && exchangeRate > 0 ? remainingValueIDR / exchangeRate : 0;
-        
-        updatedStocks[stockIndex] = {
-          ...asset,
-          lots: remainingAmount,
-          shares: remainingShares,
-          currentPrice: priceData.price,
-          porto: remainingValueIDR,
-          valueIDR: remainingValueIDR,
-          valueUSD: remainingValueUSD,
-          // Recalculate gain/loss
-          totalCost: asset.avgPrice * remainingShares,
-          gain: remainingValueIDR - (asset.avgPrice * remainingShares)
-        };
-        
-        newAssets = {
-          ...assets,
-          stocks: updatedStocks
-        };
-      }
-
-      // Set manual update flag BEFORE updating assets
-      setLastManualUpdate({
-        timestamp: Date.now(),
-        type: 'manual_update',
-        operation: 'sell_stock',
-        ticker: asset.ticker,
-        amount: amountToSell,
-        protectionDuration: 15000 // 15 seconds protection
-      });
-
-      // Update assets state
-      setAssets(newAssets);
+      // Portfolio state manager will handle asset updates automatically based on transactions
 
       // Add transaction (SELL) to Firestore
       const now = new Date();
@@ -1703,7 +1008,7 @@ export default function Home() {
       const transactionData = {
         type: 'sell',
         ticker: asset.ticker,
-        amount: amountToSell,
+        amount: shareCount, // Store amount in shares, not lots
         price: priceData.price,
         avgPrice: asset.avgPrice,
         valueIDR,
@@ -1711,7 +1016,6 @@ export default function Home() {
         timestamp: serverTimestamp(), // Use serverTimestamp for consistency
         assetType: 'stock',
         currency: priceData.currency,
-        shares: shareCount,
         date: formattedDate,
         userId: user ? user.uid : null,
         status: 'completed'
@@ -1719,7 +1023,8 @@ export default function Home() {
 
       // Save transaction to Firestore
       if (user) {
-        await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
+        const docRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
+        console.log('Sell transaction saved with ID:', docRef.id, 'Data:', transactionData);
       }
 
       // Show success notification
@@ -1731,6 +1036,13 @@ export default function Home() {
         confirmText: 'OK',
         onConfirm: () => setConfirmModal(null)
       });
+      
+      // Force portfolio rebuild and refresh after selling
+      setTimeout(async () => {
+        console.log('Forcing portfolio rebuild after sell transaction');
+        await fetchPrices(true); // Force immediate refresh
+        rebuildPortfolio(); // Force portfolio rebuild
+      }, 500);
 
     } catch (error) {
       console.error('Error selling stock:', error);
@@ -1743,26 +1055,22 @@ export default function Home() {
       });
     } finally {
       setSellingLoading(false);
-      // Keep protection active for longer
-      setTimeout(() => {
-        setIsUpdatingPortfolio(false);
-      }, 10000); // 10 seconds
+      // Portfolio state manager handles updates automatically
     }
   };
 
   const handleSellCrypto = async (symbol, asset, amountToSell) => {
     try {
       setSellingLoading(true);
-      setIsUpdatingPortfolio(true);
       
       // Find the crypto index by symbol
-      const cryptoIndex = assets.crypto.findIndex(crypto => crypto.symbol === symbol);
+      const cryptoIndex = assets?.crypto?.findIndex(crypto => crypto.symbol === symbol);
       if (cryptoIndex === -1) {
         console.error('Crypto not found:', symbol);
         return;
       }
       
-      const crypto = assets.crypto[cryptoIndex];
+      const crypto = assets?.crypto?.[cryptoIndex];
       if (!crypto) return;
 
       // Get current price
@@ -1785,13 +1093,16 @@ export default function Home() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(requestData),
+            body: JSON.stringify({
+              ...requestData,
+              userId: user?.uid || null
+            }),
           });
           
           if (response.ok) {
             const data = await response.json();
             // Update prices state with fresh data
-            setPrices(prev => ({ ...prev, ...data.prices }));
+            updatePrices(data.prices);
             // Get the fresh price data
             priceData = data.prices[crypto.symbol];
           } else {
@@ -1811,53 +1122,7 @@ export default function Home() {
       const valueUSD = priceData.price * amountToSell;
       const valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : 0;
 
-      // Calculate remaining amount and update portfolio
-      const remainingAmount = crypto.amount - amountToSell;
-      let newAssets;
-      
-      if (remainingAmount <= 0) {
-        // Remove crypto if selling all
-        const updatedCrypto = assets.crypto.filter(crypto => crypto.symbol !== symbol);
-        newAssets = {
-          ...assets,
-          crypto: updatedCrypto
-        };
-      } else {
-        // Update remaining amount with proper calculations
-        const updatedCrypto = [...assets.crypto];
-        const remainingValueUSD = remainingAmount * priceData.price;
-        const remainingValueIDR = exchangeRate && exchangeRate > 0 ? remainingValueUSD * exchangeRate : 0;
-        
-        updatedCrypto[cryptoIndex] = {
-          ...crypto,
-          amount: remainingAmount,
-          currentPrice: priceData.price,
-          porto: remainingValueUSD,
-          valueUSD: remainingValueUSD,
-          valueIDR: remainingValueIDR,
-          // Recalculate gain/loss
-          totalCost: crypto.avgPrice * remainingAmount,
-          gain: remainingValueUSD - (crypto.avgPrice * remainingAmount)
-        };
-        
-        newAssets = {
-          ...assets,
-          crypto: updatedCrypto
-        };
-      }
-
-      // Set manual update flag BEFORE updating assets
-      setLastManualUpdate({
-        timestamp: Date.now(),
-        type: 'manual_update',
-        operation: 'sell_crypto',
-        symbol: crypto.symbol,
-        amount: amountToSell,
-        protectionDuration: 15000 // 15 seconds protection
-      });
-
-      // Update assets state
-      setAssets(newAssets);
+      // Portfolio state manager will handle asset updates automatically based on transactions
 
       // Add transaction (SELL) to Firestore
       const now = new Date();
@@ -1888,7 +1153,8 @@ export default function Home() {
 
       // Save transaction to Firestore
       if (user) {
-        await addDoc(collection(db, 'users', user.uid, 'transactions'), transaction);
+        const docRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transaction);
+        console.log('Crypto sell transaction saved with ID:', docRef.id, 'Data:', transaction);
       }
 
       // Show success notification
@@ -1900,6 +1166,13 @@ export default function Home() {
         confirmText: 'OK',
         onConfirm: () => setConfirmModal(null)
       });
+      
+      // Force portfolio rebuild and refresh after selling
+      setTimeout(async () => {
+        console.log('Forcing portfolio rebuild after sell transaction');
+        await fetchPrices(true); // Force immediate refresh
+        rebuildPortfolio(); // Force portfolio rebuild
+      }, 500);
 
     } catch (error) {
       console.error('Error selling crypto:', error);
@@ -1912,10 +1185,7 @@ export default function Home() {
       });
     } finally {
       setSellingLoading(false);
-      // Keep protection active for longer
-      setTimeout(() => {
-        setIsUpdatingPortfolio(false);
-      }, 10000); // 10 seconds
+      // Portfolio state manager handles updates automatically
     }
   };
 
@@ -2060,7 +1330,9 @@ export default function Home() {
                           </p>
                         </div>
                       </div>
-                      <StockInput onAdd={addStock} onComplete={() => setActiveTab('portfolio')} />
+                      <ErrorBoundary>
+                        <StockInput onAdd={addStock} onComplete={() => setActiveTab('portfolio')} />
+                      </ErrorBoundary>
                     </div>
                     
                     {/* Crypto Input Card */}
@@ -2080,7 +1352,9 @@ export default function Home() {
                           </p>
                         </div>
                       </div>
-                      <CryptoInput onAdd={addCrypto} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
+                      <ErrorBoundary>
+                        <CryptoInput onAdd={addCrypto} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
+                      </ErrorBoundary>
                     </div>
                   </div>
                   
@@ -2119,33 +1393,38 @@ export default function Home() {
                   </div>
                 </div>
               ) : activeTab === 'portfolio' ? (
-                <Portfolio 
-                  assets={assets} 
-                  onUpdateStock={updateStock}
-                  onUpdateCrypto={updateCrypto}
-                  onAddAsset={() => setActiveTab('add')}
-                  onSellStock={handleSellStock}
-                  onSellCrypto={handleSellCrypto}
-                  onDeleteStock={deleteStock}
-                  onDeleteCrypto={deleteCrypto}
-                  onRefreshPrices={updatePrices}
-                  onRefreshExchangeRate={updateExchangeRate}
-                  prices={prices}
-                  exchangeRate={exchangeRate}
-                  sellingLoading={sellingLoading}
-                  pricesLoading={pricesLoading}
-                />
+                <ErrorBoundary>
+                  <Portfolio 
+                    assets={assets} 
+                    onUpdateStock={updateStock}
+                    onUpdateCrypto={updateCrypto}
+                    onAddAsset={() => setActiveTab('add')}
+                    onSellStock={handleSellStock}
+                    onSellCrypto={handleSellCrypto}
+                    onDeleteStock={deleteStock}
+                    onDeleteCrypto={deleteCrypto}
+                    onRefreshPrices={fetchPrices}
+                    onRefreshExchangeRate={updateExchangeRate}
+                    prices={prices}
+                    exchangeRate={exchangeRate}
+                    sellingLoading={sellingLoading}
+                    pricesLoading={pricesLoading}
+                    isUpdatingPortfolio={isUpdatingPortfolio}
+                  />
+                </ErrorBoundary>
               ) : activeTab === 'history' ? (
-                <TransactionHistory 
-                  transactions={transactions}
-                  user={user}
-                  onTransactionsUpdate={() => {
-                    // The Firebase listener will automatically update the transactions
-                    // No need to manually update here
-                    console.log('Transaction updated, Firebase listener will handle refresh');
-                  }}
-                  exchangeRate={exchangeRate}
-                />
+                <ErrorBoundary>
+                  <TransactionHistory 
+                    transactions={transactions}
+                    user={user}
+                    onTransactionsUpdate={() => {
+                      // The Firebase listener will automatically update the transactions
+                      // No need to manually update here
+                      console.log('Transaction updated, Firebase listener will handle refresh');
+                    }}
+                    exchangeRate={exchangeRate}
+                  />
+                </ErrorBoundary>
               ) : null}
             </>
           )}

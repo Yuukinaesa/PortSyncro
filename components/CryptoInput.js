@@ -60,20 +60,41 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
       
             // Enhanced validation for crypto symbol
       const normalizedSymbol = symbol.trim().toUpperCase();
+      
+      // More strict validation for crypto symbols
       if (!/^[A-Z0-9]{1,10}$/.test(normalizedSymbol)) {
         throw new Error('Invalid crypto symbol format');
+      }
+      
+      // Check for common invalid patterns
+      const invalidPatterns = ['TEST', 'DEMO', 'NULL', 'NONE', 'INVALID', 'FAKE', 'DUMMY'];
+      if (invalidPatterns.includes(normalizedSymbol)) {
+        throw new Error('Invalid crypto symbol');
+      }
+      
+      // Check for suspicious patterns (too many numbers)
+      const numberCount = (normalizedSymbol.match(/[0-9]/g) || []).length;
+      if (numberCount > 5) {
+        throw new Error('Crypto symbol contains too many numbers');
       }
       
       // Fetch current price
       const price = await fetchCryptoPrice(symbol.toUpperCase());
       
-      onAdd({
+      // Create crypto object with current price
+      const crypto = {
         symbol: symbol.toUpperCase(),
         amount: amountValue,
-        price: price,
+        price: price, // Use current API price
+        avgPrice: price, // Set average price to current price
+        currentPrice: price,
+        currency: 'USD',
         type: 'crypto',
         addedAt: new Date().toISOString()
-      });
+      };
+      
+      console.log('Adding crypto with current price:', crypto);
+      onAdd(crypto);
       
       setSymbol('');
       setAmount('');

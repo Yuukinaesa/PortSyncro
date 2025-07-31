@@ -94,6 +94,9 @@ export default function TransactionHistory({
     
     let filtered = [...transactions]; // Create a copy of transactions array
     
+    // Filter out 'update' transactions - hide them from history
+    filtered = filtered.filter(tx => tx.type !== 'update');
+    
     // Jika ada prop assetKey, filter transactions hanya untuk assetKey (ticker/symbol)
     if (assetKey) {
       filtered = filtered.filter(tx => tx.ticker === assetKey || tx.symbol === assetKey);
@@ -469,11 +472,14 @@ export default function TransactionHistory({
                             ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                             : tx.type === 'sell'
                             ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                            : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                            : tx.type === 'delete'
+                            ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                         }`}>
                           {tx.type === 'buy' ? t('buy') : 
                            tx.type === 'sell' ? t('sell') : 
-                           tx.type === 'delete' ? t('delete') : tx.type}
+                           tx.type === 'delete' ? t('delete') : 
+                           tx.type}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -487,7 +493,7 @@ export default function TransactionHistory({
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                        {tx.amount}
+                        {tx.assetType === 'stock' ? Math.round(tx.amount / 100) : tx.amount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
                         {formatCurrency(tx.price, tx.currency === 'IDR' ? 'IDR' : 'USD')}

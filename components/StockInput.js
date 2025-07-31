@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
-import { normalizeNumberInput } from '../lib/utils';
+import { normalizeNumberInput, validateIDXLots } from '../lib/utils';
 
 export default function StockInput({ onAdd, onComplete, exchangeRate }) {
   const [ticker, setTicker] = useState('');
@@ -20,12 +20,9 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         throw new Error('Stock code and lot amount must be filled');
       }
 
-      // Validate lots is a positive number
+      // Validate lots is a positive whole number for IDX stocks
       const normalizedLots = normalizeNumberInput(lots);
-      const lotsNum = parseFloat(normalizedLots);
-      if (isNaN(lotsNum) || lotsNum <= 0) {
-        throw new Error('Lot amount must be greater than 0');
-      }
+      const lotsNum = validateIDXLots(normalizedLots);
 
       // Validate ticker format for IDX (should be 2-4 characters, letters only)
       const normalizedTicker = ticker.trim().toUpperCase();
@@ -101,9 +98,9 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       const stock = {
         ticker: normalizedTicker,
         lots: lotsNum,
-        avgPrice: stockPrice.price,
+        price: stockPrice.price, // Use current API price
+        avgPrice: stockPrice.price, // Set average price to current price
         currentPrice: stockPrice.price,
-        price: stockPrice.price,
         currency: stockPrice.currency || 'IDR',
         change: stockPrice.change || 0,
         changePercent: stockPrice.changePercent || 0,
@@ -111,7 +108,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         addedAt: new Date().toISOString()
       };
 
-      console.log('Adding stock:', stock);
+      console.log('Adding stock with current price:', stock);
       onAdd(stock);
       setIsLoading(false);
       onComplete();

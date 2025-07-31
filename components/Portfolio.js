@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import AssetTable from './AssetTable';
 import Notification from './Notification';
 import { FiRefreshCw, FiPlusCircle, FiTrendingUp, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload } from 'react-icons/fi';
@@ -26,18 +26,34 @@ export default function Portfolio({
   prices: propPrices,
   exchangeRate: parentExchangeRate,
   sellingLoading = false,
-  pricesLoading = false
+  pricesLoading = false,
+  isUpdatingPortfolio = false
 }) {
+  // Debug logging - simplified and memoized to prevent excessive logging
+  const assetCount = useMemo(() => ({
+    stocks: assets?.stocks?.length || 0,
+    crypto: assets?.crypto?.length || 0
+  }), [assets?.stocks?.length, assets?.crypto?.length]);
+  
+  // Only log when asset count actually changes
+  useEffect(() => {
+    if (assetCount.stocks > 0 || assetCount.crypto > 0) {
+      console.log('Portfolio component received assets:', assetCount);
+    }
+  }, [assetCount]);
+  
   const [prices, setPrices] = useState(propPrices || {});
   
-  // Sync prices from parent component
+  // Sync prices from parent component - with memoization
+  const memoizedPrices = useMemo(() => propPrices, [propPrices]);
   useEffect(() => {
-    if (propPrices) {
-      setPrices(propPrices);
+    if (memoizedPrices) {
+      setPrices(memoizedPrices);
     }
-  }, [propPrices]);
+  }, [memoizedPrices]);
+  
   const [loading, setLoading] = useState(false);
-  const isPriceLoading = pricesLoading || loading;
+  const isPriceLoading = pricesLoading || loading || isUpdatingPortfolio;
   
   // ADDED: Prevent excessive loading state
   const [lastLoadingTime, setLastLoadingTime] = useState(0);
@@ -119,24 +135,24 @@ export default function Portfolio({
     }
   }, [onRefreshPrices, onRefreshExchangeRate, fetchPrices, fetchRate]);
 
-  // Auto-refresh when missing prices detected
-  useEffect(() => {
-    const hasAssets = assets.stocks.length + assets.crypto.length > 0;
-    const hasPrices = Object.keys(prices).length > 0;
-    const missingPrices = hasAssets && hasPrices && Object.keys(prices).length < (assets.stocks.length + assets.crypto.length);
-    
-    if (missingPrices && !debouncedLoading) {
-      console.log('Auto-refreshing due to missing prices');
-      const autoRefreshTimer = setTimeout(() => {
-        // Call parent refresh functions directly to avoid dependency issues
-        if (onRefreshPrices) {
-          onRefreshPrices(true); // Pass immediate=true for auto-refresh
-        }
-      }, 3000); // Auto-refresh after 3 seconds
-      
-      return () => clearTimeout(autoRefreshTimer);
-    }
-  }, [prices, assets.stocks.length, assets.crypto.length, debouncedLoading, onRefreshPrices]);
+  // Auto-refresh prices if missing data detected - DISABLED to prevent excessive refreshes
+  // useEffect(() => {
+  //   const hasAssets = assets?.stocks?.length + assets?.crypto?.length > 0;
+  //   const hasPrices = Object.keys(prices).length > 0;
+  //   const missingPrices = hasAssets && hasPrices && Object.keys(prices).length < (assets?.stocks?.length + assets?.crypto?.length);
+
+  //   if (missingPrices && !debouncedLoading) {
+  //     console.log('Auto-refreshing due to missing prices');
+  //     const autoRefreshTimer = setTimeout(() => {
+  //       // Call parent refresh functions directly to avoid dependency issues
+  //       if (onRefreshPrices) {
+  //         onRefreshPrices(true); // Pass immediate=true for auto-refresh
+  //       }
+  //     }, 3000); // Auto-refresh after 3 seconds
+
+  //     return () => clearTimeout(autoRefreshTimer);
+  //   }
+  // }, [prices, assets?.stocks?.length, assets?.crypto?.length, debouncedLoading, onRefreshPrices]);
   
   // Handle sell functionality
   const handleSellStock = (index, asset, amountToSell) => {
@@ -185,7 +201,7 @@ export default function Portfolio({
     }
   };
   
-  // Fixed calculation totals function
+  // Fixed calculation totals function - use porto values from assets
   const calculateTotals = () => {
     let totalStocksIDR = 0;
     let totalStocksUSD = 0;
@@ -199,72 +215,88 @@ export default function Portfolio({
     let totalPreviousDayUSD = 0;
     let error = null;
 
-    // Calculate stocks totals
-    assets.stocks.forEach(stock => {
-      const tickerKey = `${stock.ticker}.JK`;
-      if (prices[tickerKey]) {
-        const price = prices[tickerKey];
-        const shareCount = stock.lots * 100; // 1 lot = 100 shares for IDX stocks
-        
-        if (price.currency === 'IDR') {
-          const stockValue = price.price * shareCount;
-          totalStocksIDR += stockValue;
-          
-          // Convert to USD for total USD calculation
-          if (exchangeRate && exchangeRate > 0) {
-            totalStocksUSD += stockValue / exchangeRate;
-          }
-        }
-        
-        // Calculate daily change and previous day value
-        if (price.change !== undefined && !isNaN(price.change)) {
-          avgDayChange += price.change;
-          totalAssetsWithChange++;
-          
-          // Calculate previous day value
-          const previousPrice = price.price / (1 + price.change / 100);
-          const previousValueIDR = previousPrice * shareCount;
-          const previousValueUSD = exchangeRate && exchangeRate > 0 ? previousValueIDR / exchangeRate : 0;
-          
-          totalPreviousDayIDR += previousValueIDR;
-          totalPreviousDayUSD += previousValueUSD;
-        }
+    // Calculate stocks totals using porto values
+    (assets?.stocks || []).forEach(stock => {
+      // Use porto values if available, otherwise calculate from prices
+      if (stock.portoIDR && stock.portoIDR > 0) {
+        totalStocksIDR += stock.portoIDR;
+        totalStocksUSD += stock.portoUSD || 0;
         totalStocksWithPrices++;
+      } else {
+        // Fallback to price calculation
+        const tickerKey = `${stock.ticker}.JK`;
+        if (prices[tickerKey]) {
+          const price = prices[tickerKey];
+          const shareCount = stock.lots * 100; // 1 lot = 100 shares for IDX stocks
+          
+          if (price.currency === 'IDR') {
+            const stockValue = price.price * shareCount;
+            totalStocksIDR += stockValue;
+            
+            // Convert to USD for total USD calculation
+            if (exchangeRate && exchangeRate > 0) {
+              totalStocksUSD += Math.round((stockValue / exchangeRate) * 100) / 100;
+            }
+          }
+          
+          // Calculate daily change and previous day value
+          if (price.change !== undefined && !isNaN(price.change)) {
+            avgDayChange += price.change;
+            totalAssetsWithChange++;
+            
+            // Calculate previous day value
+            const previousPrice = price.price / (1 + price.change / 100);
+            const previousValueIDR = previousPrice * shareCount;
+            const previousValueUSD = exchangeRate && exchangeRate > 0 ? Math.round((previousValueIDR / exchangeRate) * 100) / 100 : 0;
+            
+            totalPreviousDayIDR += previousValueIDR;
+            totalPreviousDayUSD += previousValueUSD;
+          }
+          totalStocksWithPrices++;
+        }
       }
     });
 
-    // Calculate crypto totals
-    assets.crypto.forEach(crypto => {
-      if (prices[crypto.symbol]) {
-        const price = prices[crypto.symbol];
-        const cryptoValueUSD = price.price * crypto.amount;
-        totalCryptoUSD += cryptoValueUSD;
-        
-        // Convert USD to IDR using exchange rate
-        if (exchangeRate && exchangeRate > 0) {
-          totalCryptoIDR += cryptoValueUSD * exchangeRate;
-        } else {
-          error = t('exchangeRateUnavailable');
-        }
-        
-        // Calculate daily change and previous day value for crypto
-        if (price.change !== undefined && !isNaN(price.change)) {
-          avgDayChange += price.change;
-          totalAssetsWithChange++;
-          
-          const previousPrice = price.price / (1 + price.change / 100);
-          const previousValueUSD = previousPrice * crypto.amount;
-          const previousValueIDR = exchangeRate && exchangeRate > 0 ? previousValueUSD * exchangeRate : 0;
-          
-          totalPreviousDayIDR += previousValueIDR;
-          totalPreviousDayUSD += previousValueUSD;
-        }
+    // Calculate crypto totals using porto values
+    (assets?.crypto || []).forEach(crypto => {
+      // Use porto values if available, otherwise calculate from prices
+      if (crypto.portoUSD && crypto.portoUSD > 0) {
+        totalCryptoUSD += crypto.portoUSD;
+        totalCryptoIDR += crypto.portoIDR || 0;
         totalCryptoWithPrices++;
+      } else {
+        // Fallback to price calculation
+        if (prices[crypto.symbol]) {
+          const price = prices[crypto.symbol];
+          const cryptoValueUSD = price.price * crypto.amount;
+          totalCryptoUSD += cryptoValueUSD;
+          
+          // Convert USD to IDR using exchange rate
+          if (exchangeRate && exchangeRate > 0) {
+            totalCryptoIDR += Math.round(cryptoValueUSD * exchangeRate);
+          } else {
+            error = t('exchangeRateUnavailable');
+          }
+          
+          // Calculate daily change and previous day value for crypto
+          if (price.change !== undefined && !isNaN(price.change)) {
+            avgDayChange += price.change;
+            totalAssetsWithChange++;
+            
+            const previousPrice = price.price / (1 + price.change / 100);
+            const previousValueUSD = previousPrice * crypto.amount;
+            const previousValueIDR = exchangeRate && exchangeRate > 0 ? Math.round(previousValueUSD * exchangeRate) : 0;
+            
+            totalPreviousDayIDR += previousValueIDR;
+            totalPreviousDayUSD += previousValueUSD;
+          }
+          totalCryptoWithPrices++;
+        }
       }
     });
 
-    const totalIDR = totalStocksIDR + totalCryptoIDR;
-    const totalUSD = totalStocksUSD + totalCryptoUSD;
+    const totalIDR = Math.round(totalStocksIDR + totalCryptoIDR);
+    const totalUSD = Math.round((totalStocksUSD + totalCryptoUSD) * 100) / 100;
     
     // Calculate average daily change
     avgDayChange = totalAssetsWithChange > 0 ? avgDayChange / totalAssetsWithChange : 0;
@@ -292,8 +324,8 @@ export default function Portfolio({
       cryptoPercent,
       totalStocksWithPrices,
       totalCryptoWithPrices,
-      totalStocks: assets.stocks.length,
-      totalCrypto: assets.crypto.length,
+      totalStocks: assets?.stocks?.length || 0,
+      totalCrypto: assets?.crypto?.length || 0,
       totalAssetsWithChange,
       avgDayChange,
       error
@@ -306,38 +338,52 @@ export default function Portfolio({
     setExchangeRateError(totals.error);
   }, [totals.error]);
 
-  // Fixed gain calculations
+  // Fixed gain calculations - use gain values from assets
   const calculateGains = () => {
     let stocksGain = 0;
     let cryptoGainUSD = 0;
     let totalCostIDR = 0;
     let totalCostUSD = 0;
 
-    // Calculate stocks gain - use same logic as AssetTable
-    assets.stocks.forEach(stock => {
-      const tickerKey = `${stock.ticker}.JK`;
-      const currentPrice = prices[tickerKey]?.price || stock.currentPrice || 0;
-      const shareCount = stock.lots * 100; // 1 lot = 100 shares for IDX
-      const currentValue = currentPrice * shareCount;
-      const costBasis = stock.avgPrice * shareCount; // Use avgPrice directly
-      
-      stocksGain += currentValue - costBasis;
-      totalCostIDR += costBasis;
+    // Calculate stocks gain using gain values from assets
+    (assets?.stocks || []).forEach(stock => {
+      if (stock.gainIDR !== undefined) {
+        stocksGain += stock.gainIDR;
+        totalCostIDR += stock.totalCost || (stock.avgPrice * stock.lots * 100);
+      } else {
+        // Fallback calculation
+        const tickerKey = `${stock.ticker}.JK`;
+        const currentPrice = prices[tickerKey]?.price || stock.currentPrice || 0;
+        const shareCount = stock.lots * 100; // 1 lot = 100 shares for IDX
+        const currentValue = currentPrice * shareCount;
+        const costBasis = stock.avgPrice * shareCount;
+        
+        const stockGain = currentValue - costBasis;
+        stocksGain += stockGain;
+        totalCostIDR += costBasis;
+      }
     });
 
-    // Calculate crypto gain - use same logic as AssetTable
-    assets.crypto.forEach(crypto => {
-      const currentPrice = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
-      const currentValue = currentPrice * crypto.amount;
-      const costBasis = crypto.totalCost || (crypto.avgPrice * crypto.amount); // Use totalCost or calculate from avgPrice
-      
-      cryptoGainUSD += currentValue - costBasis;
-      totalCostUSD += costBasis;
+    // Calculate crypto gain using gain values from assets
+    (assets?.crypto || []).forEach(crypto => {
+      if (crypto.gainUSD !== undefined) {
+        cryptoGainUSD += crypto.gainUSD;
+        totalCostUSD += crypto.totalCost || (crypto.avgPrice * crypto.amount);
+      } else {
+        // Fallback calculation
+        const currentPrice = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
+        const currentValue = currentPrice * crypto.amount;
+        const costBasis = crypto.avgPrice * crypto.amount;
+        
+        const cryptoGain = currentValue - costBasis;
+        cryptoGainUSD += cryptoGain;
+        totalCostUSD += costBasis;
+      }
     });
 
-    const cryptoGainIDR = exchangeRate ? cryptoGainUSD * exchangeRate : 0;
-    const totalGain = stocksGain + cryptoGainIDR;
-    const totalGainUSD = (stocksGain / (exchangeRate || 1)) + cryptoGainUSD;
+    const cryptoGainIDR = exchangeRate ? Math.round(cryptoGainUSD * exchangeRate) : 0;
+    const totalGain = Math.round(stocksGain + cryptoGainIDR);
+    const totalGainUSD = Math.round(((stocksGain / (exchangeRate || 1)) + cryptoGainUSD) * 100) / 100;
     const totalCost = totalCostIDR + (exchangeRate ? totalCostUSD * exchangeRate : totalCostUSD);
     const gainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
 
@@ -382,6 +428,22 @@ export default function Portfolio({
   };
 
   const exportPortfolioToCSV = () => {
+    const allAssets = [
+      ...(assets?.stocks || []).map(asset => ({ ...asset, type: 'stock' })),
+      ...(assets?.crypto || []).map(asset => ({ ...asset, type: 'crypto' }))
+    ];
+
+    if (allAssets.length === 0) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Peringatan',
+        message: 'Tidak ada aset untuk diekspor',
+        type: 'warning',
+        onConfirm: () => setConfirmModal(null)
+      });
+      return;
+    }
+
     try {
       const BOM = '\uFEFF';
       
@@ -393,7 +455,7 @@ export default function Portfolio({
       let csvContent = BOM + headers.join(';') + '\n';
       
       // Add stocks
-      assets.stocks.forEach(stock => {
+      (assets?.stocks || []).forEach(stock => {
         const tickerKey = `${stock.ticker}.JK`;
         const currentPrice = prices[tickerKey]?.price || stock.currentPrice || 0;
         const shareCount = stock.lots * 100;
@@ -418,7 +480,7 @@ export default function Portfolio({
       });
       
       // Add crypto
-      assets.crypto.forEach(crypto => {
+      (assets?.crypto || []).forEach(crypto => {
         const currentPrice = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
         const currentValueUSD = currentPrice * crypto.amount;
         const currentValueIDR = exchangeRate && exchangeRate > 0 ? currentValueUSD * exchangeRate : 0;
@@ -722,7 +784,7 @@ export default function Portfolio({
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
-                {t('all')} ({assets.stocks.length + assets.crypto.length})
+                {t('all')} ({assets?.stocks?.length + assets?.crypto?.length})
               </button>
               <button
                 onClick={() => setActiveAssetTab('stocks')}
@@ -732,7 +794,7 @@ export default function Portfolio({
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
-                {t('stocks')} ({assets.stocks.length})
+                {t('stocks')} ({assets?.stocks?.length})
               </button>
               <button
                 onClick={() => setActiveAssetTab('crypto')}
@@ -742,7 +804,7 @@ export default function Portfolio({
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
-                {t('crypto')} ({assets.crypto.length})
+                {t('crypto')} ({assets?.crypto?.length})
               </button>
             </div>
           </div>
@@ -761,7 +823,7 @@ export default function Portfolio({
             
             <button
               onClick={exportPortfolioToCSV}
-              disabled={assets.stocks.length === 0 && assets.crypto.length === 0}
+              disabled={assets?.stocks?.length === 0 && assets?.crypto?.length === 0}
               className="px-3 sm:px-4 py-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50"
               title={t('exportPortfolio')}
             >
@@ -797,7 +859,7 @@ export default function Portfolio({
       )}
         
       {/* Loading State - Minimalist */}
-      {debouncedLoading && assets.stocks.length + assets.crypto.length > 0 ? (
+      {debouncedLoading && (assets?.stocks?.length + assets?.crypto?.length) > 0 ? (
         <div className="flex justify-center items-center py-12">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
@@ -806,19 +868,14 @@ export default function Portfolio({
         </div>
       ) : (
         <>
-          {/* Info Panel - Minimalist */}
-          {!debouncedLoading && Object.keys(prices).length > 0 && Object.keys(prices).length < (assets.stocks.length + assets.crypto.length) && (
+          {/* Info Panel - Minimalist - Only show if significantly missing data */}
+          {!debouncedLoading && Object.keys(prices).length > 0 && Object.keys(prices).length < (assets?.stocks?.length + assets?.crypto?.length) * 0.8 && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
               <div className="flex items-center gap-3">
                 <FiInfo className="w-5 h-5 text-blue-500" />
                 <div className="flex-1">
                   <p className="font-medium text-blue-800 dark:text-blue-200">{t('updatingPriceData')}</p>
-                  <p className="text-sm mt-1 text-blue-600 dark:text-blue-300">Auto-refresh dalam 3 detik untuk memperbarui data yang hilang...</p>
-                  <div className="mt-2 text-xs text-blue-500 dark:text-blue-400">
-                    <p>Available prices: {Object.keys(prices).length}</p>
-                    <p>Total assets: {assets.stocks.length + assets.crypto.length}</p>
-                    <p>Missing: {(assets.stocks.length + assets.crypto.length) - Object.keys(prices).length}</p>
-                  </div>
+                  <p className="text-sm mt-1 text-blue-600 dark:text-blue-300">Auto-refresh dalam beberapa detik...</p>
                 </div>
                 <button 
                   onClick={handleRefresh}
@@ -833,7 +890,7 @@ export default function Portfolio({
           {/* Stocks Section */}
           {(activeAssetTab === 'all' || activeAssetTab === 'stocks') && (
             <div className={activeAssetTab === 'all' ? 'mb-8' : ''}>
-              {assets.stocks.length > 0 ? (
+              {assets?.stocks?.length > 0 ? (
                 <AssetTable 
                   assets={assets.stocks} 
                   prices={prices} 
@@ -861,7 +918,7 @@ export default function Portfolio({
           {/* Crypto Section */}
           {(activeAssetTab === 'all' || activeAssetTab === 'crypto') && (
             <div>
-              {assets.crypto.length > 0 ? (
+              {assets?.crypto?.length > 0 ? (
                 <AssetTable 
                   assets={assets.crypto} 
                   prices={prices} 
@@ -887,7 +944,7 @@ export default function Portfolio({
           )}
             
           {/* Empty State - Minimalist */}
-          {assets.stocks.length === 0 && assets.crypto.length === 0 && (
+          {assets?.stocks?.length === 0 && assets?.crypto?.length === 0 && (
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-16 text-center">
               <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-6">
                 <FiDollarSign className="w-8 h-8 text-blue-600 dark:text-blue-400" />
@@ -908,7 +965,7 @@ export default function Portfolio({
       )}
         
       {/* Footer - Minimalist */}
-      {lastUpdate && assets.stocks.length + assets.crypto.length > 0 && (
+      {lastUpdate && (assets?.stocks?.length + assets?.crypto?.length) > 0 && (
         <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-4 text-gray-500 dark:text-gray-400 text-sm flex flex-col sm:flex-row sm:justify-between gap-2">
           <span>{t('lastUpdated')}: {lastUpdate}</span>
           {!loading && (

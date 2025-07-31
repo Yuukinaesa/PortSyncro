@@ -31,7 +31,7 @@ export default function Login() {
       
       return () => clearTimeout(timer);
     }
-  }, [email, password]);
+  }, [email, password, error]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
