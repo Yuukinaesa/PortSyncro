@@ -1,19 +1,24 @@
-# Fin-Track - Portfolio Management App
+# PortSyncro - Portfolio Management App
 
 A modern portfolio management application built with Next.js and Tailwind CSS, designed to track stocks and cryptocurrency investments with a beautiful Dribbble-inspired UI/UX.
 
+**Easy Portfolio Synchronization for Cryptocurrencies and Stocks**
+
+**Sinkronisasi Portofolio yang Mudah untuk Kripto dan Saham**
+
 ## 🚀 Features
 
-- **Portfolio Management**: Track stocks and cryptocurrency investments
+- **Portfolio Management**: Track Indonesian stocks and cryptocurrency investments
 - **Real-time Price Updates**: Get live prices for stocks and crypto
 - **Exchange Rate Integration**: USD/IDR exchange rate tracking
 - **Average Price Calculator**: Calculate weighted average prices for multiple purchases
 - **Transaction History**: Keep track of all buy/sell transactions
 - **Export Functionality**: Export portfolio data to CSV
-- **Multi-language Support**: English and Indonesian
+- **Multi-language Support**: English and Indonesian with automatic tagline translation
 - **Dark/Light Mode**: Toggle between themes
 - **Responsive Design**: Works on desktop, tablet, and mobile
 - **Beautiful UI/UX**: Dribbble-inspired design with smooth animations
+- **Indonesian Market Focus**: Optimized for Indonesian Stock Exchange (IDX) stocks
 
 ## 🛠️ Tech Stack
 
@@ -29,8 +34,8 @@ A modern portfolio management application built with Next.js and Tailwind CSS, d
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Fin-Track-main.git
-cd Fin-Track-main
+git clone https://github.com/yourusername/PortSyncro.git
+cd PortSyncro
 ```
 
 2. Install dependencies:
@@ -63,9 +68,22 @@ npm run dev
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## 🆕 Recent Updates
+
+### Tagline Localization (Latest)
+- ✅ Fixed hardcoded tagline text across all pages
+- ✅ Implemented automatic tagline translation
+- ✅ Updated mobile view calculator button text
+- ✅ Enhanced internationalization support
+
+### Mobile Experience Improvements
+- ✅ Calculator button now shows proper translated text on mobile
+- ✅ Consistent tagline display across all screen sizes
+- ✅ Improved responsive design for tagline elements
+
 ## 🚀 Demo Account Setup
 
-The application includes a demo account feature that allows users to try the app without creating an account. To enable this feature:
+PortSyncro includes a demo account feature that allows users to try the app without creating an account. To enable this feature:
 
 ### For Local Development
 Add the demo account credentials to your `.env.local` file:
@@ -85,12 +103,12 @@ NEXT_PUBLIC_DEMO_PASSWORD=your_demo_password
 ### Demo Account Behavior
 - If demo credentials are configured, a "Login Demo Account" button will appear on login and register pages
 - If demo credentials are not provided, the demo login button will be hidden
-- Demo account allows users to explore all features with sample data
+- Demo account allows users to explore all PortSyncro features with sample data
 - Demo data is isolated and doesn't affect other users
 
 ## 🎨 Design System
 
-This project uses **Tailwind CSS** with a custom Dribbble-inspired design system. The design system includes:
+PortSyncro uses **Tailwind CSS** with a custom Dribbble-inspired design system. The design system includes:
 
 - **Custom Color Palette**: Primary, secondary, accent, success, warning, and error colors
 - **Typography**: Inter font family with consistent sizing
@@ -144,7 +162,7 @@ accent: {
 - `Notification.js` - Toast notifications (Tailwind CSS)
 - `ThemeToggle.js` - Dark/light mode toggle (Tailwind CSS)
 - `LanguageToggle.js` - Language switcher (Tailwind CSS)
-- `AveragePriceCalculator.js` - Price calculation tool (Tailwind CSS)
+- `AveragePriceCalculator.js` - Average price calculator tool (Tailwind CSS)
 
 ### Layout Components
 - `ProtectedRoute.js` - Authentication wrapper
@@ -153,7 +171,7 @@ accent: {
 ## 🔧 Configuration
 
 ### Tailwind CSS Setup
-The app uses Tailwind CSS with a custom configuration:
+PortSyncro uses Tailwind CSS with a custom configuration:
 
 ```javascript
 // tailwind.config.js
@@ -188,7 +206,7 @@ module.exports = {
 ## 📊 Features
 
 ### Portfolio Management
-- Add stocks (IDX market) with lot-based calculations
+- Add Indonesian stocks (IDX market) with lot-based calculations
 - Add cryptocurrencies with real-time pricing
 - Track portfolio performance and gains/losses
 - View portfolio allocation and percentages
@@ -200,10 +218,11 @@ module.exports = {
 - Automatic price refresh functionality
 
 ### Calculations
-- Average price calculator for multiple purchases
-- Gain/loss calculations
-- Portfolio value tracking
-- Performance metrics
+- **Average Price Calculator**: Calculate weighted average prices for multiple purchases with support for both stocks and crypto
+- **Multi-language Calculator**: Calculator button text adapts to selected language (English/Indonesian)
+- **Gain/Loss Calculations**: Calculations in both IDR and USD currencies
+- **Portfolio Value Tracking**: Real-time updates with automatic refresh
+- **Performance Metrics**: Comprehensive analytics and performance tracking
 
 ### Data Export
 - CSV export functionality
@@ -212,11 +231,16 @@ module.exports = {
 
 ## 🌐 Internationalization
 
-The app supports multiple languages:
-- English (en)
-- Indonesian (id)
+PortSyncro supports multiple languages with full localization:
+- **English (en)**: Complete English interface
+- **Indonesian (id)**: Complete Indonesian interface including "Sinkronisasi Portofolio yang Mudah untuk Kripto dan Saham"
 
-Language context is managed in `lib/languageContext.js`
+### Tagline Localization
+PortSyncro's tagline automatically adapts to the selected language:
+- **English**: "Easy Portfolio Synchronization for Cryptocurrencies and Stocks"
+- **Indonesian**: "Sinkronisasi Portofolio yang Mudah untuk Kripto dan Saham"
+
+Language context is managed in `lib/languageContext.js` with automatic tagline translation across all pages.
 
 ## 🎯 Best Practices
 
@@ -239,7 +263,7 @@ Language context is managed in `lib/languageContext.js`
 
 ## 🚀 Deployment
 
-The app can be deployed to Vercel, Netlify, or any other Next.js-compatible platform.
+PortSyncro can be deployed to Vercel, Netlify, or any other Next.js-compatible platform.
 
 ### Vercel Deployment
 1. Connect your GitHub repository to Vercel
@@ -302,7 +326,7 @@ If you're having trouble with Firebase authentication:
 
 ## 🔄 Migration from Chakra UI
 
-This project has been completely migrated from Chakra UI to Tailwind CSS with a Dribbble-inspired design system. Key changes:
+PortSyncro has been completely migrated from Chakra UI to Tailwind CSS with a Dribbble-inspired design system. Key changes:
 
 - Removed all Chakra UI dependencies
 - Converted all components to use Tailwind CSS classes

@@ -1151,18 +1151,24 @@ export default function Home() {
     }
   };
 
-  const updateStock = (index, updatedStock) => {
+  const updateStock = (ticker, updatedStock) => {
     console.log('updateStock called:', {
-      index,
+      ticker,
       updatedStock,
       currentStocks: assets.stocks
     });
     
     setAssets(prev => {
+      const stockIndex = prev.stocks.findIndex(stock => stock.ticker === ticker);
+      if (stockIndex === -1) {
+        console.error('Stock not found:', ticker);
+        return prev;
+      }
+      
       const updatedStocks = [...prev.stocks];
       
       // Get the original stock to preserve all data
-      const originalStock = prev.stocks[index];
+      const originalStock = prev.stocks[stockIndex];
       
       // Get the most current price from prices state
       const currentPrice = prices[`${updatedStock.ticker}.JK`]?.price || 0;
@@ -1186,7 +1192,7 @@ export default function Home() {
         type: 'stock'
       };
       
-      updatedStocks[index] = finalStock;
+      updatedStocks[stockIndex] = finalStock;
       
       console.log('Stock updated:', {
         original: originalStock,
@@ -1274,15 +1280,21 @@ export default function Home() {
     });
   };
   
-  const deleteStock = async (index) => {
+  const deleteStock = async (ticker) => {
     try {
       setIsUpdatingPortfolio(true);
-      const stockToDelete = assets.stocks[index];
+      const stockIndex = assets.stocks.findIndex(stock => stock.ticker === ticker);
+      if (stockIndex === -1) {
+        console.error('Stock not found:', ticker);
+        return;
+      }
+      
+      const stockToDelete = assets.stocks[stockIndex];
       
       // Update local state first
       const newAssets = {
         ...assets,
-        stocks: assets.stocks.filter((_, i) => i !== index)
+        stocks: assets.stocks.filter(stock => stock.ticker !== ticker)
       };
       
       setAssets(newAssets);
@@ -1355,15 +1367,21 @@ export default function Home() {
     }
   };
   
-  const deleteCrypto = async (index) => {
+  const deleteCrypto = async (symbol) => {
     try {
       setIsUpdatingPortfolio(true);
-      const cryptoToDelete = assets.crypto[index];
+      const cryptoIndex = assets.crypto.findIndex(crypto => crypto.symbol === symbol);
+      if (cryptoIndex === -1) {
+        console.error('Crypto not found:', symbol);
+        return;
+      }
+      
+      const cryptoToDelete = assets.crypto[cryptoIndex];
       
       // Update local state first
       const newAssets = {
         ...assets,
-        crypto: assets.crypto.filter((_, i) => i !== index)
+        crypto: assets.crypto.filter(crypto => crypto.symbol !== symbol)
       };
       
       setAssets(newAssets);
@@ -1427,10 +1445,17 @@ export default function Home() {
     }
   };
 
-  const handleSellStock = async (index, asset, amountToSell) => {
+  const handleSellStock = async (ticker, asset, amountToSell) => {
     try {
       setSellingLoading(true);
       setIsUpdatingPortfolio(true);
+      
+      // Find the stock index by ticker
+      const stockIndex = assets.stocks.findIndex(stock => stock.ticker === ticker);
+      if (stockIndex === -1) {
+        console.error('Stock not found:', ticker);
+        return;
+      }
       
       // Get current price from prices state using correct ticker format
       const tickerKey = `${asset.ticker}.JK`;
@@ -1493,7 +1518,7 @@ export default function Home() {
 
       if (remainingAmount <= 0) {
         // Remove the stock if selling all
-        const updatedStocks = assets.stocks.filter((_, i) => i !== index);
+        const updatedStocks = assets.stocks.filter(stock => stock.ticker !== ticker);
         newAssets = {
           ...assets,
           stocks: updatedStocks
@@ -1505,7 +1530,7 @@ export default function Home() {
         const remainingValueIDR = remainingShares * priceData.price;
         const remainingValueUSD = exchangeRate && exchangeRate > 0 ? remainingValueIDR / exchangeRate : 0;
         
-        updatedStocks[index] = {
+        updatedStocks[stockIndex] = {
           ...asset,
           lots: remainingAmount,
           shares: remainingShares,
@@ -1598,12 +1623,19 @@ export default function Home() {
     }
   };
 
-  const handleSellCrypto = async (index, asset, amountToSell) => {
+  const handleSellCrypto = async (symbol, asset, amountToSell) => {
     try {
       setSellingLoading(true);
       setIsUpdatingPortfolio(true);
       
-      const crypto = assets.crypto[index];
+      // Find the crypto index by symbol
+      const cryptoIndex = assets.crypto.findIndex(crypto => crypto.symbol === symbol);
+      if (cryptoIndex === -1) {
+        console.error('Crypto not found:', symbol);
+        return;
+      }
+      
+      const crypto = assets.crypto[cryptoIndex];
       if (!crypto) return;
 
       // Get current price
@@ -1658,7 +1690,7 @@ export default function Home() {
       
       if (remainingAmount <= 0) {
         // Remove crypto if selling all
-        const updatedCrypto = assets.crypto.filter((_, i) => i !== index);
+        const updatedCrypto = assets.crypto.filter(crypto => crypto.symbol !== symbol);
         newAssets = {
           ...assets,
           crypto: updatedCrypto
@@ -1669,7 +1701,7 @@ export default function Home() {
         const remainingValueUSD = remainingAmount * priceData.price;
         const remainingValueIDR = exchangeRate && exchangeRate > 0 ? remainingValueUSD * exchangeRate : 0;
         
-        updatedCrypto[index] = {
+        updatedCrypto[cryptoIndex] = {
           ...crypto,
           amount: remainingAmount,
           currentPrice: priceData.price,

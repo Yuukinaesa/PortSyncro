@@ -240,7 +240,9 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       message: message,
       type: 'warning',
       onConfirm: () => {
-        onSell(index, asset, amountToSell);
+        // Use asset identifier instead of index to avoid sorting issues
+        const assetId = type === 'stock' ? asset.ticker : asset.symbol;
+        onSell(assetId, asset, amountToSell);
         setSellingIndex(null);
         setConfirmModal(null);
       }
@@ -313,7 +315,9 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     });
 
     if (onUpdate) {
-      onUpdate(index, updatedAsset);
+      // Use asset identifier instead of index to avoid sorting issues
+      const assetId = type === 'stock' ? asset.ticker : asset.symbol;
+      onUpdate(assetId, updatedAsset);
     }
     
     setEditingAvgPrice(null);
@@ -333,7 +337,9 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       message: t('confirmDeleteAsset', { asset: assetName }),
       type: 'warning',
       onConfirm: () => {
-        onDelete(index);
+        // Use asset identifier instead of index to avoid sorting issues
+        const assetId = type === 'stock' ? asset.ticker : asset.symbol;
+        onDelete(assetId);
         setConfirmModal(null);
       },
       onCancel: () => setConfirmModal(null)
