@@ -338,17 +338,20 @@ export default function Portfolio({
     setExchangeRateError(totals.error);
   }, [totals.error]);
 
-  // Fixed gain calculations - use gain values from assets
+  // Fixed gain calculations - use gain values from assets with proper currency conversion
   const calculateGains = () => {
-    let stocksGain = 0;
+    let stocksGainIDR = 0;
+    let stocksGainUSD = 0;
     let cryptoGainUSD = 0;
+    let cryptoGainIDR = 0;
     let totalCostIDR = 0;
     let totalCostUSD = 0;
 
     // Calculate stocks gain using gain values from assets
     (assets?.stocks || []).forEach(stock => {
       if (stock.gainIDR !== undefined) {
-        stocksGain += stock.gainIDR;
+        stocksGainIDR += stock.gainIDR;
+        stocksGainUSD += stock.gainUSD || 0;
         totalCostIDR += stock.totalCost || (stock.avgPrice * stock.lots * 100);
       } else {
         // Fallback calculation
@@ -358,8 +361,11 @@ export default function Portfolio({
         const currentValue = currentPrice * shareCount;
         const costBasis = stock.avgPrice * shareCount;
         
-        const stockGain = currentValue - costBasis;
-        stocksGain += stockGain;
+        const stockGainIDR = currentValue - costBasis;
+        const stockGainUSD = exchangeRate && exchangeRate > 0 ? Math.round((stockGainIDR / exchangeRate) * 100) / 100 : 0;
+        
+        stocksGainIDR += stockGainIDR;
+        stocksGainUSD += stockGainUSD;
         totalCostIDR += costBasis;
       }
     });
@@ -368,6 +374,7 @@ export default function Portfolio({
     (assets?.crypto || []).forEach(crypto => {
       if (crypto.gainUSD !== undefined) {
         cryptoGainUSD += crypto.gainUSD;
+        cryptoGainIDR += crypto.gainIDR || 0;
         totalCostUSD += crypto.totalCost || (crypto.avgPrice * crypto.amount);
       } else {
         // Fallback calculation
@@ -375,27 +382,30 @@ export default function Portfolio({
         const currentValue = currentPrice * crypto.amount;
         const costBasis = crypto.avgPrice * crypto.amount;
         
-        const cryptoGain = currentValue - costBasis;
-        cryptoGainUSD += cryptoGain;
+        const cryptoGainUSD = currentValue - costBasis;
+        const cryptoGainIDR = exchangeRate && exchangeRate > 0 ? Math.round(cryptoGainUSD * exchangeRate) : 0;
+        
+        cryptoGainUSD += cryptoGainUSD;
+        cryptoGainIDR += cryptoGainIDR;
         totalCostUSD += costBasis;
       }
     });
 
-    const cryptoGainIDR = exchangeRate ? Math.round(cryptoGainUSD * exchangeRate) : 0;
-    const totalGain = Math.round(stocksGain + cryptoGainIDR);
-    const totalGainUSD = Math.round(((stocksGain / (exchangeRate || 1)) + cryptoGainUSD) * 100) / 100;
-    const totalCost = totalCostIDR + (exchangeRate ? totalCostUSD * exchangeRate : totalCostUSD);
-    const gainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+    const totalGainIDR = Math.round(stocksGainIDR + cryptoGainIDR);
+    const totalGainUSD = Math.round((stocksGainUSD + cryptoGainUSD) * 100) / 100;
+    const totalCost = totalCostIDR + (exchangeRate && exchangeRate > 0 ? totalCostUSD * exchangeRate : totalCostUSD);
+    const gainPercent = totalCost > 0 ? (totalGainIDR / totalCost) * 100 : 0;
 
     // Calculate individual percentages
-    const stocksGainPercent = totalCostIDR > 0 ? (stocksGain / totalCostIDR) * 100 : 0;
+    const stocksGainPercent = totalCostIDR > 0 ? (stocksGainIDR / totalCostIDR) * 100 : 0;
     const cryptoGainPercent = totalCostUSD > 0 ? (cryptoGainUSD / totalCostUSD) * 100 : 0;
 
     return {
-      stocksGain,
+      stocksGainIDR,
+      stocksGainUSD,
       cryptoGainUSD,
       cryptoGainIDR,
-      totalGain,
+      totalGainIDR,
       totalGainUSD,
       totalCost,
       gainPercent,
@@ -564,17 +574,32 @@ export default function Portfolio({
                   {formatIDR(exchangeRate)}
                 </span>
               ) : (
-                <span className="text-sm text-gray-500 dark:text-gray-400">{t('notAvailable')}</span>
+                <span className="text-sm text-red-600 dark:text-red-400">Tidak tersedia</span>
               )}
             </div>
           </div>
           
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
             {lastExchangeRateUpdate && (
               <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-xl">
                 Update: {new Date(lastExchangeRateUpdate).toLocaleTimeString()}
               </span>
             )}
+            <button
+              onClick={onRefreshExchangeRate}
+              disabled={loadingExchangeRate}
+              className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-xs disabled:opacity-50"
+              title="Refresh exchange rate"
+            >
+              {loadingExchangeRate ? (
+                <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
+              Refresh
+            </button>
           </div>
         </div>
       </div>
@@ -640,8 +665,8 @@ export default function Portfolio({
           <div className="border-t border-gray-100 dark:border-gray-800 pt-3 sm:pt-4 mb-3 sm:mb-4">
             <div className="space-y-1 sm:space-y-2">
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                {t('gainLoss')}: <span className={`font-medium ${getGainColor(gains.stocksGain)}`}>
-                  {formatIDR(gains.stocksGain)} ({formatUSD(gains.stocksGain / (exchangeRate || 1))})
+                {t('gainLoss')}: <span className={`font-medium ${getGainColor(gains.stocksGainIDR)}`}>
+                  {formatIDR(gains.stocksGainIDR)} ({formatUSD(gains.stocksGainUSD)})
                 </span>
               </div>
               {gains.stocksGainPercent !== 0 && (
@@ -703,7 +728,7 @@ export default function Portfolio({
           <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</div>
         </div>
         
-        {/* Total Gain/Loss Card */}
+                  {/* Total Gain/Loss Card */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200">
           <div className="flex justify-between items-center mb-3 sm:mb-4">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('totalGainLoss')}</h3>
@@ -713,8 +738,8 @@ export default function Portfolio({
           </div>
           
           {/* Main Gain/Loss Value */}
-          <div className={`text-xl sm:text-2xl font-bold mb-2 ${getGainColor(gains.totalGain)}`}>
-            {formatIDR(gains.totalGain)}
+          <div className={`text-xl sm:text-2xl font-bold mb-2 ${getGainColor(gains.totalGainIDR)}`}>
+            {formatIDR(gains.totalGainIDR)}
           </div>
           <div className={`text-xs sm:text-sm mb-3 sm:mb-4 ${getGainColor(gains.totalGainUSD)}`}>{formatUSD(gains.totalGainUSD)}</div>
           
@@ -817,7 +842,7 @@ export default function Portfolio({
               title="Refresh semua data (harga saham, kripto, dan kurs USD/IDR)"
             >
               <FiRefreshCw className="w-4 h-4" />
-              <span className="hidden sm:inline">Refresh All</span>
+              <span className="hidden sm:inline">Refresh Semua</span>
               <span className="sm:hidden">Refresh</span>
             </button>
             
@@ -828,8 +853,8 @@ export default function Portfolio({
               title={t('exportPortfolio')}
             >
               <FiDownload className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('export')}</span>
-              <span className="sm:hidden">Export</span>
+              <span className="hidden sm:inline">Ekspor Portofolio</span>
+              <span className="sm:hidden">Ekspor</span>
             </button>
             
             <button
@@ -839,7 +864,7 @@ export default function Portfolio({
             >
               <FiPlusCircle className="w-4 h-4" />
               <span className="hidden sm:inline">{t('add')}</span>
-              <span className="sm:hidden">Add</span>
+              <span className="sm:hidden">Tambah</span>
             </button>
           </div>
         </div>
@@ -881,7 +906,7 @@ export default function Portfolio({
                   onClick={handleRefresh}
                   className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors"
                 >
-                  Refresh Now
+                  Refresh Sekarang
                 </button>
               </div>
             </div>

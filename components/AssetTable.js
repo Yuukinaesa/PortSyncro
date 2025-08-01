@@ -51,10 +51,12 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     
     let valueIDR, valueUSD;
     
-    if (currency === 'IDR') {
+    if (isStock) {
+      // For stocks: prices are in IDR, convert to USD
       valueIDR = Math.round(currentPrice * amount);
       valueUSD = memoizedExchangeRate && memoizedExchangeRate > 0 ? Math.round((valueIDR / memoizedExchangeRate) * 100) / 100 : 0;
     } else {
+      // For crypto: prices are in USD, convert to IDR
       valueUSD = Math.round((currentPrice * amount) * 100) / 100;
       valueIDR = memoizedExchangeRate && memoizedExchangeRate > 0 ? Math.round(valueUSD * memoizedExchangeRate) : 0;
     }
@@ -553,6 +555,52 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     }
   };
 
+  // Function to calculate gain/loss with proper currency conversion
+  const calculateGainLoss = useCallback((asset, assetValue, type) => {
+    if (!asset || !assetValue || !assetValue.price) {
+      return {
+        gainIDR: 0,
+        gainUSD: 0,
+        gainPercentage: 0,
+        error: t('priceNotAvailable')
+      };
+    }
+
+    const amount = type === 'stock' ? asset.lots * 100 : asset.amount;
+    const currentPrice = assetValue.price;
+    const avgPrice = asset.avgPrice || 0;
+    
+    if (type === 'stock') {
+      // For stocks: calculate in IDR first, then convert to USD
+      const currentValueIDR = currentPrice * amount;
+      const costBasisIDR = avgPrice * amount;
+      const gainIDR = Math.round(currentValueIDR - costBasisIDR);
+      const gainUSD = exchangeRate && exchangeRate > 0 ? Math.round((gainIDR / exchangeRate) * 100) / 100 : 0;
+      const gainPercentage = costBasisIDR > 0 ? (gainIDR / costBasisIDR) * 100 : 0;
+      
+      return {
+        gainIDR,
+        gainUSD,
+        gainPercentage,
+        error: null
+      };
+    } else {
+      // For crypto: calculate in USD first, then convert to IDR
+      const currentValueUSD = currentPrice * amount;
+      const costBasisUSD = asset.totalCost || (avgPrice * amount);
+      const gainUSD = Math.round((currentValueUSD - costBasisUSD) * 100) / 100;
+      const gainIDR = exchangeRate && exchangeRate > 0 ? Math.round(gainUSD * exchangeRate) : 0;
+      const gainPercentage = costBasisUSD > 0 ? (gainUSD / costBasisUSD) * 100 : 0;
+      
+      return {
+        gainIDR,
+        gainUSD,
+        gainPercentage,
+        error: null
+      };
+    }
+  }, [exchangeRate, t]);
+
   return (
     <ErrorBoundary>
       {/* Header Section - Minimalist */}
@@ -571,12 +619,12 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
           <button
             onClick={exportToCSV}
             className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-xl flex items-center gap-2 transition-all duration-200 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-sm font-medium"
-            aria-label={type === 'crypto' ? t('exportCrypto') : t('exportStocks')}
+            aria-label={type === 'crypto' ? 'Ekspor Kripto' : 'Ekspor Saham'}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            {type === 'crypto' ? t('exportCrypto') : t('exportStocks')}
+            {type === 'crypto' ? 'Ekspor Kripto' : 'Ekspor Saham'}
           </button>
         </div>
       </div>
@@ -793,17 +841,33 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     
                     <td className="px-4 sm:px-6 py-4 sm:py-5 text-right">
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {asset.portoIDR && asset.portoIDR > 0 ? formatIDR(asset.portoIDR) : 
-                         assetValue.valueIDR && assetValue.valueIDR > 0 ? formatIDR(assetValue.valueIDR) : 
-                         t('notAvailable')}
+                        {(() => {
+                          if (asset.portoIDR && asset.portoIDR > 0) {
+                            return formatIDR(asset.portoIDR);
+                          } else if (assetValue.valueIDR && assetValue.valueIDR > 0) {
+                            return formatIDR(assetValue.valueIDR);
+                          } else if (type === 'crypto' && (!exchangeRate || exchangeRate <= 0)) {
+                            return 'Tidak tersedia';
+                          } else {
+                            return formatIDR(0);
+                          }
+                        })()}
                       </span>
                     </td>
                     
                     <td className="hidden lg:table-cell px-4 sm:px-6 py-4 sm:py-5 text-right">
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {asset.portoUSD && asset.portoUSD > 0 ? formatUSD(asset.portoUSD) : 
-                         assetValue.valueUSD && assetValue.valueUSD > 0 ? formatUSD(assetValue.valueUSD) : 
-                         t('notAvailable')}
+                        {(() => {
+                          if (asset.portoUSD && asset.portoUSD > 0) {
+                            return formatUSD(asset.portoUSD);
+                          } else if (assetValue.valueUSD && assetValue.valueUSD > 0) {
+                            return formatUSD(assetValue.valueUSD);
+                          } else if (type === 'stock' && (!exchangeRate || exchangeRate <= 0)) {
+                            return 'Tidak tersedia';
+                          } else {
+                            return formatUSD(0);
+                          }
+                        })()}
                       </span>
                     </td>
                     
@@ -838,7 +902,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             <button
                               onClick={() => handleDeleteClick(index, asset)}
                               className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
-                              title="Hapus aset"
+                              title="Hapus aset dari portofolio (semua transaksi akan dihapus)"
                             >
                               🗑️
                             </button>
@@ -920,28 +984,48 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       <div className="flex flex-col items-end space-y-1">
                         {/* IDR Gain/Loss */}
                         <span className={`text-sm font-semibold ${getGainColor(asset.gainIDR || realTimeGain)}`}>
-                          {asset.gainIDR !== undefined ? 
-                            (asset.gainIDR === 0 ? 'Rp 0' : formatIDR(asset.gainIDR)) : 
-                            assetValue.price && assetValue.price > 0 ? 
-                              (realTimeGain === 0 ? 'Rp 0' : formatPrice(realTimeGain, 'IDR', true)) : 
-                              t('notAvailable')
-                          }
+                          {(() => {
+                            const gainLoss = calculateGainLoss(asset, assetValue, type);
+                            if (gainLoss.error) return t('notAvailable');
+                            
+                            // For crypto, only show IDR if exchange rate is available
+                            if (type === 'crypto' && (!exchangeRate || exchangeRate <= 0)) {
+                              return null; // Don't show IDR for crypto without exchange rate
+                            }
+                            
+                            const gainIDR = asset.gainIDR !== undefined ? asset.gainIDR : gainLoss.gainIDR;
+                            return gainIDR === 0 ? 'Rp 0' : formatIDR(gainIDR);
+                          })()}
                         </span>
                         {/* USD Gain/Loss */}
                         <span className={`text-xs ${getGainColor(asset.gainUSD || realTimeGainUSD)}`}>
-                          {asset.gainUSD !== undefined ? 
-                            (asset.gainUSD === 0 ? '$0.00' : formatUSD(asset.gainUSD)) : 
-                            assetValue.price && assetValue.price > 0 ? 
-                              (realTimeGainUSD === 0 ? '$0.00' : formatPrice(realTimeGainUSD, 'USD')) : 
-                              t('notAvailable')
-                          }
+                          {(() => {
+                            const gainLoss = calculateGainLoss(asset, assetValue, type);
+                            if (gainLoss.error) return t('notAvailable');
+                            
+                            // For stocks, only show USD if exchange rate is available
+                            if (type === 'stock' && (!exchangeRate || exchangeRate <= 0)) {
+                              return null; // Don't show USD for stocks without exchange rate
+                            }
+                            
+                            const gainUSD = asset.gainUSD !== undefined ? asset.gainUSD : gainLoss.gainUSD;
+                            return gainUSD === 0 ? '$0.00' : formatUSD(gainUSD);
+                          })()}
                         </span>
                         {/* Percentage */}
-                        {(asset.gainPercentage !== undefined || (assetValue.price && assetValue.price > 0 && realTimeGainPercentage !== 0)) && (
-                          <span className={`text-xs font-medium ${getGainColor(asset.gainPercentage || realTimeGainPercentage)}`}>
-                            ({(asset.gainPercentage || realTimeGainPercentage) > 0 ? '+' : ''}{(asset.gainPercentage || realTimeGainPercentage).toFixed(2)}%)
-                          </span>
-                        )}
+                        {(() => {
+                          const gainLoss = calculateGainLoss(asset, assetValue, type);
+                          if (gainLoss.error) return null;
+                          
+                          const percentage = asset.gainPercentage !== undefined ? asset.gainPercentage : gainLoss.gainPercentage;
+                          if (percentage === 0) return null;
+                          
+                          return (
+                            <span className={`text-xs font-medium ${getGainColor(percentage)}`}>
+                              ({percentage > 0 ? '+' : ''}{percentage.toFixed(2)}%)
+                            </span>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>

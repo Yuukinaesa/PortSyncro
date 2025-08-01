@@ -15,7 +15,7 @@ import { FiLogOut, FiUser } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
 import TransactionHistory from '../components/TransactionHistory';
-import { fetchExchangeRate } from '../lib/fetchPrices';
+import { fetchExchangeRate } from '../lib/fetchExchangeRate';
 import Modal from '../components/Modal';
 import AveragePriceCalculator from '../components/AveragePriceCalculator';
 import refreshOptimizer from '../lib/refreshOptimizer';
@@ -297,7 +297,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           ...requestData,
-          exchangeRate: exchangeRate,
+          exchangeRate: typeof exchangeRate === 'number' ? exchangeRate : null,
           userId: user?.uid || null
         }),
       });
@@ -329,6 +329,19 @@ export default function Home() {
 
   // Update exchange rate function
   const fetchExchangeRateData = useCallback(async () => {
+    try {
+      const rateData = await fetchExchangeRate();
+      if (rateData && rateData.rate) {
+        updateExchangeRate(rateData.rate);
+      }
+    } catch (error) {
+      console.error('Error fetching exchange rate:', error);
+      updateExchangeRate(null);
+    }
+  }, [updateExchangeRate]);
+
+  // Manual refresh exchange rate function (for button clicks)
+  const handleRefreshExchangeRate = useCallback(async () => {
     try {
       const rateData = await fetchExchangeRate();
       if (rateData && rateData.rate) {
@@ -1404,7 +1417,7 @@ export default function Home() {
                     onDeleteStock={deleteStock}
                     onDeleteCrypto={deleteCrypto}
                     onRefreshPrices={fetchPrices}
-                    onRefreshExchangeRate={updateExchangeRate}
+                    onRefreshExchangeRate={handleRefreshExchangeRate}
                     prices={prices}
                     exchangeRate={exchangeRate}
                     sellingLoading={sellingLoading}
