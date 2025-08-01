@@ -236,23 +236,6 @@ export default function Home() {
     checkAuth();
   }, [user, authLoading, router, getUserPortfolio, initializePortfolio]);
 
-  // Simplified price fetching function with debouncing and refresh optimizer
-  const fetchPrices = useCallback(async (immediate = false) => {
-    if (pricesLoading && !immediate) {
-      console.log('Skipping fetch - already loading prices');
-      return; // Prevent concurrent requests
-    }
-    
-    // Use refresh optimizer to prevent excessive calls
-    if (!immediate) {
-      await refreshOptimizer.triggerRefresh(async () => {
-        await performPriceFetch();
-      });
-    } else {
-      await performPriceFetch();
-    }
-  }, [exchangeRate, assets, pricesLoading, user?.uid, updatePrices]);
-
   // Separate function for actual price fetching
   const performPriceFetch = useCallback(async () => {
     setPricesLoading(true);
@@ -325,9 +308,26 @@ export default function Home() {
     } finally {
       setPricesLoading(false);
     }
-  }, [exchangeRate, assets, user?.uid, updatePrices]);
+  }, [exchangeRate, assets, user?.uid, updatePrices, rebuildPortfolio]);
 
-  // Update exchange rate function
+  // Simplified price fetching function with debouncing and refresh optimizer
+  const fetchPrices = useCallback(async (immediate = false) => {
+    if (pricesLoading && !immediate) {
+      console.log('Skipping fetch - already loading prices');
+      return; // Prevent concurrent requests
+    }
+    
+    // Use refresh optimizer to prevent excessive calls
+    if (!immediate) {
+      await refreshOptimizer.triggerRefresh(async () => {
+        await performPriceFetch();
+      });
+    } else {
+      await performPriceFetch();
+    }
+  }, [exchangeRate, assets, pricesLoading, user?.uid, updatePrices, performPriceFetch]);
+
+  // Update exchange rate function - STABILIZED
   const fetchExchangeRateData = useCallback(async () => {
     try {
       const rateData = await fetchExchangeRate();
@@ -338,7 +338,7 @@ export default function Home() {
       console.error('Error fetching exchange rate:', error);
       updateExchangeRate(null);
     }
-  }, [updateExchangeRate]);
+  }, []); // No dependencies to prevent recreation
 
   // Manual refresh exchange rate function (for button clicks)
   const handleRefreshExchangeRate = useCallback(async () => {
@@ -351,41 +351,37 @@ export default function Home() {
       console.error('Error fetching exchange rate:', error);
       updateExchangeRate(null);
     }
-  }, [updateExchangeRate]);
+  }, []); // No dependencies to prevent recreation
 
-  // Refresh prices function - SIMPLIFIED (removed to prevent infinite loops)
-  // const refreshPrices = useCallback(async () => {
-  //   console.log('REFRESH PRICES triggered');
-  //   
-  //   // Use refresh optimizer to prevent excessive calls
-  //   await refreshOptimizer.triggerRefresh(async () => {
-  //     await fetchPrices();
-  //   });
-  // }, [fetchPrices]);
-
-  // Manual trigger for immediate refresh
+  // Manual trigger for immediate refresh (prices only, not exchange rate)
   const triggerImmediateRefresh = useCallback(async () => {
-    console.log('Manual refresh triggered');
+    console.log('Manual refresh triggered (prices only)');
     try {
-      await fetchPrices(true); // Force immediate refresh
+      await performPriceFetch(); // Force immediate refresh
       rebuildPortfolio();
       console.log('Manual refresh completed');
     } catch (error) {
       console.error('Error in manual refresh:', error);
     }
-  }, [fetchPrices, rebuildPortfolio]);
+  }, []); // No dependencies to prevent recreation
 
   // Update prices function
   const triggerPriceUpdate = useCallback(async () => {
     if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
-      await fetchPrices();
+      await performPriceFetch();
     }
-  }, [fetchPrices, assets]);
+  }, []); // No dependencies to prevent recreation
 
-  // Set up intervals for exchange rate and price updates - FIXED
+  // Set up intervals for exchange rate and price updates - OPTIMIZED
   useEffect(() => {
     // Only set up intervals after initialization
     if (!isInitialized) return;
+    
+    // Prevent multiple setups using a ref
+    if (exchangeIntervalRef.current || refreshIntervalRef.current) {
+      console.log('Intervals already set up, skipping');
+      return;
+    }
     
     console.log('Setting up refresh intervals - isInitialized:', isInitialized);
     
@@ -396,24 +392,34 @@ export default function Home() {
     const initialRefreshTimer = setTimeout(() => {
       if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
         console.log('INITIAL REFRESH triggered (first time only)');
-        fetchPrices();
+        performPriceFetch();
+      } else {
+        console.log('No assets available for initial refresh, skipping');
       }
     }, 2000); // Reduced delay for faster initial load
     
-    // Exchange rate update every 1 minute
-    exchangeIntervalRef.current = setInterval(fetchExchangeRateData, 60000);
+    // Exchange rate update every 5 minutes (less frequent)
+    exchangeIntervalRef.current = setInterval(fetchExchangeRateData, 300000);
     
-    // Price refresh every 30 seconds (only if assets exist) - more frequent but less intrusive
+    // Price refresh every 5 minutes (only if assets exist) - less frequent for idle users
     refreshIntervalRef.current = setInterval(() => {
       if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
-        console.log('AUTOMATIC REFRESH triggered (30 second interval)');
-        fetchPrices();
+        console.log('AUTOMATIC REFRESH triggered (5 minute interval)');
+        performPriceFetch();
       }
-    }, 30000); // Refresh every 30 seconds
+    }, 300000); // Refresh every 5 minutes instead of 30 seconds
 
+    // Clean up the initial timer only
     return () => {
-      console.log('Cleaning up refresh intervals');
       clearTimeout(initialRefreshTimer);
+    };
+  }, [isInitialized]); // Only depend on isInitialized to prevent multiple setups
+
+  // Separate useEffect for cleanup on unmount only
+  useEffect(() => {
+    return () => {
+      // Component is unmounting, clean up intervals
+      console.log('Component unmounting - cleaning up intervals');
       if (exchangeIntervalRef.current) {
         clearInterval(exchangeIntervalRef.current);
         exchangeIntervalRef.current = null;
@@ -422,10 +428,9 @@ export default function Home() {
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
       }
-      // Reset refresh optimizer on cleanup
       refreshOptimizer.reset();
     };
-  }, [isInitialized, assets?.stocks?.length, assets?.crypto?.length]); // Fixed dependencies
+  }, []); // Empty dependency array - only runs on mount/unmount
 
   // Save portfolio to Firestore whenever assets change
   useEffect(() => {
@@ -1416,7 +1421,7 @@ export default function Home() {
                     onSellCrypto={handleSellCrypto}
                     onDeleteStock={deleteStock}
                     onDeleteCrypto={deleteCrypto}
-                    onRefreshPrices={fetchPrices}
+                                          onRefreshPrices={performPriceFetch}
                     onRefreshExchangeRate={handleRefreshExchangeRate}
                     prices={prices}
                     exchangeRate={exchangeRate}

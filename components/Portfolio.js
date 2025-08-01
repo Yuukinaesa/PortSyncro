@@ -78,9 +78,30 @@ export default function Portfolio({
   const [error, setError] = useState(null);
   const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
   const [exchangeRate, setExchangeRate] = useState(parentExchangeRate || propExchangeRate);
+  
+  // Update exchange rate when parent changes
+  useEffect(() => {
+    const newRate = parentExchangeRate || propExchangeRate;
+    if (newRate !== exchangeRate) {
+      setExchangeRate(newRate);
+    }
+  }, [parentExchangeRate, propExchangeRate, exchangeRate]);
   const [exchangeRateError, setExchangeRateError] = useState(propExchangeRateError || null);
   const [exchangeRateSource, setExchangeRateSource] = useState(propExchangeRateSource || '');
   const [lastExchangeRateUpdate, setLastExchangeRateUpdate] = useState(propLastExchangeRateUpdate || '');
+  
+  // Update exchange rate related states when parent changes
+  useEffect(() => {
+    if (propExchangeRateError !== exchangeRateError) {
+      setExchangeRateError(propExchangeRateError);
+    }
+    if (propExchangeRateSource !== exchangeRateSource) {
+      setExchangeRateSource(propExchangeRateSource);
+    }
+    if (propLastExchangeRateUpdate !== lastExchangeRateUpdate) {
+      setLastExchangeRateUpdate(propLastExchangeRateUpdate);
+    }
+  }, [propExchangeRateError, propExchangeRateSource, propLastExchangeRateUpdate, exchangeRateError, exchangeRateSource, lastExchangeRateUpdate]);
   const [activeAssetTab, setActiveAssetTab] = useState('all');
   const [confirmModal, setConfirmModal] = useState(null);
   const [notification, setNotification] = useState(null);
@@ -118,22 +139,32 @@ export default function Portfolio({
 
   const handleRefresh = useCallback(async () => {
     try {
-      // Call parent refresh functions if available
+      // Only refresh prices, not exchange rate (to prevent excessive exchange rate calls)
       if (onRefreshPrices) {
         await onRefreshPrices(true); // Pass immediate=true for manual refresh
       } else {
         await fetchPrices();
       }
       
+      // Don't refresh exchange rate on manual refresh to prevent excessive calls
+      // Exchange rate is updated automatically every 5 minutes
+    } catch (error) {
+      console.error('Error during refresh:', error);
+    }
+  }, [onRefreshPrices, fetchPrices]);
+
+  // Separate function for exchange rate refresh (only used by exchange rate button)
+  const handleExchangeRateRefresh = useCallback(async () => {
+    try {
       if (onRefreshExchangeRate) {
         await onRefreshExchangeRate();
       } else {
         await fetchRate();
       }
     } catch (error) {
-      console.error('Error during refresh:', error);
+      console.error('Error during exchange rate refresh:', error);
     }
-  }, [onRefreshPrices, onRefreshExchangeRate, fetchPrices, fetchRate]);
+  }, [onRefreshExchangeRate, fetchRate]);
 
   // Auto-refresh prices if missing data detected - DISABLED to prevent excessive refreshes
   // useEffect(() => {
@@ -586,7 +617,7 @@ export default function Portfolio({
               </span>
             )}
             <button
-              onClick={onRefreshExchangeRate}
+              onClick={handleExchangeRateRefresh}
               disabled={loadingExchangeRate}
               className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-xs disabled:opacity-50"
               title="Refresh exchange rate"
