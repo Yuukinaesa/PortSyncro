@@ -19,8 +19,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
   const { t } = useLanguage();
   
   // Memoize assets to prevent unnecessary re-renders
-  const memoizedAssets = useMemo(() => assets, [assets]);
-  const memoizedPrices = useMemo(() => prices, [prices]);
+  const memoizedAssets = useMemo(() => assets || [], [assets]);
+  const memoizedPrices = useMemo(() => prices || {}, [prices]);
   const memoizedExchangeRate = useMemo(() => exchangeRate, [exchangeRate]);
   
   const calculateAssetValue = useCallback((asset, currency, exchangeRate) => {
@@ -154,11 +154,6 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     return assetValues.map(item => item.asset);
   }, [memoizedAssets, sortField, sortDirection, memoizedExchangeRate, type, calculateAssetValue]);
 
-  // Early return after all hooks
-  if (memoizedAssets.length === 0) {
-    return null;
-  }
-  
   const handleSellClick = (index, asset) => {
     setSellingIndex(index);
     // Default to half of current amount
@@ -603,6 +598,16 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
   return (
     <ErrorBoundary>
+      {/* Empty state */}
+      {memoizedAssets.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-gray-500 dark:text-gray-400">
+            <p className="text-lg font-medium mb-2">{t('noAssets')}</p>
+            <p className="text-sm">{t('addAssetsToGetStarted')}</p>
+          </div>
+        </div>
+      )}
+
       {/* Header Section - Minimalist */}
       <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center">
         <div className="flex items-center gap-3">

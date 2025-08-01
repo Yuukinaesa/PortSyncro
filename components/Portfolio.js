@@ -139,32 +139,23 @@ export default function Portfolio({
 
   const handleRefresh = useCallback(async () => {
     try {
-      // Only refresh prices, not exchange rate (to prevent excessive exchange rate calls)
+      // Refresh both prices and exchange rate
       if (onRefreshPrices) {
         await onRefreshPrices(true); // Pass immediate=true for manual refresh
       } else {
         await fetchPrices();
       }
       
-      // Don't refresh exchange rate on manual refresh to prevent excessive calls
-      // Exchange rate is updated automatically every 5 minutes
-    } catch (error) {
-      console.error('Error during refresh:', error);
-    }
-  }, [onRefreshPrices, fetchPrices]);
-
-  // Separate function for exchange rate refresh (only used by exchange rate button)
-  const handleExchangeRateRefresh = useCallback(async () => {
-    try {
+      // Also refresh exchange rate on manual refresh
       if (onRefreshExchangeRate) {
         await onRefreshExchangeRate();
       } else {
         await fetchRate();
       }
     } catch (error) {
-      console.error('Error during exchange rate refresh:', error);
+      console.error('Error during refresh:', error);
     }
-  }, [onRefreshExchangeRate, fetchRate]);
+  }, [onRefreshPrices, onRefreshExchangeRate, fetchPrices, fetchRate]);
 
   // Auto-refresh prices if missing data detected - DISABLED to prevent excessive refreshes
   // useEffect(() => {
@@ -616,21 +607,6 @@ export default function Portfolio({
                 Update: {new Date(lastExchangeRateUpdate).toLocaleTimeString()}
               </span>
             )}
-            <button
-              onClick={handleExchangeRateRefresh}
-              disabled={loadingExchangeRate}
-              className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-xs disabled:opacity-50"
-              title="Refresh exchange rate"
-            >
-              {loadingExchangeRate ? (
-                <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              )}
-              Refresh
-            </button>
           </div>
         </div>
       </div>
@@ -868,11 +844,15 @@ export default function Portfolio({
           <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
               onClick={handleRefresh}
-              disabled={loading}
+              disabled={loading || loadingExchangeRate}
               className="px-3 sm:px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50"
               title="Refresh semua data (harga saham, kripto, dan kurs USD/IDR)"
             >
-              <FiRefreshCw className="w-4 h-4" />
+              {(loading || loadingExchangeRate) ? (
+                <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <FiRefreshCw className="w-4 h-4" />
+              )}
               <span className="hidden sm:inline">Refresh Semua</span>
               <span className="sm:hidden">Refresh</span>
             </button>
@@ -935,9 +915,14 @@ export default function Portfolio({
                 </div>
                 <button 
                   onClick={handleRefresh}
-                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors"
+                  disabled={loading || loadingExchangeRate}
+                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors disabled:opacity-50"
                 >
-                  Refresh Sekarang
+                  {(loading || loadingExchangeRate) ? (
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    'Refresh Sekarang'
+                  )}
                 </button>
               </div>
             </div>
@@ -1024,7 +1009,7 @@ export default function Portfolio({
       {lastUpdate && (assets?.stocks?.length + assets?.crypto?.length) > 0 && (
         <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-4 text-gray-500 dark:text-gray-400 text-sm flex flex-col sm:flex-row sm:justify-between gap-2">
           <span>{t('lastUpdated')}: {lastUpdate}</span>
-          {!loading && (
+          {!loadingExchangeRate && (
             <button 
               onClick={handleRefresh}
               className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 self-start sm:self-auto"
