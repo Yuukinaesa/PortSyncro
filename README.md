@@ -2,6 +2,36 @@
 
 A secure, real-time portfolio management application built with Next.js and Firebase, designed for tracking stocks and cryptocurrency investments with professional-grade security measures.
 
+![PortSyncro Logo](public/img/mainlogo.png)
+
+## 📸 Screenshots
+
+### Dashboard Overview
+![Dashboard](public/img/dashboard.png)
+*Main dashboard showing portfolio overview and real-time data*
+
+### Asset Management
+![Add Asset](public/img/addasset.png)
+*Add new stocks and cryptocurrencies to your portfolio*
+
+![Asset View](public/img/asset.png)
+*Detailed view of individual assets with performance metrics*
+
+### Average Price Calculator
+![Average Calculator 1](public/img/avgcalc1.png)
+*Advanced average price calculation for multiple transactions*
+
+![Average Calculator 2](public/img/avgcalc2.png)
+*Detailed breakdown of average price calculations*
+
+### Transaction History
+![History](public/img/history.png)
+*Complete transaction history with filtering and search capabilities*
+
+### Authentication
+![Login](public/img/login.png)
+*Secure login interface with Firebase authentication*
+
 ## 🔒 Security Features
 
 ### Authentication & Authorization
