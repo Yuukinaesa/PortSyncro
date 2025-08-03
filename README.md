@@ -19,16 +19,6 @@ A secure, real-time portfolio management application built with Next.js and Fire
   <img src="public/img/login.png" alt="Login" width="300" style="border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 5px;">
 </div>
 
-## 🔒 Security Features
-
-- **Firebase Authentication** with secure session management
-- **Protected routes** with automatic redirects
-- **Input validation & sanitization** for XSS protection
-- **Rate limiting** (30 requests/minute per user/IP)
-- **AES-256-CBC encryption** for sensitive data
-- **Security headers** (CSP, HSTS, X-Frame-Options)
-- **Real-time threat detection** and monitoring
-
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -74,6 +64,16 @@ npm run dev
 - **Cryptocurrencies**: CryptoCompare API (Global crypto data)
 - **Exchange Rates**: Exchange Rate API (USD/IDR conversion)
 
+## 🔒 Security Features
+
+- **Firebase Authentication** with secure session management
+- **Protected routes** with automatic redirects
+- **Input validation & sanitization** for XSS protection
+- **Rate limiting** (30 requests/minute per user/IP)
+- **AES-256-CBC encryption** for sensitive data
+- **Security headers** (CSP, HSTS, X-Frame-Options)
+- **Real-time threat detection** and monitoring
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -98,14 +98,6 @@ cd portsyncro
 npm install
 npm run dev
 ```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ## 📄 License
 
