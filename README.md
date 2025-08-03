@@ -1,4 +1,4 @@
-# 🚀 Just Launched My New Project: PortSyncro - Easy Portfolio Synchronization for Cryptocurrencies and Stocks
+# ⋆✴︎˚｡⋆ Just Launched My New Project: PortSyncro - Easy Portfolio Synchronization for Cryptocurrencies and Stocks ⋆✴︎˚｡⋆
 
 Ever found yourself in this frustrating situation? You have the same stock (like BBRI) across 3 different brokerages, or Bitcoin spread across 2 different exchanges, and you're constantly struggling to track your true average price and overall portfolio performance?
 
