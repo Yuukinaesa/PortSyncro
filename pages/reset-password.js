@@ -9,7 +9,6 @@ import { useLanguage } from '../lib/languageContext';
 import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { secureLogger } from './../lib/security';
 
 export default function ResetPassword() {
   const [email, setEmail] = useState('');
@@ -29,7 +28,7 @@ export default function ResetPassword() {
       await sendPasswordResetEmail(auth, email);
       setMessage(t('resetPasswordEmailSent'));
     } catch (error) {
-      secureLogger.error("Error sending password reset email:", error);
+      console.error("Error sending password reset email:", error);
       
       if (error.code === 'auth/user-not-found') {
         setError(t('emailNotRegistered'));

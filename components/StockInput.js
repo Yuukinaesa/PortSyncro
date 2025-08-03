@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
 import { normalizeNumberInput, validateIDXLots } from '../lib/utils';
-import { secureLogger } from './../lib/security';
-import { decryptData } from '../lib/encryption';
 
 export default function StockInput({ onAdd, onComplete, exchangeRate }) {
   const [ticker, setTicker] = useState('');
@@ -47,7 +45,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
 
       // Format tickers for IDX
       const tickersToTry = [`${normalizedTicker}.JK`];
-      secureLogger.log('Submitting tickers:', tickersToTry);
+      console.log('Submitting tickers:', tickersToTry);
 
       // Set loading state
       setIsLoading(true);
@@ -74,41 +72,22 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       }
 
       const data = await response.json();
-      secureLogger.log('API returned prices:', data.prices);
-      
-      // Handle encrypted response if needed
-      let prices = data.prices;
-      if (data.security && data.security.encrypted && prices) {
-        try {
-          const decryptedPrices = decryptData(prices);
-          if (decryptedPrices) {
-            prices = decryptedPrices;
-            secureLogger.log('Successfully decrypted prices');
-          } else {
-            secureLogger.error('Failed to decrypt prices');
-            throw new Error('Failed to decrypt price data');
-          }
-        } catch (decryptError) {
-          secureLogger.error('Decryption error:', decryptError);
-          throw new Error('Failed to decrypt price data');
-        }
-      }
-      
+      console.log('API returned prices:', data.prices);
       let stockPrice = null;
       let usedTicker = null;
       // Try each ticker in order
       for (const t of tickersToTry) {
-        if (prices[t] && prices[t].price) {
-          stockPrice = prices[t];
+        if (data.prices[t] && data.prices[t].price) {
+          stockPrice = data.prices[t];
           usedTicker = t;
           break;
         }
       }
 
-      secureLogger.log('Used ticker for price:', usedTicker);
+      console.log('Used ticker for price:', usedTicker);
       if (!stockPrice) {
         // Check if the API returned any data but no valid stock price
-        const hasAnyData = Object.keys(prices).length > 0;
+        const hasAnyData = Object.keys(data.prices).length > 0;
         if (hasAnyData) {
           // API returned data but no valid price - likely not an IDX stock
           throw new Error(t('invalidIdxStock', { ticker: normalizedTicker }));
@@ -132,12 +111,12 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         addedAt: new Date().toISOString()
       };
 
-      secureLogger.log('Adding stock with current price:', stock);
+      console.log('Adding stock with current price:', stock);
       onAdd(stock);
       setIsLoading(false);
       onComplete();
     } catch (error) {
-      secureLogger.error('Error adding stock:', error);
+      console.error('Error adding stock:', error);
       setError(error.message);
       setIsLoading(false);
     }

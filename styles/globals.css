@@ -14,6 +14,18 @@
     @apply bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900 transition-all duration-300;
     scrollbar-width: thin;
     scrollbar-color: rgb(156 163 175) transparent;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  /* Modal body styling */
+  body.modal-open {
+    overflow: hidden !important;
+    position: relative !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   
   .dark body {
@@ -288,11 +300,30 @@
 
   /* Enhanced Modal */
   .modal-backdrop {
-    @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm;
+    @apply fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+  }
+
+  /* Subtle backdrop for gentle blur effect */
+  .modal-backdrop-subtle {
+    @apply absolute inset-0 bg-white/10 dark:bg-black/10 backdrop-blur-sm transition-all duration-300;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
   }
 
   .modal-content {
-    @apply relative w-full max-w-md animate-scale-in bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-700 rounded-2xl shadow-2xl;
+    @apply relative w-full max-w-lg sm:max-w-xl animate-modal-in bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-700 rounded-2xl shadow-2xl z-[10000];
   }
   
   /* Mobile-optimized modal */
@@ -503,6 +534,10 @@
   
   .animate-scale-in {
     animation: scaleIn 0.2s ease-out;
+  }
+
+  .animate-modal-in {
+    animation: modalIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .animate-bounce-soft {
@@ -817,6 +852,17 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }
 

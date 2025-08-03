@@ -8,7 +8,6 @@ import ErrorBoundary from './ErrorBoundary';
 import { useLanguage } from '../lib/languageContext';
 import { formatIDR, formatUSD, formatNumber, formatNumberUSD } from '../lib/utils';
 import { doc, deleteDoc, collection, updateDoc } from 'firebase/firestore';
-import { secureLogger } from './../lib/security';
 
 export default function TransactionHistory({ 
   transactions = [], 
@@ -31,9 +30,9 @@ export default function TransactionHistory({
   
   // Debug logging
   useEffect(() => {
-    secureLogger.log('Received transactions:', transactions);
-    secureLogger.log('User:', user);
-    secureLogger.log('Exchange rate:', exchangeRate);
+    console.log('Received transactions:', transactions);
+    console.log('User:', user);
+    console.log('Exchange rate:', exchangeRate);
   }, [transactions, user, exchangeRate]);
 
   // Delete transaction function
@@ -46,14 +45,16 @@ export default function TransactionHistory({
         throw new Error('Transaction not found');
       }
       
-      // Show warning that this only deletes transaction history, not the asset
+      // Show confirmation dialog
       setConfirmModal({
         title: t('confirmDelete'),
-        message: t('confirmDeleteTransactionHistory', { 
-          type: transaction.type, 
-          asset: transaction.ticker || transaction.symbol,
-          amount: transaction.amount 
-        }),
+        message: (
+          <div className="space-y-4">
+            <p className="text-gray-700 dark:text-gray-300">
+              Apakah Anda yakin ingin menghapus riwayat transaksi {transaction.type === 'buy' ? 'beli' : 'jual'} {transaction.ticker || transaction.symbol}?
+            </p>
+          </div>
+        ),
         confirmText: t('delete'),
         cancelText: t('cancel'),
         onConfirm: async () => {
@@ -78,30 +79,50 @@ export default function TransactionHistory({
             
             setConfirmModal(null);
           } catch (error) {
-            secureLogger.error('Error deleting transaction:', error);
+            console.error('Error deleting transaction:', error);
             setConfirmModal({
-              isOpen: true,
               title: 'Error',
-              message: 'Failed to delete transaction: ' + error.message,
-              type: 'error',
+              message: (
+                <div className="flex items-start space-x-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-red-800 dark:text-red-200">
+                    Failed to delete transaction: {error.message}
+                  </p>
+                </div>
+              ),
               confirmText: 'OK',
-              onConfirm: () => setConfirmModal(null)
+              onConfirm: () => setConfirmModal(null),
+              onCancel: () => setConfirmModal(null)
             });
           }
         },
         onCancel: () => setConfirmModal(null)
       });
     } catch (error) {
-      secureLogger.error('Error preparing transaction deletion:', error);
+      console.error('Error preparing transaction deletion:', error);
       
       // Show error message
       setConfirmModal({
-        isOpen: true,
         title: 'Error',
-        message: 'Failed to prepare transaction deletion: ' + error.message,
-        type: 'error',
+        message: (
+          <div className="flex items-start space-x-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="text-sm text-red-800 dark:text-red-200">
+              Failed to prepare transaction deletion: {error.message}
+            </p>
+          </div>
+        ),
         confirmText: 'OK',
-        onConfirm: () => setConfirmModal(null)
+        onConfirm: () => setConfirmModal(null),
+        onCancel: () => setConfirmModal(null)
       });
     }
   };
@@ -117,7 +138,7 @@ export default function TransactionHistory({
   
   useEffect(() => {
     if (!transactions || !Array.isArray(transactions)) {
-      secureLogger.log('No transactions or invalid transactions array');
+      console.log('No transactions or invalid transactions array');
       setFilteredTransactions([]);
       return;
     }
@@ -152,7 +173,7 @@ export default function TransactionHistory({
       return dateB - dateA;
     });
     
-    secureLogger.log('Filtered transactions:', filtered);
+    console.log('Filtered transactions:', filtered);
     setFilteredTransactions(filtered);
   }, [filter, assetTypeFilter, transactions, assetKey]); // Tambahkan assetKey ke dependency
   
@@ -161,7 +182,7 @@ export default function TransactionHistory({
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
-        secureLogger.error('Invalid date:', dateString);
+        console.error('Invalid date:', dateString);
         return 'Invalid Date';
       }
       return date.toLocaleString('id-ID', {
@@ -172,7 +193,7 @@ export default function TransactionHistory({
         minute: '2-digit'
       });
     } catch (error) {
-      secureLogger.error('Error formatting date:', error, 'Date string:', dateString);
+      console.error('Error formatting date:', error, 'Date string:', dateString);
       return 'Invalid Date';
     }
   };
@@ -329,7 +350,7 @@ export default function TransactionHistory({
       }, 100);
 
     } catch (error) {
-      secureLogger.error('Error exporting CSV:', error);
+      console.error('Error exporting CSV:', error);
       setConfirmModal({
         isOpen: true,
         title: t('error'),
@@ -556,23 +577,20 @@ export default function TransactionHistory({
 
         {/* Confirmation Modal */}
         {confirmModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-            <div 
-              className="w-full max-w-md mx-4 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 p-6"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{confirmModal.title}</h3>
-                <button 
-                  onClick={confirmModal.onCancel}
-                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              </div>
-              <div className="text-gray-700 dark:text-gray-300 mb-6">
-                {confirmModal.message}
-              </div>
+          <Modal
+            isOpen={!!confirmModal}
+            onClose={confirmModal.onCancel}
+            title={confirmModal.title}
+            type="warning"
+          >
+            <div className="space-y-6">
+              {typeof confirmModal.message === 'string' ? (
+                <div className="text-gray-700 dark:text-gray-300">
+                  {confirmModal.message}
+                </div>
+              ) : (
+                confirmModal.message
+              )}
               <div className="flex flex-col sm:flex-row justify-end gap-3">
                 {confirmModal.cancelText && (
                   <button
@@ -590,7 +608,7 @@ export default function TransactionHistory({
                 </button>
               </div>
             </div>
-          </div>
+          </Modal>
         )}
       </div>
     </ErrorBoundary>

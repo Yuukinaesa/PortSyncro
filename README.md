@@ -1,180 +1,121 @@
 # PortSyncro - Portfolio Management App
 
-A secure, modern portfolio management application built with Next.js and Firebase, featuring real-time stock and cryptocurrency tracking.
+A modern portfolio management application built with Next.js and Tailwind CSS, designed to track stocks and cryptocurrency investments with a beautiful Dribbble-inspired UI/UX.
 
-## 🔒 Security Features
+**Easy Portfolio Synchronization for Cryptocurrencies and Stocks**
 
-PortSyncro implements enterprise-grade security measures:
+<img src="public/img/mainlogo.png" alt="PortSyncro Logo" width="200">
 
-### Authentication & Authorization
-- **Firebase Authentication** with email/password
-- **Protected Routes** with automatic redirects
-- **Session Management** with timeout protection
-- **Input Validation** and sanitization for all user inputs
+## 🚀 Features
 
-### API Security
-- **Rate Limiting** (25 requests/minute per user)
-- **Input Sanitization** for all API endpoints
-- **CORS Protection** with strict origin policies
-- **Request Validation** with comprehensive error handling
+- **Portfolio Management**: Track Indonesian stocks and cryptocurrency investments
+- **Real-time Price Updates**: Get live prices for stocks and crypto
+- **Exchange Rate Integration**: USD/IDR exchange rate tracking
+- **Average Price Calculator**: Calculate weighted average prices for multiple purchases
+- **Transaction History**: Keep track of all buy/sell transactions
+- **Export Functionality**: Export portfolio data to CSV
+- **Multi-language Support**: English and Indonesian
+- **Dark/Light Mode**: Toggle between themes
+- **Responsive Design**: Works on desktop, tablet, and mobile
 
-### Security Headers
-- **Content Security Policy (CSP)** with strict directives
-- **HTTP Strict Transport Security (HSTS)**
-- **X-Frame-Options** to prevent clickjacking
-- **X-Content-Type-Options** to prevent MIME sniffing
-- **Referrer Policy** with strict origin controls
-- **Permissions Policy** to restrict browser features
+## 📱 Screenshots
 
-### Data Protection
-- **Environment Variables** for all sensitive configuration
-- **Secure Logging** with sensitive data redaction
-- **Input Sanitization** to prevent XSS attacks
-- **Data Validation** with strict type checking
+| Dashboard | Asset Management | Asset View |
+|-----------|------------------|------------|
+| ![Dashboard](public/img/dashboard.png) | ![Add Asset](public/img/addasset.png) | ![Asset](public/img/asset.png) |
 
-## 🚀 Getting Started
+| Average Price Calculator | History | Login |
+|-------------------------|---------|-------|
+| ![Average Price Calculator](public/img/avgcalc1.png) | ![History](public/img/history.png) | ![Login](public/img/login.png) |
 
-### Prerequisites
-- Node.js 16.0.0 or higher
-- npm 8.0.0 or higher
-- Firebase project with Authentication and Firestore enabled
+## 🛠️ Tech Stack
 
-### Installation
+- **Frontend**: Next.js 15, React 18
+- **Styling**: Tailwind CSS
+- **Authentication**: Firebase Auth
+- **Database**: Firebase Firestore
+- **Icons**: React Icons
+- **State Management**: React Context API
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/portsyncro.git
-   cd portsyncro
-   ```
+## 📦 Quick Start
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   Create a `.env.local` file in the root directory:
-   ```env
-   # Required Firebase Configuration
-   NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-   
-   # Optional Demo Account (for testing)
-   NEXT_PUBLIC_DEMO_EMAIL=demo@example.com
-   NEXT_PUBLIC_DEMO_PASSWORD=demo_password
-   ```
-
-4. **Run security checks**
-   ```bash
-   npm run security-check
-   npm run check-env
-   ```
-
-5. **Start development server**
-   ```bash
-   npm run dev
-   ```
-
-## 🔧 Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production with security checks
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run security-check` - Run security validation
-- `npm run check-env` - Validate environment variables
-- `npm run audit` - Run security audit and checks
-- `npm run build:prod` - Production build with all checks
-- `npm run start:prod` - Production start with all checks
-
-## 🛡️ Security Best Practices
-
-### For Developers
-1. **Never commit sensitive data** - Use environment variables
-2. **Run security checks** before deployment
-3. **Validate all inputs** - Use the provided validation utilities
-4. **Use secure logging** - Avoid logging sensitive information
-5. **Keep dependencies updated** - Run `npm audit` regularly
-
-### For Deployment
-1. **Use HTTPS** in production
-2. **Set up proper Firebase security rules**
-3. **Configure CSP headers** for your domain
-4. **Monitor logs** for suspicious activity
-5. **Regular security audits** of the application
-
-### Firebase Security Rules
-Ensure your Firestore security rules are properly configured:
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/PortSyncro.git
+cd PortSyncro
 ```
 
-## 📁 Project Structure
-
-```
-PortSyncro/
-├── components/          # React components
-├── lib/                # Utility libraries
-│   ├── security.js     # Security utilities
-│   ├── middleware.js   # Security middleware
-│   └── ...
-├── pages/              # Next.js pages
-│   └── api/           # API endpoints
-├── scripts/            # Build and security scripts
-├── styles/             # CSS styles
-└── public/             # Static assets
+2. Install dependencies:
+```bash
+npm install
 ```
 
-## 🔍 Security Monitoring
+3. Set up environment variables in `.env.local`:
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_firebase_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
+```
 
-The application includes comprehensive security monitoring:
+4. Run the development server:
+```bash
+npm run dev
+```
 
-- **Request Logging** with user agent analysis
-- **Rate Limiting** with automatic cleanup
-- **Error Tracking** with sanitized error messages
-- **Input Validation** with detailed error reporting
-- **Security Headers** validation
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## 🚨 Security Alerts
+## 🎨 Design Features
 
-The application will automatically detect and block:
-- Suspicious user agents (scanners, bots)
-- Malicious request headers
-- Rate limit violations
-- Invalid input patterns
-- Authentication bypass attempts
+- **Glass Morphism**: Subtle backdrop blur effects
+- **Gradient Backgrounds**: Beautiful gradient combinations
+- **Smooth Animations**: CSS transitions and micro-interactions
+- **Responsive Design**: Mobile-first approach
+- **Dark Mode**: Full dark mode support
 
-## 📞 Support
+## 📊 Key Features
 
-For security issues or questions:
-1. Check the security documentation
-2. Run `npm run security-check`
-3. Review Firebase security rules
-4. Contact the development team
+### Portfolio Management
+- Add Indonesian stocks (IDX market) with lot-based calculations
+- Add cryptocurrencies with real-time pricing
+- Track portfolio performance and gains/losses
+- View portfolio allocation and percentages
+
+### Price Tracking
+- Real-time stock prices from Yahoo Finance
+- Cryptocurrency prices from multiple sources
+- USD/IDR exchange rate integration
+
+### Calculations
+- **Average Price Calculator**: Calculate weighted average prices for multiple purchases
+- **Gain/Loss Calculations**: Calculations in both IDR and USD currencies
+- **Performance Metrics**: Comprehensive analytics and performance tracking
+
+## 🌐 Internationalization
+
+PortSyncro supports multiple languages:
+- **English (en)**: Complete English interface
+- **Indonesian (id)**: Complete Indonesian interface
+
+## 🚀 Deployment
+
+Deploy to Vercel, Netlify, or any Next.js-compatible platform.
+
+### Vercel Deployment
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🔄 Updates
-
-Regular security updates are applied to:
-- Dependencies (via `npm audit`)
-- Security configurations
-- Input validation rules
-- Rate limiting policies
-
----
-
-**⚠️ Security Notice**: This application handles financial data. Always follow security best practices and keep the application updated with the latest security patches.
+This project is licensed under the MIT License.

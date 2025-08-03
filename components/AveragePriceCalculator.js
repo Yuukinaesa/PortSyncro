@@ -114,17 +114,29 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isOpen ? 'block' : 'hidden'}`}>
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-200"
-        onClick={onClose}
-      />
+        <div className={`fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 ${isOpen ? 'block' : 'hidden'}`} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', minHeight: '100vh' }} onClick={onClose}>
       
-      {/* Modal */}
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 animate-scale-in flex flex-col">
+      {/* Subtle backdrop with gentle blur */}
+      <div 
+        className={`absolute inset-0 bg-white/10 dark:bg-black/10 backdrop-blur-sm transition-all duration-300 ${isOpen ? 'block' : 'hidden'}`}
+        style={{ 
+          position: 'absolute', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          width: '100%', 
+          height: '100%'
+        }}
+      />
+        
+                {/* Modal */}
+        <div 
+          className="relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 animate-modal-in flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
             {t('averagePriceCalculator')}
           </h3>
@@ -137,7 +149,10 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
         </div>
         
         {/* Content - Scrollable */}
-        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+        <div 
+          className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1"
+          onClick={(e) => e.stopPropagation()}
+        >
           <ErrorBoundary>
             {/* Asset Type Selection */}
             <div className="space-y-3">
@@ -146,7 +161,8 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
               </label>
               <div className="flex space-x-3">
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setAssetType('stock');
                     // Update all purchase currencies to IDR when switching to stock
                     setPurchases(purchases.map(p => ({ ...p, currency: 'IDR' })));
@@ -160,7 +176,8 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                   {t('stock')}
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setAssetType('crypto');
                     // Update all purchase currencies to USD when switching to crypto
                     setPurchases(purchases.map(p => ({ ...p, currency: 'USD' })));
@@ -185,6 +202,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                onClick={(e) => e.stopPropagation()}
                 placeholder={assetType === 'stock' ? 'BBCA' : 'BTC'}
                 className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
               />
@@ -197,7 +215,10 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                   {t('purchases')}
                 </h4>
                 <button
-                  onClick={addPurchase}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    addPurchase();
+                  }}
                   className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 flex items-center gap-2 text-sm font-medium"
                 >
                   <FiPlus className="w-4 h-4" />
@@ -212,13 +233,14 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                       {/* Source */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {t('source')}
+                          {assetType === 'stock' ? t('broker') : t('exchange')}
                         </label>
                         <input
                           type="text"
                           value={purchase.source}
                           onChange={(e) => updatePurchase(index, 'source', e.target.value)}
-                          placeholder={t('sourcePlaceholder')}
+                          onClick={(e) => e.stopPropagation()}
+                          placeholder={assetType === 'stock' ? 'Stockbit' : 'Binance'}
                           className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         />
                       </div>
@@ -232,6 +254,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                           type="text"
                           value={purchase.amount}
                           onChange={(e) => updatePurchase(index, 'amount', e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
                           placeholder={assetType === 'stock' ? '10' : '0.5'}
                           className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         />
@@ -246,6 +269,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                           type="text"
                           value={purchase.price}
                           onChange={(e) => updatePurchase(index, 'price', e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
                           placeholder="1000"
                           className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         />
@@ -259,6 +283,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                         <select
                           value={purchase.currency}
                           onChange={(e) => updatePurchase(index, 'currency', e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
                           className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         >
                           <option value="IDR">IDR</option>
@@ -271,7 +296,10 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                     {purchases.length > 1 && (
                       <div className="flex justify-end mt-4">
                         <button
-                          onClick={() => removePurchase(index)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removePurchase(index);
+                          }}
                           className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200"
                         >
                           <FiX className="w-4 h-4" />
@@ -286,7 +314,10 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
             {/* Calculate Button */}
             <div className="flex justify-center">
               <button
-                onClick={calculateAverage}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  calculateAverage();
+                }}
                 className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 text-lg font-medium"
               >
                 {t('calculateAverage')}
@@ -356,15 +387,24 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
         </div>
 
         {/* Action Buttons - Fixed at Bottom */}
-        <div className="flex justify-end gap-3 p-6 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
+        <div 
+          className="flex justify-end gap-3 p-6 border-t border-gray-100 dark:border-gray-800 flex-shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
-            onClick={resetForm}
+            onClick={(e) => {
+              e.stopPropagation();
+              resetForm();
+            }}
             className="px-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium"
           >
             {t('reset')}
           </button>
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 text-sm font-medium"
           >
             {t('close')}

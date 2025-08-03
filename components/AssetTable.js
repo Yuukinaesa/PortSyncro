@@ -5,7 +5,6 @@ import Modal from './Modal';
 import ErrorBoundary from './ErrorBoundary';
 import { formatNumber, formatIDR, formatUSD, formatNumberUSD, normalizeNumberInput } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
-import { secureLogger } from './../lib/security';
 
 export default function AssetTable({ assets, prices, exchangeRate, type, onUpdate, onSell = () => {}, onDelete = () => {}, loading = false }) {
   const [sellingIndex, setSellingIndex] = useState(null);
@@ -254,7 +253,12 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         onSell(assetId, asset, amountToSell);
         setSellingIndex(null);
         setConfirmModal(null);
-      }
+      },
+      onCancel: () => {
+        setSellingIndex(null);
+        setConfirmModal(null);
+      },
+      cancelText: t('cancel')
     });
   };
   
@@ -268,7 +272,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     const avgPrice = asset.avgPrice || 0;
     
     // Debug logging
-    secureLogger.log('Editing average price for asset:', {
+    console.log('Editing average price for asset:', {
       ticker: asset.ticker,
       symbol: asset.symbol,
       avgPrice: avgPrice,
@@ -330,7 +334,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       };
 
       // Debug logging
-      secureLogger.log('Editing asset:', {
+      console.log('Editing asset:', {
         index,
         originalAsset: asset,
         updatedAsset: updatedAsset,
@@ -342,14 +346,14 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       });
 
       if (onUpdate) {
-        secureLogger.log('Calling onUpdate function...');
+        console.log('Calling onUpdate function...');
         // For both stocks and crypto, pass symbol/ticker and updated asset
         if (type === 'stock') {
           onUpdate(asset.ticker, updatedAsset);
         } else {
           onUpdate(asset.symbol, updatedAsset);
         }
-        secureLogger.log('onUpdate function called successfully');
+        console.log('onUpdate function called successfully');
         
         // Show success feedback
         setConfirmModal({
@@ -367,7 +371,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         });
       }
     } catch (error) {
-      secureLogger.error('Error updating average price:', error);
+      console.error('Error updating average price:', error);
       setConfirmModal({
         isOpen: true,
         title: 'Error',
@@ -526,7 +530,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       }, 100);
 
     } catch (error) {
-      secureLogger.error('Error exporting CSV:', error);
+      console.error('Error exporting CSV:', error);
       // You can add a notification here if you have a notification system
     }
   };
