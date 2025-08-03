@@ -2,35 +2,51 @@
 
 A secure, real-time portfolio management application built with Next.js and Firebase, designed for tracking stocks and cryptocurrency investments with professional-grade security measures.
 
-![PortSyncro Logo](public/img/mainlogo.png){width=200px}
+<div align="center">
+  <img src="public/img/mainlogo.png" alt="PortSyncro Logo" width="200" style="border: 2px solid #e1e5e9; border-radius: 8px; padding: 10px;">
+</div>
 
 ## 📸 Screenshots
 
 ### Dashboard Overview
-![Dashboard](public/img/dashboard.png){width=600px}
-*Main dashboard showing portfolio overview and real-time data*
+<div align="center">
+  <img src="public/img/dashboard.png" alt="Dashboard" width="600" style="border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  <p><em>Main dashboard showing portfolio overview and real-time data</em></p>
+</div>
 
 ### Asset Management
-![Add Asset](public/img/addasset.png){width=500px}
-*Add new stocks and cryptocurrencies to your portfolio*
+<div align="center">
+  <img src="public/img/addasset.png" alt="Add Asset" width="500" style="border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  <p><em>Add new stocks and cryptocurrencies to your portfolio</em></p>
+</div>
 
-![Asset View](public/img/asset.png){width=500px}
-*Detailed view of individual assets with performance metrics*
+<div align="center">
+  <img src="public/img/asset.png" alt="Asset View" width="500" style="border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  <p><em>Detailed view of individual assets with performance metrics</em></p>
+</div>
 
 ### Average Price Calculator
-![Average Calculator 1](public/img/avgcalc1.png){width=500px}
-*Advanced average price calculation for multiple transactions*
+<div align="center">
+  <img src="public/img/avgcalc1.png" alt="Average Calculator 1" width="500" style="border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  <p><em>Advanced average price calculation for multiple transactions</em></p>
+</div>
 
-![Average Calculator 2](public/img/avgcalc2.png){width=500px}
-*Detailed breakdown of average price calculations*
+<div align="center">
+  <img src="public/img/avgcalc2.png" alt="Average Calculator 2" width="500" style="border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  <p><em>Detailed breakdown of average price calculations</em></p>
+</div>
 
 ### Transaction History
-![History](public/img/history.png){width=500px}
-*Complete transaction history with filtering and search capabilities*
+<div align="center">
+  <img src="public/img/history.png" alt="History" width="500" style="border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  <p><em>Complete transaction history with filtering and search capabilities</em></p>
+</div>
 
 ### Authentication
-![Login](public/img/login.png){width=400px}
-*Secure login interface with Firebase authentication*
+<div align="center">
+  <img src="public/img/login.png" alt="Login" width="400" style="border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  <p><em>Secure login interface with Firebase authentication</em></p>
+</div>
 
 ## 🔒 Security Features
 
