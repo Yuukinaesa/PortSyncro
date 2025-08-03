@@ -1,0 +1,1063 @@
+ Added update transaction for stock MPMX: amount=500, price=100 (original: 100)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:00:55.632Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=100 (original: 100)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:04.195Z (source: manual)
+ Possible decimal error for BBRI: 13 IDR - did you mean 13000?
+validatePrice @ webpack-internal:///…/./lib/utils.js:519
+ Added update transaction for stock BBRI: amount=500, price=13 (original: 13)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:16.812Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:23.151Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:33.673Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=3710 (original: 3710)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:44.283Z (source: manual)
+ Suspicious stock price for BBCA: 8.275 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBCA: 8.275
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:50.649Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=8275 (original: 8275)
+ Processing transaction: update crypto ETH amount: 10 at 2025-07-31T21:08:17.724Z (source: manual)
+ Added update transaction for crypto ETH: amount=10, price=1500 (original: 1500)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T21:09:57.224Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=2500 (original: 2500)
+ Processing transaction: update crypto ADA amount: 5 at 2025-08-03T02:49:32.461Z (source: manual)
+ Added update transaction for crypto ADA: amount=5, price=1 (original: 1)
+ Processing transaction: buy stock CDIA amount: 12300 at 2025-08-03T03:40:04.405Z (source: manual)
+ Added buy transaction for stock CDIA: amount=12300, price=1630 (original: 1630)
+ Processing transaction: buy stock ADMR amount: 12300 at 2025-08-03T03:44:24.046Z (source: manual)
+ Added buy transaction for stock ADMR: amount=12300, price=1110 (original: 1110)
+ Processing transaction: buy stock ADRO amount: 12300 at 2025-08-03T03:45:21.541Z (source: manual)
+ Added buy transaction for stock ADRO: amount=12300, price=1865 (original: 1865)
+ Processing transaction: delete stock ADMR amount: 0 at 2025-08-03T03:48:29.341Z (source: portfolio)
+ Deleted stock ADMR from portfolio
+ Processing transaction: delete stock ADRO amount: 0 at 2025-08-03T03:48:32.576Z (source: portfolio)
+ Deleted stock ADRO from portfolio
+ Processing transaction: buy crypto CLEO amount: 123 at 2025-08-03T03:48:55.155Z (source: manual)
+ Added buy transaction for crypto CLEO: amount=123, price=0.00011 (original: 0.0001100104872804883)
+ Processing transaction: buy stock CLEO amount: 12300 at 2025-08-03T03:49:13.830Z (source: manual)
+ Added buy transaction for stock CLEO: amount=12300, price=570 (original: 570)
+ Processing transaction: buy stock CUAN amount: 3200 at 2025-08-03T03:51:36.736Z (source: manual)
+ Added buy transaction for stock CUAN: amount=3200, price=1525 (original: 1525)
+ Processing transaction: delete stock BBCA amount: 0 at 2025-08-03T03:56:32.333Z (source: portfolio)
+ Deleted stock BBCA from portfolio
+ Processing transaction: delete stock BBRI amount: 0 at 2025-08-03T03:56:36.814Z (source: portfolio)
+ Deleted stock BBRI from portfolio
+ Building assets from maps - Stocks: 4, Crypto: 3
+ Calculating position from transactions: 1 transactions
+ Transaction: update stock MPMX amount: 500 price: 100 (ID: vo43gfQj5nspPJpuNhXf)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 500 to total. Previous: 0, New: 500
+ After update as buy: totalAmount = 500, totalCost = 50000, entryPrice = null
+ Final position: amount = 500, avgPrice = 100, totalCost = 50000, gain = 427500, porto = 477500, portoIDR = 477500, portoUSD = 29.018059260042527
+ Building stock MPMX: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CDIA amount: 12300 price: 1630 (ID: i3HziiOcMItQNmEDV3CK)
+   Buy: Added 12300 to total. Previous: 0, New: 12300
+ After buy: totalAmount = 12300, totalCost = 20049000, entryPrice = null
+ Final position: amount = 12300, avgPrice = 1630, totalCost = 20049000, gain = 0, porto = 20049000, portoIDR = 20049000, portoUSD = 1218.3938640933877
+ Building stock CDIA: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CLEO amount: 12300 price: 570 (ID: a7366dczWQFIWjL6yJhh)
+   Buy: Added 12300 to total. Previous: 0, New: 12300
+ After buy: totalAmount = 12300, totalCost = 7011000, entryPrice = null
+ Final position: amount = 12300, avgPrice = 570, totalCost = 7011000, gain = 0, porto = 7011000, portoIDR = 7011000, portoUSD = 426.0641119835773
+ Building stock CLEO: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CUAN amount: 3200 price: 1525 (ID: BJWivEBYCgw3pFGRjeSR)
+   Buy: Added 3200 to total. Previous: 0, New: 3200
+ After buy: totalAmount = 3200, totalCost = 4880000, entryPrice = null
+ Final position: amount = 3200, avgPrice = 1525, totalCost = 4880000, gain = 0, porto = 4880000, portoIDR = 4880000, portoUSD = 296.56152709739797
+ Building stock CUAN: Object
+ Processing crypto ETH with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ETH amount: 10 price: 1500 (ID: XsZhRCJGeRtQhexbuLqY)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 10 to total. Previous: 0, New: 10
+ After update as buy: totalAmount = 10, totalCost = 15000, entryPrice = null
+ Final position: amount = 10, avgPrice = 1500, totalCost = 15000, gain = 19472.371767292403, porto = 34472.3717672924, portoIDR = 567252184.9711736, portoUSD = 34472.3717672924
+ Built crypto asset ETH: Object
+ Processing crypto ADA with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ADA amount: 5 price: 1 (ID: wvYNF7jLGyKqYLKyq3ka)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 5 to total. Previous: 0, New: 5
+ After update as buy: totalAmount = 5, totalCost = 5, entryPrice = null
+ Final position: amount = 5, avgPrice = 1, totalCost = 5, gain = -1.41336202913616, porto = 3.58663797086384, portoIDR = 59019.096202816625, portoUSD = 3.58663797086384
+ Built crypto asset ADA: Object
+ Processing crypto CLEO with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: buy crypto CLEO amount: 123 price: 0.00011 (ID: ZmS3ySujmlRQSxCUGXiJ)
+   Buy: Added 123 to total. Previous: 0, New: 123
+ After buy: totalAmount = 123, totalCost = 0.01353, entryPrice = null
+ Final position: amount = 123, avgPrice = 0.00011, totalCost = 0.01353, gain = 0.0000014570755569199428, porto = 0.01353145707555692, portoIDR = 222.66377967169953, portoUSD = 0.01353145707555692
+ Built crypto asset CLEO: Object
+ Final portfolio - Stocks: 4, Crypto: 3
+ Portfolio component received assets: Object
+ Received prices: Object
+ PortfolioStateManager: Rebuilding portfolio from 45 transactions
+ Building assets from transactions: 45 transactions
+ Available prices: Array(9)
+ Filtered out 24 deleted transactions from history
+ Processing 21 transactions chronologically...
+ Processing transaction: update stock MPMX amount: 500 at 2025-07-31T18:57:20.068Z (source: manual)
+ Added update transaction for stock MPMX: amount=500, price=100 (original: 100)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:00:55.632Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=100 (original: 100)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:04.195Z (source: manual)
+ Possible decimal error for BBRI: 13 IDR - did you mean 13000?
+validatePrice @ webpack-internal:///…/./lib/utils.js:519
+ Added update transaction for stock BBRI: amount=500, price=13 (original: 13)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:16.812Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:23.151Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:33.673Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=3710 (original: 3710)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:44.283Z (source: manual)
+ Suspicious stock price for BBCA: 8.275 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBCA: 8.275
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:50.649Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=8275 (original: 8275)
+ Processing transaction: update crypto ETH amount: 10 at 2025-07-31T21:08:17.724Z (source: manual)
+ Added update transaction for crypto ETH: amount=10, price=1500 (original: 1500)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T21:09:57.224Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=2500 (original: 2500)
+ Processing transaction: update crypto ADA amount: 5 at 2025-08-03T02:49:32.461Z (source: manual)
+ Added update transaction for crypto ADA: amount=5, price=1 (original: 1)
+ Processing transaction: buy stock CDIA amount: 12300 at 2025-08-03T03:40:04.405Z (source: manual)
+ Added buy transaction for stock CDIA: amount=12300, price=1630 (original: 1630)
+ Processing transaction: buy stock ADMR amount: 12300 at 2025-08-03T03:44:24.046Z (source: manual)
+ Added buy transaction for stock ADMR: amount=12300, price=1110 (original: 1110)
+ Processing transaction: buy stock ADRO amount: 12300 at 2025-08-03T03:45:21.541Z (source: manual)
+ Added buy transaction for stock ADRO: amount=12300, price=1865 (original: 1865)
+ Processing transaction: delete stock ADMR amount: 0 at 2025-08-03T03:48:29.341Z (source: portfolio)
+ Deleted stock ADMR from portfolio
+ Processing transaction: delete stock ADRO amount: 0 at 2025-08-03T03:48:32.576Z (source: portfolio)
+ Deleted stock ADRO from portfolio
+ Processing transaction: buy crypto CLEO amount: 123 at 2025-08-03T03:48:55.155Z (source: manual)
+ Added buy transaction for crypto CLEO: amount=123, price=0.00011 (original: 0.0001100104872804883)
+ Processing transaction: buy stock CLEO amount: 12300 at 2025-08-03T03:49:13.830Z (source: manual)
+ Added buy transaction for stock CLEO: amount=12300, price=570 (original: 570)
+ Processing transaction: buy stock CUAN amount: 3200 at 2025-08-03T03:51:36.736Z (source: manual)
+ Added buy transaction for stock CUAN: amount=3200, price=1525 (original: 1525)
+ Processing transaction: delete stock BBCA amount: 0 at 2025-08-03T03:56:32.333Z (source: portfolio)
+ Deleted stock BBCA from portfolio
+ Processing transaction: delete stock BBRI amount: 0 at 2025-08-03T03:56:36.814Z (source: portfolio)
+ Deleted stock BBRI from portfolio
+ Building assets from maps - Stocks: 4, Crypto: 3
+ Calculating position from transactions: 1 transactions
+ Transaction: update stock MPMX amount: 500 price: 100 (ID: vo43gfQj5nspPJpuNhXf)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 500 to total. Previous: 0, New: 500
+ After update as buy: totalAmount = 500, totalCost = 50000, entryPrice = null
+ Final position: amount = 500, avgPrice = 100, totalCost = 50000, gain = 427500, porto = 477500, portoIDR = 477500, portoUSD = 29.018059260042527
+ Building stock MPMX: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CDIA amount: 12300 price: 1630 (ID: i3HziiOcMItQNmEDV3CK)
+   Buy: Added 12300 to total. Previous: 0, New: 12300
+ After buy: totalAmount = 12300, totalCost = 20049000, entryPrice = null
+ Final position: amount = 12300, avgPrice = 1630, totalCost = 20049000, gain = 0, porto = 20049000, portoIDR = 20049000, portoUSD = 1218.3938640933877
+ Building stock CDIA: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CLEO amount: 12300 price: 570 (ID: a7366dczWQFIWjL6yJhh)
+   Buy: Added 12300 to total. Previous: 0, New: 12300
+ After buy: totalAmount = 12300, totalCost = 7011000, entryPrice = null
+ Final position: amount = 12300, avgPrice = 570, totalCost = 7011000, gain = 0, porto = 7011000, portoIDR = 7011000, portoUSD = 426.0641119835773
+ Building stock CLEO: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CUAN amount: 3200 price: 1525 (ID: BJWivEBYCgw3pFGRjeSR)
+   Buy: Added 3200 to total. Previous: 0, New: 3200
+ After buy: totalAmount = 3200, totalCost = 4880000, entryPrice = null
+ Final position: amount = 3200, avgPrice = 1525, totalCost = 4880000, gain = 0, porto = 4880000, portoIDR = 4880000, portoUSD = 296.56152709739797
+ Building stock CUAN: Object
+ Processing crypto ETH with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ETH amount: 10 price: 1500 (ID: XsZhRCJGeRtQhexbuLqY)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 10 to total. Previous: 0, New: 10
+ After update as buy: totalAmount = 10, totalCost = 15000, entryPrice = null
+ Final position: amount = 10, avgPrice = 1500, totalCost = 15000, gain = 19472.371767292403, porto = 34472.3717672924, portoIDR = 567252184.9711736, portoUSD = 34472.3717672924
+ Built crypto asset ETH: Object
+ Processing crypto ADA with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ADA amount: 5 price: 1 (ID: wvYNF7jLGyKqYLKyq3ka)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 5 to total. Previous: 0, New: 5
+ After update as buy: totalAmount = 5, totalCost = 5, entryPrice = null
+ Final position: amount = 5, avgPrice = 1, totalCost = 5, gain = -1.41336202913616, porto = 3.58663797086384, portoIDR = 59019.096202816625, portoUSD = 3.58663797086384
+ Built crypto asset ADA: Object
+ Processing crypto CLEO with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: buy crypto CLEO amount: 123 price: 0.00011 (ID: ZmS3ySujmlRQSxCUGXiJ)
+   Buy: Added 123 to total. Previous: 0, New: 123
+ After buy: totalAmount = 123, totalCost = 0.01353, entryPrice = null
+ Final position: amount = 123, avgPrice = 0.00011, totalCost = 0.01353, gain = 0.0000014570755569199428, porto = 0.01353145707555692, portoIDR = 222.66377967169953, portoUSD = 0.01353145707555692
+ Built crypto asset CLEO: Object
+ Final portfolio - Stocks: 4, Crypto: 3
+ DELETE stock: CDIA
+ Received transaction snapshot: 46 documents
+ Updated transactions: 46 unique transactions
+ PortfolioStateManager: Rebuilding portfolio from 46 transactions
+ Building assets from transactions: 46 transactions
+ Available prices: Array(9)
+ Filtered out 24 deleted transactions from history
+ Processing 22 transactions chronologically...
+ Processing transaction: update stock MPMX amount: 500 at 2025-07-31T18:57:20.068Z (source: manual)
+ Added update transaction for stock MPMX: amount=500, price=100 (original: 100)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:00:55.632Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=100 (original: 100)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:04.195Z (source: manual)
+ Possible decimal error for BBRI: 13 IDR - did you mean 13000?
+validatePrice @ webpack-internal:///…/./lib/utils.js:519
+ Added update transaction for stock BBRI: amount=500, price=13 (original: 13)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:16.812Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:23.151Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:33.673Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=3710 (original: 3710)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:44.283Z (source: manual)
+ Suspicious stock price for BBCA: 8.275 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBCA: 8.275
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:50.649Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=8275 (original: 8275)
+ Processing transaction: update crypto ETH amount: 10 at 2025-07-31T21:08:17.724Z (source: manual)
+ Added update transaction for crypto ETH: amount=10, price=1500 (original: 1500)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T21:09:57.224Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=2500 (original: 2500)
+ Processing transaction: update crypto ADA amount: 5 at 2025-08-03T02:49:32.461Z (source: manual)
+ Added update transaction for crypto ADA: amount=5, price=1 (original: 1)
+ Processing transaction: buy stock CDIA amount: 12300 at 2025-08-03T03:40:04.405Z (source: manual)
+ Added buy transaction for stock CDIA: amount=12300, price=1630 (original: 1630)
+ Processing transaction: buy stock ADMR amount: 12300 at 2025-08-03T03:44:24.046Z (source: manual)
+ Added buy transaction for stock ADMR: amount=12300, price=1110 (original: 1110)
+ Processing transaction: buy stock ADRO amount: 12300 at 2025-08-03T03:45:21.541Z (source: manual)
+ Added buy transaction for stock ADRO: amount=12300, price=1865 (original: 1865)
+ Processing transaction: delete stock ADMR amount: 0 at 2025-08-03T03:48:29.341Z (source: portfolio)
+ Deleted stock ADMR from portfolio
+ Processing transaction: delete stock ADRO amount: 0 at 2025-08-03T03:48:32.576Z (source: portfolio)
+ Deleted stock ADRO from portfolio
+ Processing transaction: buy crypto CLEO amount: 123 at 2025-08-03T03:48:55.155Z (source: manual)
+ Added buy transaction for crypto CLEO: amount=123, price=0.00011 (original: 0.0001100104872804883)
+ Processing transaction: buy stock CLEO amount: 12300 at 2025-08-03T03:49:13.830Z (source: manual)
+ Added buy transaction for stock CLEO: amount=12300, price=570 (original: 570)
+ Processing transaction: buy stock CUAN amount: 3200 at 2025-08-03T03:51:36.736Z (source: manual)
+ Added buy transaction for stock CUAN: amount=3200, price=1525 (original: 1525)
+ Processing transaction: delete stock BBCA amount: 0 at 2025-08-03T03:56:32.333Z (source: portfolio)
+ Deleted stock BBCA from portfolio
+ Processing transaction: delete stock BBRI amount: 0 at 2025-08-03T03:56:36.814Z (source: portfolio)
+ Deleted stock BBRI from portfolio
+ Processing transaction: delete stock CDIA amount: 0 at 2025-08-03T03:56:38.305Z (source: portfolio)
+ Deleted stock CDIA from portfolio
+ Building assets from maps - Stocks: 3, Crypto: 3
+ Calculating position from transactions: 1 transactions
+ Transaction: update stock MPMX amount: 500 price: 100 (ID: vo43gfQj5nspPJpuNhXf)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 500 to total. Previous: 0, New: 500
+ After update as buy: totalAmount = 500, totalCost = 50000, entryPrice = null
+ Final position: amount = 500, avgPrice = 100, totalCost = 50000, gain = 427500, porto = 477500, portoIDR = 477500, portoUSD = 29.018059260042527
+ Building stock MPMX: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CLEO amount: 12300 price: 570 (ID: a7366dczWQFIWjL6yJhh)
+   Buy: Added 12300 to total. Previous: 0, New: 12300
+ After buy: totalAmount = 12300, totalCost = 7011000, entryPrice = null
+ Final position: amount = 12300, avgPrice = 570, totalCost = 7011000, gain = 0, porto = 7011000, portoIDR = 7011000, portoUSD = 426.0641119835773
+ Building stock CLEO: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CUAN amount: 3200 price: 1525 (ID: BJWivEBYCgw3pFGRjeSR)
+   Buy: Added 3200 to total. Previous: 0, New: 3200
+ After buy: totalAmount = 3200, totalCost = 4880000, entryPrice = null
+ Final position: amount = 3200, avgPrice = 1525, totalCost = 4880000, gain = 0, porto = 4880000, portoIDR = 4880000, portoUSD = 296.56152709739797
+ Building stock CUAN: Object
+ Processing crypto ETH with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ETH amount: 10 price: 1500 (ID: XsZhRCJGeRtQhexbuLqY)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 10 to total. Previous: 0, New: 10
+ After update as buy: totalAmount = 10, totalCost = 15000, entryPrice = null
+ Final position: amount = 10, avgPrice = 1500, totalCost = 15000, gain = 19472.371767292403, porto = 34472.3717672924, portoIDR = 567252184.9711736, portoUSD = 34472.3717672924
+ Built crypto asset ETH: Object
+ Processing crypto ADA with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ADA amount: 5 price: 1 (ID: wvYNF7jLGyKqYLKyq3ka)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 5 to total. Previous: 0, New: 5
+ After update as buy: totalAmount = 5, totalCost = 5, entryPrice = null
+ Final position: amount = 5, avgPrice = 1, totalCost = 5, gain = -1.41336202913616, porto = 3.58663797086384, portoIDR = 59019.096202816625, portoUSD = 3.58663797086384
+ Built crypto asset ADA: Object
+ Processing crypto CLEO with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: buy crypto CLEO amount: 123 price: 0.00011 (ID: ZmS3ySujmlRQSxCUGXiJ)
+   Buy: Added 123 to total. Previous: 0, New: 123
+ After buy: totalAmount = 123, totalCost = 0.01353, entryPrice = null
+ Final position: amount = 123, avgPrice = 0.00011, totalCost = 0.01353, gain = 0.0000014570755569199428, porto = 0.01353145707555692, portoIDR = 222.66377967169953, portoUSD = 0.01353145707555692
+ Built crypto asset CLEO: Object
+ Final portfolio - Stocks: 3, Crypto: 3
+ Portfolio component received assets: Object
+ Processing 1 queued updates
+ Batch updates processed successfully
+ Force portfolio rebuild after deleting stock
+ Received transaction snapshot: 46 documents
+ Updated transactions: 46 unique transactions
+ Fetching prices for: Object
+ PortfolioStateManager: Rebuilding portfolio from 46 transactions
+ Building assets from transactions: 46 transactions
+ Available prices: Array(9)
+ Filtered out 24 deleted transactions from history
+ Processing 22 transactions chronologically...
+ Processing transaction: update stock MPMX amount: 500 at 2025-07-31T18:57:20.068Z (source: manual)
+ Added update transaction for stock MPMX: amount=500, price=100 (original: 100)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:00:55.632Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=100 (original: 100)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:04.195Z (source: manual)
+ Possible decimal error for BBRI: 13 IDR - did you mean 13000?
+validatePrice @ webpack-internal:///…/./lib/utils.js:519
+ Added update transaction for stock BBRI: amount=500, price=13 (original: 13)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:16.812Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:23.151Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:33.673Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=3710 (original: 3710)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:44.283Z (source: manual)
+ Suspicious stock price for BBCA: 8.275 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBCA: 8.275
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:50.649Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=8275 (original: 8275)
+ Processing transaction: update crypto ETH amount: 10 at 2025-07-31T21:08:17.724Z (source: manual)
+ Added update transaction for crypto ETH: amount=10, price=1500 (original: 1500)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T21:09:57.224Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=2500 (original: 2500)
+ Processing transaction: update crypto ADA amount: 5 at 2025-08-03T02:49:32.461Z (source: manual)
+ Added update transaction for crypto ADA: amount=5, price=1 (original: 1)
+ Processing transaction: buy stock CDIA amount: 12300 at 2025-08-03T03:40:04.405Z (source: manual)
+ Added buy transaction for stock CDIA: amount=12300, price=1630 (original: 1630)
+ Processing transaction: buy stock ADMR amount: 12300 at 2025-08-03T03:44:24.046Z (source: manual)
+ Added buy transaction for stock ADMR: amount=12300, price=1110 (original: 1110)
+ Processing transaction: buy stock ADRO amount: 12300 at 2025-08-03T03:45:21.541Z (source: manual)
+ Added buy transaction for stock ADRO: amount=12300, price=1865 (original: 1865)
+ Processing transaction: delete stock ADMR amount: 0 at 2025-08-03T03:48:29.341Z (source: portfolio)
+ Deleted stock ADMR from portfolio
+ Processing transaction: delete stock ADRO amount: 0 at 2025-08-03T03:48:32.576Z (source: portfolio)
+ Deleted stock ADRO from portfolio
+ Processing transaction: buy crypto CLEO amount: 123 at 2025-08-03T03:48:55.155Z (source: manual)
+ Added buy transaction for crypto CLEO: amount=123, price=0.00011 (original: 0.0001100104872804883)
+ Processing transaction: buy stock CLEO amount: 12300 at 2025-08-03T03:49:13.830Z (source: manual)
+ Added buy transaction for stock CLEO: amount=12300, price=570 (original: 570)
+ Processing transaction: buy stock CUAN amount: 3200 at 2025-08-03T03:51:36.736Z (source: manual)
+ Added buy transaction for stock CUAN: amount=3200, price=1525 (original: 1525)
+ Processing transaction: delete stock BBCA amount: 0 at 2025-08-03T03:56:32.333Z (source: portfolio)
+ Deleted stock BBCA from portfolio
+ Processing transaction: delete stock BBRI amount: 0 at 2025-08-03T03:56:36.814Z (source: portfolio)
+ Deleted stock BBRI from portfolio
+ Processing transaction: delete stock CDIA amount: 0 at 2025-08-03T03:56:40.842Z (source: portfolio)
+ Deleted stock CDIA from portfolio
+ Building assets from maps - Stocks: 3, Crypto: 3
+ Calculating position from transactions: 1 transactions
+ Transaction: update stock MPMX amount: 500 price: 100 (ID: vo43gfQj5nspPJpuNhXf)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 500 to total. Previous: 0, New: 500
+ After update as buy: totalAmount = 500, totalCost = 50000, entryPrice = null
+ Final position: amount = 500, avgPrice = 100, totalCost = 50000, gain = 427500, porto = 477500, portoIDR = 477500, portoUSD = 29.018059260042527
+ Building stock MPMX: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CLEO amount: 12300 price: 570 (ID: a7366dczWQFIWjL6yJhh)
+   Buy: Added 12300 to total. Previous: 0, New: 12300
+ After buy: totalAmount = 12300, totalCost = 7011000, entryPrice = null
+ Final position: amount = 12300, avgPrice = 570, totalCost = 7011000, gain = 0, porto = 7011000, portoIDR = 7011000, portoUSD = 426.0641119835773
+ Building stock CLEO: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CUAN amount: 3200 price: 1525 (ID: BJWivEBYCgw3pFGRjeSR)
+   Buy: Added 3200 to total. Previous: 0, New: 3200
+ After buy: totalAmount = 3200, totalCost = 4880000, entryPrice = null
+ Final position: amount = 3200, avgPrice = 1525, totalCost = 4880000, gain = 0, porto = 4880000, portoIDR = 4880000, portoUSD = 296.56152709739797
+ Building stock CUAN: Object
+ Processing crypto ETH with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ETH amount: 10 price: 1500 (ID: XsZhRCJGeRtQhexbuLqY)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 10 to total. Previous: 0, New: 10
+ After update as buy: totalAmount = 10, totalCost = 15000, entryPrice = null
+ Final position: amount = 10, avgPrice = 1500, totalCost = 15000, gain = 19472.371767292403, porto = 34472.3717672924, portoIDR = 567252184.9711736, portoUSD = 34472.3717672924
+ Built crypto asset ETH: Object
+ Processing crypto ADA with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ADA amount: 5 price: 1 (ID: wvYNF7jLGyKqYLKyq3ka)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 5 to total. Previous: 0, New: 5
+ After update as buy: totalAmount = 5, totalCost = 5, entryPrice = null
+ Final position: amount = 5, avgPrice = 1, totalCost = 5, gain = -1.41336202913616, porto = 3.58663797086384, portoIDR = 59019.096202816625, portoUSD = 3.58663797086384
+ Built crypto asset ADA: Object
+ Processing crypto CLEO with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: buy crypto CLEO amount: 123 price: 0.00011 (ID: ZmS3ySujmlRQSxCUGXiJ)
+   Buy: Added 123 to total. Previous: 0, New: 123
+ After buy: totalAmount = 123, totalCost = 0.01353, entryPrice = null
+ Final position: amount = 123, avgPrice = 0.00011, totalCost = 0.01353, gain = 0.0000014570755569199428, porto = 0.01353145707555692, portoIDR = 222.66377967169953, portoUSD = 0.01353145707555692
+ Built crypto asset CLEO: Object
+ Final portfolio - Stocks: 3, Crypto: 3
+ Received prices: Object
+ PortfolioStateManager: Rebuilding portfolio from 46 transactions
+ Building assets from transactions: 46 transactions
+ Available prices: Array(9)
+ Filtered out 24 deleted transactions from history
+ Processing 22 transactions chronologically...
+ Processing transaction: update stock MPMX amount: 500 at 2025-07-31T18:57:20.068Z (source: manual)
+ Added update transaction for stock MPMX: amount=500, price=100 (original: 100)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:00:55.632Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=100 (original: 100)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:04.195Z (source: manual)
+ Possible decimal error for BBRI: 13 IDR - did you mean 13000?
+validatePrice @ webpack-internal:///…/./lib/utils.js:519
+ Added update transaction for stock BBRI: amount=500, price=13 (original: 13)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:16.812Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:23.151Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:33.673Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=3710 (original: 3710)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:44.283Z (source: manual)
+ Suspicious stock price for BBCA: 8.275 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBCA: 8.275
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:50.649Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=8275 (original: 8275)
+ Processing transaction: update crypto ETH amount: 10 at 2025-07-31T21:08:17.724Z (source: manual)
+ Added update transaction for crypto ETH: amount=10, price=1500 (original: 1500)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T21:09:57.224Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=2500 (original: 2500)
+ Processing transaction: update crypto ADA amount: 5 at 2025-08-03T02:49:32.461Z (source: manual)
+ Added update transaction for crypto ADA: amount=5, price=1 (original: 1)
+ Processing transaction: buy stock CDIA amount: 12300 at 2025-08-03T03:40:04.405Z (source: manual)
+ Added buy transaction for stock CDIA: amount=12300, price=1630 (original: 1630)
+ Processing transaction: buy stock ADMR amount: 12300 at 2025-08-03T03:44:24.046Z (source: manual)
+ Added buy transaction for stock ADMR: amount=12300, price=1110 (original: 1110)
+ Processing transaction: buy stock ADRO amount: 12300 at 2025-08-03T03:45:21.541Z (source: manual)
+ Added buy transaction for stock ADRO: amount=12300, price=1865 (original: 1865)
+ Processing transaction: delete stock ADMR amount: 0 at 2025-08-03T03:48:29.341Z (source: portfolio)
+ Deleted stock ADMR from portfolio
+ Processing transaction: delete stock ADRO amount: 0 at 2025-08-03T03:48:32.576Z (source: portfolio)
+ Deleted stock ADRO from portfolio
+ Processing transaction: buy crypto CLEO amount: 123 at 2025-08-03T03:48:55.155Z (source: manual)
+ Added buy transaction for crypto CLEO: amount=123, price=0.00011 (original: 0.0001100104872804883)
+ Processing transaction: buy stock CLEO amount: 12300 at 2025-08-03T03:49:13.830Z (source: manual)
+ Added buy transaction for stock CLEO: amount=12300, price=570 (original: 570)
+ Processing transaction: buy stock CUAN amount: 3200 at 2025-08-03T03:51:36.736Z (source: manual)
+ Added buy transaction for stock CUAN: amount=3200, price=1525 (original: 1525)
+ Processing transaction: delete stock BBCA amount: 0 at 2025-08-03T03:56:32.333Z (source: portfolio)
+ Deleted stock BBCA from portfolio
+ Processing transaction: delete stock BBRI amount: 0 at 2025-08-03T03:56:36.814Z (source: portfolio)
+ Deleted stock BBRI from portfolio
+ Processing transaction: delete stock CDIA amount: 0 at 2025-08-03T03:56:40.842Z (source: portfolio)
+ Deleted stock CDIA from portfolio
+ Building assets from maps - Stocks: 3, Crypto: 3
+ Calculating position from transactions: 1 transactions
+ Transaction: update stock MPMX amount: 500 price: 100 (ID: vo43gfQj5nspPJpuNhXf)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 500 to total. Previous: 0, New: 500
+ After update as buy: totalAmount = 500, totalCost = 50000, entryPrice = null
+ Final position: amount = 500, avgPrice = 100, totalCost = 50000, gain = 427500, porto = 477500, portoIDR = 477500, portoUSD = 29.018059260042527
+ Building stock MPMX: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CLEO amount: 12300 price: 570 (ID: a7366dczWQFIWjL6yJhh)
+   Buy: Added 12300 to total. Previous: 0, New: 12300
+ After buy: totalAmount = 12300, totalCost = 7011000, entryPrice = null
+ Final position: amount = 12300, avgPrice = 570, totalCost = 7011000, gain = 0, porto = 7011000, portoIDR = 7011000, portoUSD = 426.0641119835773
+ Building stock CLEO: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CUAN amount: 3200 price: 1525 (ID: BJWivEBYCgw3pFGRjeSR)
+   Buy: Added 3200 to total. Previous: 0, New: 3200
+ After buy: totalAmount = 3200, totalCost = 4880000, entryPrice = null
+ Final position: amount = 3200, avgPrice = 1525, totalCost = 4880000, gain = 0, porto = 4880000, portoIDR = 4880000, portoUSD = 296.56152709739797
+ Building stock CUAN: Object
+ Processing crypto ETH with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ETH amount: 10 price: 1500 (ID: XsZhRCJGeRtQhexbuLqY)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 10 to total. Previous: 0, New: 10
+ After update as buy: totalAmount = 10, totalCost = 15000, entryPrice = null
+ Final position: amount = 10, avgPrice = 1500, totalCost = 15000, gain = 19472.371767292403, porto = 34472.3717672924, portoIDR = 567252184.9711736, portoUSD = 34472.3717672924
+ Built crypto asset ETH: Object
+ Processing crypto ADA with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ADA amount: 5 price: 1 (ID: wvYNF7jLGyKqYLKyq3ka)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 5 to total. Previous: 0, New: 5
+ After update as buy: totalAmount = 5, totalCost = 5, entryPrice = null
+ Final position: amount = 5, avgPrice = 1, totalCost = 5, gain = -1.41336202913616, porto = 3.58663797086384, portoIDR = 59019.096202816625, portoUSD = 3.58663797086384
+ Built crypto asset ADA: Object
+ Processing crypto CLEO with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: buy crypto CLEO amount: 123 price: 0.00011 (ID: ZmS3ySujmlRQSxCUGXiJ)
+   Buy: Added 123 to total. Previous: 0, New: 123
+ After buy: totalAmount = 123, totalCost = 0.01353, entryPrice = null
+ Final position: amount = 123, avgPrice = 0.00011, totalCost = 0.01353, gain = 0.0000014570755569199428, porto = 0.01353145707555692, portoIDR = 222.66377967169953, portoUSD = 0.01353145707555692
+ Built crypto asset CLEO: Object
+ Final portfolio - Stocks: 3, Crypto: 3
+ DELETE stock: CLEO
+ Received transaction snapshot: 47 documents
+ Updated transactions: 47 unique transactions
+ Processing 1 queued updates
+ Batch updates processed successfully
+ Force portfolio rebuild after deleting stock
+ Received transaction snapshot: 47 documents
+ Updated transactions: 47 unique transactions
+ Fetching prices for: Object
+ PortfolioStateManager: Rebuilding portfolio from 47 transactions
+ Building assets from transactions: 47 transactions
+ Available prices: Array(9)
+ Filtered out 24 deleted transactions from history
+ Processing 23 transactions chronologically...
+ Processing transaction: update stock MPMX amount: 500 at 2025-07-31T18:57:20.068Z (source: manual)
+ Added update transaction for stock MPMX: amount=500, price=100 (original: 100)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:00:55.632Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=100 (original: 100)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:04.195Z (source: manual)
+ Possible decimal error for BBRI: 13 IDR - did you mean 13000?
+validatePrice @ webpack-internal:///…/./lib/utils.js:519
+ Added update transaction for stock BBRI: amount=500, price=13 (original: 13)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:16.812Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:23.151Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:33.673Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=3710 (original: 3710)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:44.283Z (source: manual)
+ Suspicious stock price for BBCA: 8.275 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBCA: 8.275
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:50.649Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=8275 (original: 8275)
+ Processing transaction: update crypto ETH amount: 10 at 2025-07-31T21:08:17.724Z (source: manual)
+ Added update transaction for crypto ETH: amount=10, price=1500 (original: 1500)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T21:09:57.224Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=2500 (original: 2500)
+ Processing transaction: update crypto ADA amount: 5 at 2025-08-03T02:49:32.461Z (source: manual)
+ Added update transaction for crypto ADA: amount=5, price=1 (original: 1)
+ Processing transaction: buy stock CDIA amount: 12300 at 2025-08-03T03:40:04.405Z (source: manual)
+ Added buy transaction for stock CDIA: amount=12300, price=1630 (original: 1630)
+ Processing transaction: buy stock ADMR amount: 12300 at 2025-08-03T03:44:24.046Z (source: manual)
+ Added buy transaction for stock ADMR: amount=12300, price=1110 (original: 1110)
+ Processing transaction: buy stock ADRO amount: 12300 at 2025-08-03T03:45:21.541Z (source: manual)
+ Added buy transaction for stock ADRO: amount=12300, price=1865 (original: 1865)
+ Processing transaction: delete stock ADMR amount: 0 at 2025-08-03T03:48:29.341Z (source: portfolio)
+ Deleted stock ADMR from portfolio
+ Processing transaction: delete stock ADRO amount: 0 at 2025-08-03T03:48:32.576Z (source: portfolio)
+ Deleted stock ADRO from portfolio
+ Processing transaction: buy crypto CLEO amount: 123 at 2025-08-03T03:48:55.155Z (source: manual)
+ Added buy transaction for crypto CLEO: amount=123, price=0.00011 (original: 0.0001100104872804883)
+ Processing transaction: buy stock CLEO amount: 12300 at 2025-08-03T03:49:13.830Z (source: manual)
+ Added buy transaction for stock CLEO: amount=12300, price=570 (original: 570)
+ Processing transaction: buy stock CUAN amount: 3200 at 2025-08-03T03:51:36.736Z (source: manual)
+ Added buy transaction for stock CUAN: amount=3200, price=1525 (original: 1525)
+ Processing transaction: delete stock BBCA amount: 0 at 2025-08-03T03:56:32.333Z (source: portfolio)
+ Deleted stock BBCA from portfolio
+ Processing transaction: delete stock BBRI amount: 0 at 2025-08-03T03:56:36.814Z (source: portfolio)
+ Deleted stock BBRI from portfolio
+ Processing transaction: delete stock CDIA amount: 0 at 2025-08-03T03:56:40.842Z (source: portfolio)
+ Deleted stock CDIA from portfolio
+ Processing transaction: delete stock CLEO amount: 0 at 2025-08-03T03:56:43.897Z (source: portfolio)
+ Deleted stock CLEO from portfolio
+ Building assets from maps - Stocks: 2, Crypto: 3
+ Calculating position from transactions: 1 transactions
+ Transaction: update stock MPMX amount: 500 price: 100 (ID: vo43gfQj5nspPJpuNhXf)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 500 to total. Previous: 0, New: 500
+ After update as buy: totalAmount = 500, totalCost = 50000, entryPrice = null
+ Final position: amount = 500, avgPrice = 100, totalCost = 50000, gain = 427500, porto = 477500, portoIDR = 477500, portoUSD = 29.018059260042527
+ Building stock MPMX: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CUAN amount: 3200 price: 1525 (ID: BJWivEBYCgw3pFGRjeSR)
+   Buy: Added 3200 to total. Previous: 0, New: 3200
+ After buy: totalAmount = 3200, totalCost = 4880000, entryPrice = null
+ Final position: amount = 3200, avgPrice = 1525, totalCost = 4880000, gain = 0, porto = 4880000, portoIDR = 4880000, portoUSD = 296.56152709739797
+ Building stock CUAN: Object
+ Processing crypto ETH with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ETH amount: 10 price: 1500 (ID: XsZhRCJGeRtQhexbuLqY)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 10 to total. Previous: 0, New: 10
+ After update as buy: totalAmount = 10, totalCost = 15000, entryPrice = null
+ Final position: amount = 10, avgPrice = 1500, totalCost = 15000, gain = 19472.371767292403, porto = 34472.3717672924, portoIDR = 567252184.9711736, portoUSD = 34472.3717672924
+ Built crypto asset ETH: Object
+ Processing crypto ADA with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ADA amount: 5 price: 1 (ID: wvYNF7jLGyKqYLKyq3ka)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 5 to total. Previous: 0, New: 5
+ After update as buy: totalAmount = 5, totalCost = 5, entryPrice = null
+ Final position: amount = 5, avgPrice = 1, totalCost = 5, gain = -1.41336202913616, porto = 3.58663797086384, portoIDR = 59019.096202816625, portoUSD = 3.58663797086384
+ Built crypto asset ADA: Object
+ Processing crypto CLEO with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: buy crypto CLEO amount: 123 price: 0.00011 (ID: ZmS3ySujmlRQSxCUGXiJ)
+   Buy: Added 123 to total. Previous: 0, New: 123
+ After buy: totalAmount = 123, totalCost = 0.01353, entryPrice = null
+ Final position: amount = 123, avgPrice = 0.00011, totalCost = 0.01353, gain = 0.0000014570755569199428, porto = 0.01353145707555692, portoIDR = 222.66377967169953, portoUSD = 0.01353145707555692
+ Built crypto asset CLEO: Object
+ Final portfolio - Stocks: 2, Crypto: 3
+ Portfolio component received assets: Object
+ Received prices: Object
+ Updating portfolio values with current prices
+ Current exchange rate: 16455.27
+ Available prices: Array(9)
+ Updated stock MPMX: Object
+ Updated stock CUAN: Object
+ Updated crypto ETH: Object
+ Updated crypto ADA: Object
+ Updated crypto CLEO: Object
+ Portfolio values updated successfully
+ PortfolioStateManager: Rebuilding portfolio from 47 transactions
+ Building assets from transactions: 47 transactions
+ Available prices: Array(9)
+ Filtered out 24 deleted transactions from history
+ Processing 23 transactions chronologically...
+ Processing transaction: update stock MPMX amount: 500 at 2025-07-31T18:57:20.068Z (source: manual)
+ Added update transaction for stock MPMX: amount=500, price=100 (original: 100)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:00:55.632Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=100 (original: 100)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:04.195Z (source: manual)
+ Possible decimal error for BBRI: 13 IDR - did you mean 13000?
+validatePrice @ webpack-internal:///…/./lib/utils.js:519
+ Added update transaction for stock BBRI: amount=500, price=13 (original: 13)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:16.812Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:23.151Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:33.673Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=3710 (original: 3710)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:44.283Z (source: manual)
+ Suspicious stock price for BBCA: 8.275 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBCA: 8.275
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:50.649Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=8275 (original: 8275)
+ Processing transaction: update crypto ETH amount: 10 at 2025-07-31T21:08:17.724Z (source: manual)
+ Added update transaction for crypto ETH: amount=10, price=1500 (original: 1500)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T21:09:57.224Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=2500 (original: 2500)
+ Processing transaction: update crypto ADA amount: 5 at 2025-08-03T02:49:32.461Z (source: manual)
+ Added update transaction for crypto ADA: amount=5, price=1 (original: 1)
+ Processing transaction: buy stock CDIA amount: 12300 at 2025-08-03T03:40:04.405Z (source: manual)
+ Added buy transaction for stock CDIA: amount=12300, price=1630 (original: 1630)
+ Processing transaction: buy stock ADMR amount: 12300 at 2025-08-03T03:44:24.046Z (source: manual)
+ Added buy transaction for stock ADMR: amount=12300, price=1110 (original: 1110)
+ Processing transaction: buy stock ADRO amount: 12300 at 2025-08-03T03:45:21.541Z (source: manual)
+ Added buy transaction for stock ADRO: amount=12300, price=1865 (original: 1865)
+ Processing transaction: delete stock ADMR amount: 0 at 2025-08-03T03:48:29.341Z (source: portfolio)
+ Deleted stock ADMR from portfolio
+ Processing transaction: delete stock ADRO amount: 0 at 2025-08-03T03:48:32.576Z (source: portfolio)
+ Deleted stock ADRO from portfolio
+ Processing transaction: buy crypto CLEO amount: 123 at 2025-08-03T03:48:55.155Z (source: manual)
+ Added buy transaction for crypto CLEO: amount=123, price=0.00011 (original: 0.0001100104872804883)
+ Processing transaction: buy stock CLEO amount: 12300 at 2025-08-03T03:49:13.830Z (source: manual)
+ Added buy transaction for stock CLEO: amount=12300, price=570 (original: 570)
+ Processing transaction: buy stock CUAN amount: 3200 at 2025-08-03T03:51:36.736Z (source: manual)
+ Added buy transaction for stock CUAN: amount=3200, price=1525 (original: 1525)
+ Processing transaction: delete stock BBCA amount: 0 at 2025-08-03T03:56:32.333Z (source: portfolio)
+ Deleted stock BBCA from portfolio
+ Processing transaction: delete stock BBRI amount: 0 at 2025-08-03T03:56:36.814Z (source: portfolio)
+ Deleted stock BBRI from portfolio
+ Processing transaction: delete stock CDIA amount: 0 at 2025-08-03T03:56:40.842Z (source: portfolio)
+ Deleted stock CDIA from portfolio
+ Processing transaction: delete stock CLEO amount: 0 at 2025-08-03T03:56:43.897Z (source: portfolio)
+ Deleted stock CLEO from portfolio
+ Building assets from maps - Stocks: 2, Crypto: 3
+ Calculating position from transactions: 1 transactions
+ Transaction: update stock MPMX amount: 500 price: 100 (ID: vo43gfQj5nspPJpuNhXf)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 500 to total. Previous: 0, New: 500
+ After update as buy: totalAmount = 500, totalCost = 50000, entryPrice = null
+ Final position: amount = 500, avgPrice = 100, totalCost = 50000, gain = 427500, porto = 477500, portoIDR = 477500, portoUSD = 29.018059260042527
+ Building stock MPMX: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CUAN amount: 3200 price: 1525 (ID: BJWivEBYCgw3pFGRjeSR)
+   Buy: Added 3200 to total. Previous: 0, New: 3200
+ After buy: totalAmount = 3200, totalCost = 4880000, entryPrice = null
+ Final position: amount = 3200, avgPrice = 1525, totalCost = 4880000, gain = 0, porto = 4880000, portoIDR = 4880000, portoUSD = 296.56152709739797
+ Building stock CUAN: Object
+ Processing crypto ETH with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ETH amount: 10 price: 1500 (ID: XsZhRCJGeRtQhexbuLqY)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 10 to total. Previous: 0, New: 10
+ After update as buy: totalAmount = 10, totalCost = 15000, entryPrice = null
+ Final position: amount = 10, avgPrice = 1500, totalCost = 15000, gain = 19466.4172647667, porto = 34466.4172647667, portoIDR = 567154202.0243976, portoUSD = 34466.4172647667
+ Built crypto asset ETH: Object
+ Processing crypto ADA with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ADA amount: 5 price: 1 (ID: wvYNF7jLGyKqYLKyq3ka)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 5 to total. Previous: 0, New: 5
+ After update as buy: totalAmount = 5, totalCost = 5, entryPrice = null
+ Final position: amount = 5, avgPrice = 1, totalCost = 5, gain = -1.4137324056087102, porto = 3.58626759439129, portoIDR = 59013.00155795916, portoUSD = 3.58626759439129
+ Built crypto asset ADA: Object
+ Processing crypto CLEO with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: buy crypto CLEO amount: 123 price: 0.00011 (ID: ZmS3ySujmlRQSxCUGXiJ)
+   Buy: Added 123 to total. Previous: 0, New: 123
+ After buy: totalAmount = 123, totalCost = 0.01353, entryPrice = null
+ Final position: amount = 123, avgPrice = 0.00011, totalCost = 0.01353, gain = 0.0000015240616304847132, porto = 0.013531524061630485, portoIDR = 222.6648819456263, portoUSD = 0.013531524061630485
+ Built crypto asset CLEO: Object
+ Final portfolio - Stocks: 2, Crypto: 3
+ Received transactions: Array(47)
+ User: UserImpl
+ Exchange rate: 16455.27
+ Filtered transactions: Array(12)
+ Received transactions: Array(47)
+ User: UserImpl
+ Exchange rate: 16455.27
+ Filtered transactions: Array(12)
+ Received transaction snapshot: 47 documents
+ No transaction changes detected, skipping update
+ Transaction updated, Firebase listener will handle refresh
+ Received transaction snapshot: 47 documents
+ No transaction changes detected, skipping update
+ Transaction updated, Firebase listener will handle refresh
+ Received transaction snapshot: 47 documents
+ No transaction changes detected, skipping update
+ Transaction updated, Firebase listener will handle refresh
+ Received transaction snapshot: 47 documents
+ No transaction changes detected, skipping update
+ Transaction updated, Firebase listener will handle refresh
+ Portfolio component received assets: Object
+ Portfolio component received assets: Object
+ Submitting tickers: Array(1)
+ API returned prices: Object
+ Used ticker for price: GOLF.JK
+ Adding stock with current price: Object
+ Adding stock: Object
+ Portfolio component received assets: Object
+ Portfolio component received assets: Object
+ Received transaction snapshot: 48 documents
+ Updated transactions: 48 unique transactions
+ Transaction saved with ID: HU5rIawFOuTtNHNEjYVw
+ Updating portfolio values with current prices
+ Current exchange rate: 16455.27
+ Available prices: Array(10)
+ Updated stock MPMX: Object
+ Updated stock CUAN: Object
+ Updated crypto ETH: Object
+ Updated crypto ADA: Object
+ Updated crypto CLEO: Object
+ Portfolio values updated successfully
+ Received transaction snapshot: 48 documents
+ Updated transactions: 48 unique transactions
+ PortfolioStateManager: Rebuilding portfolio from 48 transactions
+ Building assets from transactions: 48 transactions
+ Available prices: Array(10)
+ Filtered out 28 deleted transactions from history
+ Processing 20 transactions chronologically...
+ Processing transaction: update stock MPMX amount: 500 at 2025-07-31T18:57:20.068Z (source: manual)
+ Added update transaction for stock MPMX: amount=500, price=100 (original: 100)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:00:55.632Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=100 (original: 100)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:04.195Z (source: manual)
+ Possible decimal error for BBRI: 13 IDR - did you mean 13000?
+validatePrice @ webpack-internal:///…/./lib/utils.js:519
+ Added update transaction for stock BBRI: amount=500, price=13 (original: 13)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:16.812Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:23.151Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:33.673Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=3710 (original: 3710)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:44.283Z (source: manual)
+ Suspicious stock price for BBCA: 8.275 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBCA: 8.275
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:50.649Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=8275 (original: 8275)
+ Processing transaction: update crypto ETH amount: 10 at 2025-07-31T21:08:17.724Z (source: manual)
+ Added update transaction for crypto ETH: amount=10, price=1500 (original: 1500)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T21:09:57.224Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=2500 (original: 2500)
+ Processing transaction: update crypto ADA amount: 5 at 2025-08-03T02:49:32.461Z (source: manual)
+ Added update transaction for crypto ADA: amount=5, price=1 (original: 1)
+ Processing transaction: buy stock CDIA amount: 12300 at 2025-08-03T03:40:04.405Z (source: manual)
+ Added buy transaction for stock CDIA: amount=12300, price=1630 (original: 1630)
+ Processing transaction: buy stock ADMR amount: 12300 at 2025-08-03T03:44:24.046Z (source: manual)
+ Added buy transaction for stock ADMR: amount=12300, price=1110 (original: 1110)
+ Processing transaction: buy stock ADRO amount: 12300 at 2025-08-03T03:45:21.541Z (source: manual)
+ Added buy transaction for stock ADRO: amount=12300, price=1865 (original: 1865)
+ Processing transaction: delete stock ADMR amount: 0 at 2025-08-03T03:48:29.341Z (source: portfolio)
+ Deleted stock ADMR from portfolio
+ Processing transaction: delete stock ADRO amount: 0 at 2025-08-03T03:48:32.576Z (source: portfolio)
+ Deleted stock ADRO from portfolio
+ Processing transaction: buy crypto CLEO amount: 123 at 2025-08-03T03:48:55.155Z (source: manual)
+ Added buy transaction for crypto CLEO: amount=123, price=0.00011 (original: 0.0001100104872804883)
+ Processing transaction: buy stock CLEO amount: 12300 at 2025-08-03T03:49:13.830Z (source: manual)
+ Added buy transaction for stock CLEO: amount=12300, price=570 (original: 570)
+ Processing transaction: buy stock CUAN amount: 3200 at 2025-08-03T03:51:36.736Z (source: manual)
+ Added buy transaction for stock CUAN: amount=3200, price=1525 (original: 1525)
+ Processing transaction: buy stock GOLF amount: 12300 at 2025-08-03T03:57:04.215Z (source: manual)
+ Added buy transaction for stock GOLF: amount=12300, price=206 (original: 206)
+ Building assets from maps - Stocks: 7, Crypto: 3
+ Calculating position from transactions: 1 transactions
+ Transaction: update stock MPMX amount: 500 price: 100 (ID: vo43gfQj5nspPJpuNhXf)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 500 to total. Previous: 0, New: 500
+ After update as buy: totalAmount = 500, totalCost = 50000, entryPrice = null
+ Final position: amount = 500, avgPrice = 100, totalCost = 50000, gain = 427500, porto = 477500, portoIDR = 477500, portoUSD = 29.018059260042527
+ Building stock MPMX: Object
+ Calculating position from transactions: 2 transactions
+ Transaction: update stock BBCA amount: 1000 price: 100 (ID: JAZLYRcUN5tbIkf6tTyg)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 1000 to total. Previous: 0, New: 1000
+ After update as buy: totalAmount = 1000, totalCost = 100000, entryPrice = null
+ Transaction: update stock BBCA amount: 1000 price: 8275 (ID: I7MzszSp0aMERwXaHLZk)
+ After update transaction: totalAmount = 1000, totalCost = 8275000, new avgPrice = 8275, assetType = stock
+ Final position: amount = 1000, avgPrice = 8275, totalCost = 8275000, gain = 25000, porto = 8300000, portoIDR = 8300000, portoUSD = 504.39767928450885
+ Building stock BBCA: Object
+ Calculating position from transactions: 3 transactions
+ Transaction: update stock BBRI amount: 500 price: 13 (ID: m5vI5Hr8Vuc4rjYnz3JL)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 500 to total. Previous: 0, New: 500
+ After update as buy: totalAmount = 500, totalCost = 6500, entryPrice = null
+ Transaction: update stock BBRI amount: 500 price: 3710 (ID: pm5onug4Y6ixOaIYy2iD)
+ After update transaction: totalAmount = 500, totalCost = 1855000, new avgPrice = 3710, assetType = stock
+ Transaction: update stock BBRI amount: 500 price: 2500 (ID: EO3nRvgmaYo4UO7fvBvg)
+ After update transaction: totalAmount = 500, totalCost = 1250000, new avgPrice = 2500, assetType = stock
+ Final position: amount = 500, avgPrice = 2500, totalCost = 1250000, gain = 620000, porto = 1870000, portoIDR = 1870000, portoUSD = 113.64140485084717
+ Building stock BBRI: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CDIA amount: 12300 price: 1630 (ID: i3HziiOcMItQNmEDV3CK)
+   Buy: Added 12300 to total. Previous: 0, New: 12300
+ After buy: totalAmount = 12300, totalCost = 20049000, entryPrice = null
+ Final position: amount = 12300, avgPrice = 1630, totalCost = 20049000, gain = 0, porto = 20049000, portoIDR = 20049000, portoUSD = 1218.3938640933877
+ Building stock CDIA: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CLEO amount: 12300 price: 570 (ID: a7366dczWQFIWjL6yJhh)
+   Buy: Added 12300 to total. Previous: 0, New: 12300
+ After buy: totalAmount = 12300, totalCost = 7011000, entryPrice = null
+ Final position: amount = 12300, avgPrice = 570, totalCost = 7011000, gain = 0, porto = 7011000, portoIDR = 7011000, portoUSD = 426.0641119835773
+ Building stock CLEO: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock CUAN amount: 3200 price: 1525 (ID: BJWivEBYCgw3pFGRjeSR)
+   Buy: Added 3200 to total. Previous: 0, New: 3200
+ After buy: totalAmount = 3200, totalCost = 4880000, entryPrice = null
+ Final position: amount = 3200, avgPrice = 1525, totalCost = 4880000, gain = 0, porto = 4880000, portoIDR = 4880000, portoUSD = 296.56152709739797
+ Building stock CUAN: Object
+ Calculating position from transactions: 1 transactions
+ Transaction: buy stock GOLF amount: 12300 price: 206 (ID: HU5rIawFOuTtNHNEjYVw)
+   Buy: Added 12300 to total. Previous: 0, New: 12300
+ After buy: totalAmount = 12300, totalCost = 2533800, entryPrice = null
+ Final position: amount = 12300, avgPrice = 206, totalCost = 2533800, gain = 0, porto = 2533800, portoIDR = 2533800, portoUSD = 153.98106503266126
+ Building stock GOLF: Object
+ Processing crypto ETH with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ETH amount: 10 price: 1500 (ID: XsZhRCJGeRtQhexbuLqY)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 10 to total. Previous: 0, New: 10
+ After update as buy: totalAmount = 10, totalCost = 15000, entryPrice = null
+ Final position: amount = 10, avgPrice = 1500, totalCost = 15000, gain = 19466.4172647667, porto = 34466.4172647667, portoIDR = 567154202.0243976, portoUSD = 34466.4172647667
+ Built crypto asset ETH: Object
+ Processing crypto ADA with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: update crypto ADA amount: 5 price: 1 (ID: wvYNF7jLGyKqYLKyq3ka)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 5 to total. Previous: 0, New: 5
+ After update as buy: totalAmount = 5, totalCost = 5, entryPrice = null
+ Final position: amount = 5, avgPrice = 1, totalCost = 5, gain = -1.4137324056087102, porto = 3.58626759439129, portoIDR = 59013.00155795916, portoUSD = 3.58626759439129
+ Built crypto asset ADA: Object
+ Processing crypto CLEO with 1 transactions: Array(1)
+ Calculating position from transactions: 1 transactions
+ Transaction: buy crypto CLEO amount: 123 price: 0.00011 (ID: ZmS3ySujmlRQSxCUGXiJ)
+   Buy: Added 123 to total. Previous: 0, New: 123
+ After buy: totalAmount = 123, totalCost = 0.01353, entryPrice = null
+ Final position: amount = 123, avgPrice = 0.00011, totalCost = 0.01353, gain = 0.0000015240616304847132, porto = 0.013531524061630485, portoIDR = 222.6648819456263, portoUSD = 0.013531524061630485
+ Built crypto asset CLEO: Object
+ Final portfolio - Stocks: 7, Crypto: 3
+ Portfolio component received assets: Object
+ PortfolioStateManager: Rebuilding portfolio from 48 transactions
+ Building assets from transactions: 48 transactions
+ Available prices: Array(10)
+ Filtered out 28 deleted transactions from history
+ Processing 20 transactions chronologically...
+ Processing transaction: update stock MPMX amount: 500 at 2025-07-31T18:57:20.068Z (source: manual)
+ Added update transaction for stock MPMX: amount=500, price=100 (original: 100)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:00:55.632Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=100 (original: 100)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:04.195Z (source: manual)
+ Possible decimal error for BBRI: 13 IDR - did you mean 13000?
+validatePrice @ webpack-internal:///…/./lib/utils.js:519
+ Added update transaction for stock BBRI: amount=500, price=13 (original: 13)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:16.812Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:23.151Z (source: manual)
+ Suspicious stock price for BBRI: 3.71 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBRI: 3.71
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T19:01:33.673Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=3710 (original: 3710)
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:44.283Z (source: manual)
+ Suspicious stock price for BBCA: 8.275 IDR
+validatePrice @ webpack-internal:///…/./lib/utils.js:510
+ Skipping transaction with invalid price for BBCA: 8.275
+eval @ webpack-internal:///…StateManager.js:189
+ Processing transaction: update stock BBCA amount: 1000 at 2025-07-31T19:01:50.649Z (source: manual)
+ Added update transaction for stock BBCA: amount=1000, price=8275 (original: 8275)
+ Processing transaction: update crypto ETH amount: 10 at 2025-07-31T21:08:17.724Z (source: manual)
+ Added update transaction for crypto ETH: amount=10, price=1500 (original: 1500)
+ Processing transaction: update stock BBRI amount: 500 at 2025-07-31T21:09:57.224Z (source: manual)
+ Added update transaction for stock BBRI: amount=500, price=2500 (original: 2500)
+ Processing transaction: update crypto ADA amount: 5 at 2025-08-03T02:49:32.461Z (source: manual)
+ Added update transaction for crypto ADA: amount=5, price=1 (original: 1)
+ Processing transaction: buy stock CDIA amount: 12300 at 2025-08-03T03:40:04.405Z (source: manual)
+ Added buy transaction for stock CDIA: amount=12300, price=1630 (original: 1630)
+ Processing transaction: buy stock ADMR amount: 12300 at 2025-08-03T03:44:24.046Z (source: manual)
+ Added buy transaction for stock ADMR: amount=12300, price=1110 (original: 1110)
+ Processing transaction: buy stock ADRO amount: 12300 at 2025-08-03T03:45:21.541Z (source: manual)
+ Added buy transaction for stock ADRO: amount=12300, price=1865 (original: 1865)
+ Processing transaction: delete stock ADMR amount: 0 at 2025-08-03T03:48:29.341Z (source: portfolio)
+ Deleted stock ADMR from portfolio
+ Processing transaction: delete stock ADRO amount: 0 at 2025-08-03T03:48:32.576Z (source: portfolio)
+ Deleted stock ADRO from portfolio
+ Processing transaction: buy crypto CLEO amount: 123 at 2025-08-03T03:48:55.155Z (source: manual)
+ Added buy transaction for crypto CLEO: amount=123, price=0.00011 (original: 0.0001100104872804883)
+ Processing transaction: buy stock CLEO amount: 12300 at 2025-08-03T03:49:13.830Z (source: manual)
+ Added buy transaction for stock CLEO: amount=12300, price=570 (original: 570)
+ Processing transaction: buy stock CUAN amount: 3200 at 2025-08-03T03:51:36.736Z (source: manual)
+ Added buy transaction for stock CUAN: amount=3200, price=1525 (original: 1525)
+ Processing transaction: buy stock GOLF amount: 12300 at 2025-08-03T03:57:04.215Z (source: manual)
+ Added buy transaction for stock GOLF: amount=12300, price=206 (original: 206)
+ Building assets from maps - Stocks: 7, Crypto: 3
+ Calculating position from transactions: 1 transactions
+ Transaction: update stock MPMX amount: 500 price: 100 (ID: vo43gfQj5nspPJpuNhXf)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 500 to total. Previous: 0, New: 500
+ After update as buy: totalAmount = 500, totalCost = 50000, entryPrice = null
+ Final position: amount = 500, avgPrice = 100, totalCost = 50000, gain = 427500, porto = 477500, portoIDR = 477500, portoUSD = 29.018059260042527
+ Building stock MPMX: Object
+ Calculating position from transactions: 2 transactions
+ Transaction: update stock BBCA amount: 1000 price: 100 (ID: JAZLYRcUN5tbIkf6tTyg)
+ No previous position found, treating update as buy transaction
+   Update as Buy: Added 1000 to total. Previous: 0, New: 1000
+ After update as buy: totalAmount = 1000, totalCost = 100000, entryPrice = null
+ Transaction: update stock BBCA amount: 1000 price: 8275 (ID: I7MzszSp0aMERwXaHLZk)
+ After update transaction: totalAmount = 1000, totalCost = 8275000, new avgPrice = 8275, assetType = stock
+ Final position: amount = 1000, avgPrice = 8275, totalCost = 8275000, gain = 25000, porto = 8300000, portoIDR = 8300000, portoUSD = 504.39767928450885
+ Building stock BBCA: Object
+ Calculating position from transactions: 3 transactions
+ Transaction: update stock BBRI amount: 500 price: 13 (ID: m5vI5Hr8Vuc4rjYnz3JL)
+ No previous position found, treating update as buy transaction
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:276   Update as Buy: Added 500 to total. Previous: 0, New: 500
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:287 After update as buy: totalAmount = 500, totalCost = 6500, entryPrice = null
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:228 Transaction: update stock BBRI amount: 500 price: 3710 (ID: pm5onug4Y6ixOaIYy2iD)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:269 After update transaction: totalAmount = 500, totalCost = 1855000, new avgPrice = 3710, assetType = stock
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:228 Transaction: update stock BBRI amount: 500 price: 2500 (ID: EO3nRvgmaYo4UO7fvBvg)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:269 After update transaction: totalAmount = 500, totalCost = 1250000, new avgPrice = 2500, assetType = stock
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:394 Final position: amount = 500, avgPrice = 2500, totalCost = 1250000, gain = 620000, porto = 1870000, portoIDR = 1870000, portoUSD = 113.64140485084717
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:270 Building stock BBRI: Object
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:222 Calculating position from transactions: 1 transactions
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:228 Transaction: buy stock CDIA amount: 12300 price: 1630 (ID: i3HziiOcMItQNmEDV3CK)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:241   Buy: Added 12300 to total. Previous: 0, New: 12300
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:252 After buy: totalAmount = 12300, totalCost = 20049000, entryPrice = null
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:394 Final position: amount = 12300, avgPrice = 1630, totalCost = 20049000, gain = 0, porto = 20049000, portoIDR = 20049000, portoUSD = 1218.3938640933877
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:270 Building stock CDIA: Object
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:222 Calculating position from transactions: 1 transactions
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:228 Transaction: buy stock CLEO amount: 12300 price: 570 (ID: a7366dczWQFIWjL6yJhh)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:241   Buy: Added 12300 to total. Previous: 0, New: 12300
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:252 After buy: totalAmount = 12300, totalCost = 7011000, entryPrice = null
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:394 Final position: amount = 12300, avgPrice = 570, totalCost = 7011000, gain = 0, porto = 7011000, portoIDR = 7011000, portoUSD = 426.0641119835773
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:270 Building stock CLEO: Object
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:222 Calculating position from transactions: 1 transactions
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:228 Transaction: buy stock CUAN amount: 3200 price: 1525 (ID: BJWivEBYCgw3pFGRjeSR)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:241   Buy: Added 3200 to total. Previous: 0, New: 3200
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:252 After buy: totalAmount = 3200, totalCost = 4880000, entryPrice = null
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:394 Final position: amount = 3200, avgPrice = 1525, totalCost = 4880000, gain = 0, porto = 4880000, portoIDR = 4880000, portoUSD = 296.56152709739797
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:270 Building stock CUAN: Object
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:222 Calculating position from transactions: 1 transactions
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:228 Transaction: buy stock GOLF amount: 12300 price: 206 (ID: HU5rIawFOuTtNHNEjYVw)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:241   Buy: Added 12300 to total. Previous: 0, New: 12300
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:252 After buy: totalAmount = 12300, totalCost = 2533800, entryPrice = null
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:394 Final position: amount = 12300, avgPrice = 206, totalCost = 2533800, gain = 0, porto = 2533800, portoIDR = 2533800, portoUSD = 153.98106503266126
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:270 Building stock GOLF: Object
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:314 Processing crypto ETH with 1 transactions: Array(1)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:222 Calculating position from transactions: 1 transactions
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:228 Transaction: update crypto ETH amount: 10 price: 1500 (ID: XsZhRCJGeRtQhexbuLqY)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:272 No previous position found, treating update as buy transaction
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:276   Update as Buy: Added 10 to total. Previous: 0, New: 10
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:287 After update as buy: totalAmount = 10, totalCost = 15000, entryPrice = null
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:394 Final position: amount = 10, avgPrice = 1500, totalCost = 15000, gain = 19466.4172647667, porto = 34466.4172647667, portoIDR = 567154202.0243976, portoUSD = 34466.4172647667
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:338 Built crypto asset ETH: Object
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:314 Processing crypto ADA with 1 transactions: Array(1)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:222 Calculating position from transactions: 1 transactions
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:228 Transaction: update crypto ADA amount: 5 price: 1 (ID: wvYNF7jLGyKqYLKyq3ka)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:272 No previous position found, treating update as buy transaction
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:276   Update as Buy: Added 5 to total. Previous: 0, New: 5
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:287 After update as buy: totalAmount = 5, totalCost = 5, entryPrice = null
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:394 Final position: amount = 5, avgPrice = 1, totalCost = 5, gain = -1.4137324056087102, porto = 3.58626759439129, portoIDR = 59013.00155795916, portoUSD = 3.58626759439129
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:338 Built crypto asset ADA: Object
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:314 Processing crypto CLEO with 1 transactions: Array(1)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:222 Calculating position from transactions: 1 transactions
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:228 Transaction: buy crypto CLEO amount: 123 price: 0.00011 (ID: ZmS3ySujmlRQSxCUGXiJ)
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:241   Buy: Added 123 to total. Previous: 0, New: 123
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:252 After buy: totalAmount = 123, totalCost = 0.01353, entryPrice = null
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\utils.js:394 Final position: amount = 123, avgPrice = 0.00011, totalCost = 0.01353, gain = 0.0000015240616304847132, porto = 0.013531524061630485, portoIDR = 222.6648819456263, portoUSD = 0.013531524061630485
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:338 Built crypto asset CLEO: Object
+C:\Users\arfan\Desktop\Github\PortSyncro\lib\portfolioStateManager.js:367 Final portfolio - Stocks: 7, Crypto: 3

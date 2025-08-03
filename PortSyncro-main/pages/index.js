@@ -970,8 +970,20 @@ export default function Home() {
       
       await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
       
-      // Don't manually delete from portfolio state manager - let the transaction listener handle it
-      // This ensures consistency with the transaction-based approach
+      // Delete from portfolio state manager
+      deleteAsset('stock', ticker);
+      
+      // Force portfolio rebuild and refresh
+      console.log('Force portfolio rebuild after deleting stock');
+      
+      // Wait a bit for the transaction to be processed
+      setTimeout(async () => {
+        // Refresh prices to ensure UI updates
+        await fetchPrices(true); // Force immediate refresh
+        
+        // Force portfolio rebuild
+        rebuildPortfolio();
+      }, 100);
       
       // Show success notification
       setConfirmModal({
@@ -1022,8 +1034,20 @@ export default function Home() {
       
       await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
       
-      // Don't manually delete from portfolio state manager - let the transaction listener handle it
-      // This ensures consistency with the transaction-based approach
+      // Delete from portfolio state manager
+      deleteAsset('crypto', symbol);
+      
+      // Force portfolio rebuild and refresh
+      console.log('Force portfolio rebuild after deleting crypto');
+      
+      // Wait a bit for the transaction to be processed
+      setTimeout(async () => {
+        // Refresh prices to ensure UI updates
+        await fetchPrices(true); // Force immediate refresh
+        
+        // Force portfolio rebuild
+        rebuildPortfolio();
+      }, 100);
       
       // Show success notification
       setConfirmModal({
@@ -1045,6 +1069,8 @@ export default function Home() {
         confirmText: 'OK',
         onConfirm: () => setConfirmModal(null)
       });
+    } finally {
+      // Portfolio state manager handles updates automatically
     }
   };
 

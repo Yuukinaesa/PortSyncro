@@ -165,40 +165,31 @@ class PortfolioStateManager {
     // Sort transactions by timestamp to ensure chronological processing
     const sortedTransactions = [...validTransactions].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     console.log(`Processing ${sortedTransactions.length} transactions chronologically...`);
-    console.log('Transaction details:', sortedTransactions.map(tx => ({
-      type: tx.type,
-      assetType: tx.assetType,
-      ticker: tx.ticker,
-      symbol: tx.symbol,
-      amount: tx.amount,
-      timestamp: tx.timestamp
-    })));
-    
-    // Process transactions chronologically
-    // We need to handle the case where an asset is deleted and then bought again
-    // So we'll process all transactions and let the position calculation handle the logic
-    
     sortedTransactions.forEach(tx => {
       console.log(`Processing transaction: ${tx.type} ${tx.assetType} ${tx.ticker || tx.symbol} amount: ${tx.amount} at ${tx.timestamp}`);
       
-      if (tx.type === 'delete') {
-        // For delete transactions, we'll add them to the maps but with special handling
-        // This way, the position calculation can handle the deletion logic
-        if (tx.assetType === 'stock' && tx.ticker) {
-          const key = tx.ticker.toUpperCase();
-          if (!stocksMap.has(key)) stocksMap.set(key, []);
-          stocksMap.get(key).push(tx);
-          console.log(`Added delete transaction for stock ${key}`);
-        } else if (tx.assetType === 'crypto' && tx.symbol) {
-          const key = tx.symbol.toUpperCase();
-          if (!cryptoMap.has(key)) cryptoMap.set(key, []);
-          cryptoMap.get(key).push(tx);
-          console.log(`Added delete transaction for crypto ${key}`);
-        }
+      // Only process transactions that affect portfolio state
+      // Skip 'delete' transactions from transaction history (they only affect history, not portfolio)
+      if (tx.type === 'delete' && tx.source === 'history') {
+        console.log(`Skipping delete transaction from history for ${tx.ticker || tx.symbol}`);
         return;
       }
       
-      // Process all non-delete transactions normally
+      if (tx.type === 'delete') {
+        // For delete transactions from portfolio, remove the asset from the maps
+        if (tx.assetType === 'stock' && tx.ticker) {
+          const key = tx.ticker.toUpperCase();
+          stocksMap.delete(key);
+          console.log(`Deleted stock ${key} from portfolio`);
+        } else if (tx.assetType === 'crypto' && tx.symbol) {
+          const key = tx.symbol.toUpperCase();
+          cryptoMap.delete(key);
+          console.log(`Deleted crypto ${key} from portfolio`);
+        }
+        return;
+      }
+
+      // Process non-delete transactions
       if (tx.assetType === 'stock' && tx.ticker) {
         const key = tx.ticker.toUpperCase();
         if (!stocksMap.has(key)) stocksMap.set(key, []);

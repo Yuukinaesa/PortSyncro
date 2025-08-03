@@ -123,8 +123,8 @@ export default function TransactionHistory({
     
     let filtered = [...transactions]; // Create a copy of transactions array
     
-    // Filter out 'update' and 'delete' transactions - hide them from history
-    filtered = filtered.filter(tx => tx.type !== 'update' && tx.type !== 'delete');
+    // Filter out 'update' transactions - hide them from history
+    filtered = filtered.filter(tx => tx.type !== 'update');
     
     // Filter out transactions that are marked as deleted from history
     filtered = filtered.filter(tx => tx.deletedFromHistory !== true);
@@ -134,7 +134,7 @@ export default function TransactionHistory({
       filtered = filtered.filter(tx => tx.ticker === assetKey || tx.symbol === assetKey);
     }
 
-    // Apply type filter (buy/sell only - delete transactions are hidden)
+    // Apply type filter (buy/sell/delete)
     if (filter !== 'all') {
       filtered = filtered.filter(tx => tx.type === filter);
     }

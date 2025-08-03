@@ -218,7 +218,6 @@ export function calculatePositionFromTransactions(transactions, currentPrice, ex
   let totalCostUSD = 0;
   let entryPrice = null;
   let isDeleted = false; // Track if asset has been deleted
-  let lastDeleteTimestamp = null; // Track when the last delete happened
 
   console.log('Calculating position from transactions:', transactions.length, 'transactions');
 
@@ -228,9 +227,9 @@ export function calculatePositionFromTransactions(transactions, currentPrice, ex
   sortedTransactions.forEach(tx => {
     console.log(`Transaction: ${tx.type} ${tx.assetType} ${tx.ticker || tx.symbol} amount: ${tx.amount} price: ${tx.price} (ID: ${tx.id})`);
     
-    // If asset has been deleted and this transaction is before the delete, skip it
-    if (isDeleted && lastDeleteTimestamp && new Date(tx.timestamp) <= new Date(lastDeleteTimestamp)) {
-      console.log(`Skipping transaction - asset was deleted at ${lastDeleteTimestamp}`);
+    // If asset has been deleted, skip all subsequent transactions
+    if (isDeleted) {
+      console.log(`Skipping transaction - asset has been deleted`);
       return;
     }
     
@@ -321,8 +320,7 @@ export function calculatePositionFromTransactions(transactions, currentPrice, ex
       totalCostUSD = 0;
       entryPrice = null;
       isDeleted = true; // Mark as deleted to skip subsequent transactions
-      lastDeleteTimestamp = tx.timestamp;
-      console.log(`After delete: totalAmount = ${totalAmount}, totalCost = ${totalCost}, asset marked as deleted at ${tx.timestamp}`);
+      console.log(`After delete: totalAmount = ${totalAmount}, totalCost = ${totalCost}, asset marked as deleted`);
     }
   });
 
