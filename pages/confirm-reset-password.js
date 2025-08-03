@@ -10,6 +10,7 @@ import { useTheme } from '../lib/themeContext';
 import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
+import { secureLogger } from './../lib/security';
 
 export default function ConfirmResetPassword() {
   const [newPassword, setNewPassword] = useState('');
@@ -29,7 +30,7 @@ export default function ConfirmResetPassword() {
       setEmail(email);
       setError('');
     } catch (error) {
-      console.error("Error verifying reset code:", error);
+      secureLogger.error("Error verifying reset code:", error);
       setError(t('invalidOrExpiredResetCode'));
     } finally {
       setLoading(false);
@@ -50,7 +51,7 @@ export default function ConfirmResetPassword() {
             setError('');
           })
           .catch((error) => {
-            console.error("Error verifying reset code:", error);
+            secureLogger.error("Error verifying reset code:", error);
             setError(t('invalidOrExpiredResetCode'));
           })
           .finally(() => {
@@ -86,7 +87,7 @@ export default function ConfirmResetPassword() {
         router.push('/login');
       }, 3000);
     } catch (error) {
-      console.error("Error resetting password:", error);
+      secureLogger.error("Error resetting password:", error);
       setError(t('passwordChangeFailed'));
     } finally {
       setLoading(false);

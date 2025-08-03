@@ -5,6 +5,7 @@ import Modal from './Modal';
 import ErrorBoundary from './ErrorBoundary';
 import { formatNumber, formatIDR, formatUSD, formatNumberUSD, normalizeNumberInput } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
+import { secureLogger } from './../lib/security';
 
 export default function AssetTable({ assets, prices, exchangeRate, type, onUpdate, onSell = () => {}, onDelete = () => {}, loading = false }) {
   const [sellingIndex, setSellingIndex] = useState(null);
@@ -234,7 +235,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
           amount: amountToSell, 
           unit: type === 'stock' ? 'lot' : '', 
           symbol: ticker, 
-          value: valueFormatted ? `with value around ${valueFormatted}` : '' 
+          value: valueFormatted ? valueFormatted : '' 
         })
       : t('saleConfirmationNoPrice', { 
           amount: amountToSell, 
@@ -272,7 +273,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     const avgPrice = asset.avgPrice || 0;
     
     // Debug logging
-    console.log('Editing average price for asset:', {
+    secureLogger.log('Editing average price for asset:', {
       ticker: asset.ticker,
       symbol: asset.symbol,
       avgPrice: avgPrice,
@@ -334,7 +335,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       };
 
       // Debug logging
-      console.log('Editing asset:', {
+      secureLogger.log('Editing asset:', {
         index,
         originalAsset: asset,
         updatedAsset: updatedAsset,
@@ -346,14 +347,14 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       });
 
       if (onUpdate) {
-        console.log('Calling onUpdate function...');
+        secureLogger.log('Calling onUpdate function...');
         // For both stocks and crypto, pass symbol/ticker and updated asset
         if (type === 'stock') {
           onUpdate(asset.ticker, updatedAsset);
         } else {
           onUpdate(asset.symbol, updatedAsset);
         }
-        console.log('onUpdate function called successfully');
+        secureLogger.log('onUpdate function called successfully');
         
         // Show success feedback
         setConfirmModal({
@@ -371,7 +372,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         });
       }
     } catch (error) {
-      console.error('Error updating average price:', error);
+      secureLogger.error('Error updating average price:', error);
       setConfirmModal({
         isOpen: true,
         title: 'Error',
@@ -530,7 +531,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       }, 100);
 
     } catch (error) {
-      console.error('Error exporting CSV:', error);
+      secureLogger.error('Error exporting CSV:', error);
       // You can add a notification here if you have a notification system
     }
   };
@@ -628,13 +629,14 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         <div className="flex justify-center sm:justify-end">
           <button
             onClick={exportToCSV}
-            className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-xl flex items-center gap-2 transition-all duration-200 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-sm font-medium"
+            className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-xl flex items-center gap-2 transition-all duration-200 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-sm font-medium touch-target"
             aria-label={type === 'crypto' ? 'Ekspor Kripto' : 'Ekspor Saham'}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            {type === 'crypto' ? 'Ekspor Kripto' : 'Ekspor Saham'}
+            <span className="hidden sm:inline">{type === 'crypto' ? 'Ekspor Kripto' : 'Ekspor Saham'}</span>
+            <span className="sm:hidden">Ekspor</span>
           </button>
         </div>
       </div>
@@ -804,12 +806,12 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                               const value = e.target.value.replace(/[^0-9.,]/g, '');
                               setSellAmount(value);
                             }}
-                            className="w-16 sm:w-20 px-2 sm:px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                            className="w-16 sm:w-20 px-2 sm:px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 touch-target"
                             min="0"
                           />
                           <button
                             onClick={() => setSellAmount((type === 'stock' ? asset.lots : asset.amount).toString())}
-                            className="text-xs text-blue-500 hover:text-blue-600 underline"
+                            className="text-xs text-blue-500 hover:text-blue-600 underline touch-target"
                             title="Jual semua"
                           >
                             Jual Semua
@@ -887,14 +889,14 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           <>
                             <button
                               onClick={() => handleSaveSell(index, asset)}
-                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200"
+                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200 touch-target"
                               title="Konfirmasi Jual"
                             >
                               ✓
                             </button>
                             <button
                               onClick={handleCancelSell}
-                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
+                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200 touch-target"
                               title="Batal"
                             >
                               ✕
@@ -904,14 +906,14 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           <>
                             <button
                               onClick={() => handleSellClick(index, asset)}
-                              className="px-2 sm:px-3 py-1.5 text-xs font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200"
+                              className="px-2 sm:px-3 py-1.5 text-xs font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 touch-target"
                               title="Jual aset"
                             >
                               Jual
                             </button>
                             <button
                               onClick={() => handleDeleteClick(index, asset)}
-                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
+                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200 touch-target"
                               title="Hapus aset dari portofolio (semua transaksi akan dihapus)"
                             >
                               🗑️
@@ -946,7 +948,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                                 handleSaveAvgPrice(index, asset);
                               }
                             }}
-                            className="w-20 sm:w-24 px-2 sm:px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                            className="w-20 sm:w-24 px-2 sm:px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 touch-target"
                             min="0"
                             placeholder="0"
                             autoFocus
@@ -954,7 +956,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           />
                           <button
                             onClick={() => handleSaveAvgPrice(index, asset)}
-                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200"
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200 touch-target"
                             title="Simpan"
                             aria-label={`Simpan harga rata-rata untuk ${type === 'stock' ? asset.ticker : asset.symbol}`}
                             disabled={isUpdatingPrice}
@@ -967,7 +969,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           </button>
                           <button
                             onClick={handleCancelEditAvgPrice}
-                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200 touch-target"
                             title="Batal"
                             aria-label="Batal edit harga rata-rata"
                           >
@@ -981,7 +983,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           </span>
                           <button
                             onClick={() => handleEditAvgPrice(index, asset)}
-                            className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors duration-200 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                            className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors duration-200 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 touch-target"
                             title="Edit Average Price"
                           >
                             ✏️

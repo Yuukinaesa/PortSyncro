@@ -6,6 +6,7 @@ import { fetchExchangeRate } from '../lib/fetchPrices';
 import { formatNumber, formatIDR, formatUSD, formatNumberUSD } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
 import { useTheme } from '../lib/themeContext';
+import { secureLogger } from './../lib/security';
 
 export default function Portfolio({ 
   assets, 
@@ -38,7 +39,7 @@ export default function Portfolio({
   // Only log when asset count actually changes
   useEffect(() => {
     if (assetCount.stocks > 0 || assetCount.crypto > 0) {
-      console.log('Portfolio component received assets:', assetCount);
+      secureLogger.log('Portfolio component received assets:', assetCount);
     }
   }, [assetCount]);
   
@@ -119,7 +120,7 @@ export default function Portfolio({
       setExchangeRateSource('exchangerate-api.com');
       setExchangeRateError(null);
     } catch (error) {
-      console.error('Error fetching exchange rate:', error);
+      secureLogger.error('Error fetching exchange rate:', error);
       setExchangeRateError('Failed to fetch exchange rate');
     } finally {
       setLoadingExchangeRate(false);
@@ -133,7 +134,7 @@ export default function Portfolio({
         await onRefreshPrices();
       }
     } catch (error) {
-      console.error('Error fetching prices:', error);
+      secureLogger.error('Error fetching prices:', error);
     }
   }, [onRefreshPrices]);
 
@@ -153,7 +154,7 @@ export default function Portfolio({
         await fetchRate();
       }
     } catch (error) {
-      console.error('Error during refresh:', error);
+      secureLogger.error('Error during refresh:', error);
     }
   }, [onRefreshPrices, onRefreshExchangeRate, fetchPrices, fetchRate]);
 
@@ -164,7 +165,7 @@ export default function Portfolio({
   //   const missingPrices = hasAssets && hasPrices && Object.keys(prices).length < (assets?.stocks?.length + assets?.crypto?.length);
 
   //   if (missingPrices && !debouncedLoading) {
-  //     console.log('Auto-refreshing due to missing prices');
+  //     secureLogger.log('Auto-refreshing due to missing prices');
   //     const autoRefreshTimer = setTimeout(() => {
   //       // Call parent refresh functions directly to avoid dependency issues
   //       if (onRefreshPrices) {
@@ -556,7 +557,7 @@ export default function Portfolio({
       }, 100);
       
     } catch (error) {
-      console.error('Error exporting portfolio:', error);
+      secureLogger.error('Error exporting portfolio:', error);
       setNotification({
         type: 'error',
         title: t('error'),
@@ -810,7 +811,7 @@ export default function Portfolio({
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setActiveAssetTab('all')}
-                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 touch-target ${
                   activeAssetTab === 'all'
                     ? 'bg-blue-500 text-white'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -820,7 +821,7 @@ export default function Portfolio({
               </button>
               <button
                 onClick={() => setActiveAssetTab('stocks')}
-                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 touch-target ${
                   activeAssetTab === 'stocks'
                     ? 'bg-blue-500 text-white'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -830,7 +831,7 @@ export default function Portfolio({
               </button>
               <button
                 onClick={() => setActiveAssetTab('crypto')}
-                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 touch-target ${
                   activeAssetTab === 'crypto'
                     ? 'bg-blue-500 text-white'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -845,7 +846,7 @@ export default function Portfolio({
             <button
               onClick={handleRefresh}
               disabled={loading || loadingExchangeRate}
-              className="px-3 sm:px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50"
+              className="px-3 sm:px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50 touch-target"
               title="Refresh semua data (harga saham, kripto, dan kurs USD/IDR)"
             >
               {(loading || loadingExchangeRate) ? (
@@ -860,7 +861,7 @@ export default function Portfolio({
             <button
               onClick={exportPortfolioToCSV}
               disabled={assets?.stocks?.length === 0 && assets?.crypto?.length === 0}
-              className="px-3 sm:px-4 py-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50"
+              className="px-3 sm:px-4 py-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50 touch-target"
               title={t('exportPortfolio')}
             >
               <FiDownload className="w-4 h-4" />
@@ -870,7 +871,7 @@ export default function Portfolio({
             
             <button
               onClick={onAddAsset}
-              className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 flex items-center gap-2 text-sm"
+              className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 flex items-center gap-2 text-sm touch-target"
               title={t('addAsset')}
             >
               <FiPlusCircle className="w-4 h-4" />

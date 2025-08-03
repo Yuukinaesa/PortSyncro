@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
 import { normalizeNumberInput } from '../lib/utils';
+import { secureLogger } from './../lib/security';
 
 export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
   const [symbol, setSymbol] = useState('');
@@ -25,9 +26,9 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
       });
       
       if (!response.ok) {
-        if (response.status === 429) {
-          throw new Error('Rate limit exceeded. Please wait a moment and try again.');
-        }
+              if (response.status === 429) {
+        throw new Error(t('rateLimitExceeded'));
+      }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
@@ -37,9 +38,9 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
         return data.prices[symbol].price;
       }
       
-      throw new Error('No price data available');
+      throw new Error(t('noPriceDataAvailable'));
     } catch (error) {
-      console.error('Error fetching crypto price:', error);
+      secureLogger.error('Error fetching crypto price:', error);
       throw error;
     }
   };
@@ -66,19 +67,19 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
       
       // More strict validation for crypto symbols
       if (!/^[A-Z0-9]{1,10}$/.test(normalizedSymbol)) {
-        throw new Error('Invalid crypto symbol format');
+        throw new Error(t('invalidCryptoSymbolFormat'));
       }
       
       // Check for common invalid patterns
       const invalidPatterns = ['TEST', 'DEMO', 'NULL', 'NONE', 'INVALID', 'FAKE', 'DUMMY'];
       if (invalidPatterns.includes(normalizedSymbol)) {
-        throw new Error('Invalid crypto symbol');
+        throw new Error(t('invalidCryptoSymbol'));
       }
       
       // Check for suspicious patterns (too many numbers)
       const numberCount = (normalizedSymbol.match(/[0-9]/g) || []).length;
       if (numberCount > 5) {
-        throw new Error('Crypto symbol contains too many numbers');
+        throw new Error(t('cryptoSymbolTooManyNumbers'));
       }
       
       // Fetch current price
@@ -96,7 +97,7 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
         addedAt: new Date().toISOString()
       };
       
-      console.log('Adding crypto with current price:', crypto);
+      secureLogger.log('Adding crypto with current price:', crypto);
       onAdd(crypto);
       
       setSymbol('');
@@ -106,7 +107,7 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
       if (onComplete) onComplete();
       
     } catch (err) {
-      console.error('Error in handleSubmit:', err);
+      secureLogger.error('Error in handleSubmit:', err);
       setError(t('failedToAddCrypto', { error: err.message }));
     } finally {
       setIsLoading(false);

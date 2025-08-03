@@ -8,6 +8,7 @@ import ErrorBoundary from './ErrorBoundary';
 import { useLanguage } from '../lib/languageContext';
 import { formatIDR, formatUSD, formatNumber, formatNumberUSD } from '../lib/utils';
 import { doc, deleteDoc, collection, updateDoc } from 'firebase/firestore';
+import { secureLogger } from './../lib/security';
 
 export default function TransactionHistory({ 
   transactions = [], 
@@ -30,9 +31,9 @@ export default function TransactionHistory({
   
   // Debug logging
   useEffect(() => {
-    console.log('Received transactions:', transactions);
-    console.log('User:', user);
-    console.log('Exchange rate:', exchangeRate);
+    secureLogger.log('Received transactions:', transactions);
+    secureLogger.log('User:', user);
+    secureLogger.log('Exchange rate:', exchangeRate);
   }, [transactions, user, exchangeRate]);
 
   // Delete transaction function
@@ -51,7 +52,10 @@ export default function TransactionHistory({
         message: (
           <div className="space-y-4">
             <p className="text-gray-700 dark:text-gray-300">
-              Apakah Anda yakin ingin menghapus riwayat transaksi {transaction.type === 'buy' ? 'beli' : 'jual'} {transaction.ticker || transaction.symbol}?
+              {t('confirmDeleteTransactionHistory', { 
+                type: transaction.type === 'buy' ? t('buy') : t('sell'), 
+                asset: transaction.ticker || transaction.symbol 
+              })}
             </p>
           </div>
         ),
@@ -79,9 +83,9 @@ export default function TransactionHistory({
             
             setConfirmModal(null);
           } catch (error) {
-            console.error('Error deleting transaction:', error);
+            secureLogger.error('Error deleting transaction:', error);
             setConfirmModal({
-              title: 'Error',
+              title: t('error'),
               message: (
                 <div className="flex items-start space-x-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
                   <div className="flex-shrink-0 mt-0.5">
@@ -90,7 +94,7 @@ export default function TransactionHistory({
                     </svg>
                   </div>
                   <p className="text-sm text-red-800 dark:text-red-200">
-                    Failed to delete transaction: {error.message}
+                    {t('failedToDeleteTransaction', { error: error.message })}
                   </p>
                 </div>
               ),
@@ -103,11 +107,11 @@ export default function TransactionHistory({
         onCancel: () => setConfirmModal(null)
       });
     } catch (error) {
-      console.error('Error preparing transaction deletion:', error);
+      secureLogger.error('Error preparing transaction deletion:', error);
       
       // Show error message
       setConfirmModal({
-        title: 'Error',
+        title: t('error'),
         message: (
           <div className="flex items-start space-x-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
             <div className="flex-shrink-0 mt-0.5">
@@ -116,7 +120,7 @@ export default function TransactionHistory({
               </svg>
             </div>
             <p className="text-sm text-red-800 dark:text-red-200">
-              Failed to prepare transaction deletion: {error.message}
+                                {t('failedToPrepareTransactionDeletion', { error: error.message })}
             </p>
           </div>
         ),
@@ -138,7 +142,7 @@ export default function TransactionHistory({
   
   useEffect(() => {
     if (!transactions || !Array.isArray(transactions)) {
-      console.log('No transactions or invalid transactions array');
+      secureLogger.log('No transactions or invalid transactions array');
       setFilteredTransactions([]);
       return;
     }
@@ -173,7 +177,7 @@ export default function TransactionHistory({
       return dateB - dateA;
     });
     
-    console.log('Filtered transactions:', filtered);
+    secureLogger.log('Filtered transactions:', filtered);
     setFilteredTransactions(filtered);
   }, [filter, assetTypeFilter, transactions, assetKey]); // Tambahkan assetKey ke dependency
   
@@ -182,7 +186,7 @@ export default function TransactionHistory({
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
-        console.error('Invalid date:', dateString);
+        secureLogger.error('Invalid date:', dateString);
         return 'Invalid Date';
       }
       return date.toLocaleString('id-ID', {
@@ -193,7 +197,7 @@ export default function TransactionHistory({
         minute: '2-digit'
       });
     } catch (error) {
-      console.error('Error formatting date:', error, 'Date string:', dateString);
+      secureLogger.error('Error formatting date:', error, 'Date string:', dateString);
       return 'Invalid Date';
     }
   };
@@ -350,7 +354,7 @@ export default function TransactionHistory({
       }, 100);
 
     } catch (error) {
-      console.error('Error exporting CSV:', error);
+      secureLogger.error('Error exporting CSV:', error);
       setConfirmModal({
         isOpen: true,
         title: t('error'),

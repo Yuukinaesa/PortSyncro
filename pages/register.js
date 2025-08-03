@@ -12,6 +12,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { isDemoAccountAvailable } from '../lib/utils';
+import { secureLogger } from './../lib/security';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -38,10 +39,10 @@ export default function Register() {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log("User registered successfully:", userCredential.user);
+      secureLogger.log("User registered successfully:", userCredential.user);
       router.push('/');
     } catch (error) {
-      console.error("Error signing up:", error);
+      secureLogger.error("Error signing up:", error);
       if (error.code === 'auth/email-already-in-use') {
         setError(t('emailAlreadyInUse'));
       } else if (error.code === 'auth/invalid-email') {
@@ -71,9 +72,9 @@ export default function Register() {
       await signInWithEmailAndPassword(auth, demoEmail, demoPassword);
       router.push('/');
     } catch (error) {
-      console.error('Demo login error:', error);
+      secureLogger.error('Demo login error:', error);
       if (error.message === 'Demo account credentials not configured') {
-        setError('Demo account is not available');
+        setError(t('demoAccountNotAvailable'));
       } else {
         setError(t('demoLoginFailed'));
       }
@@ -105,8 +106,8 @@ export default function Register() {
             </p>
           </div>
           
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
-            <div className="text-center mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 sm:p-8">
+            <div className="text-center mb-6 sm:mb-8">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 {t('createAccount')}
               </h2>
@@ -137,7 +138,7 @@ export default function Register() {
                   </div>
                   <input
                     type="email"
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors"
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors touch-target"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -158,7 +159,7 @@ export default function Register() {
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
-                    className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors"
+                    className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors touch-target"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -167,7 +168,7 @@ export default function Register() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center touch-target"
                   >
                     {showPassword ? (
                       <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,7 +199,7 @@ export default function Register() {
                   </div>
                   <input
                     type={showConfirmPassword ? "text" : "password"}
-                    className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors"
+                    className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors touch-target"
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -207,7 +208,7 @@ export default function Register() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center touch-target"
                   >
                     {showConfirmPassword ? (
                       <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,7 +227,7 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-60 transition-all duration-200 transform hover:scale-[1.02]"
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-60 transition-all duration-200 transform hover:scale-[1.02] touch-target"
               >
                 {loading ? (
                   <div className="flex items-center justify-center">
@@ -257,7 +258,7 @@ export default function Register() {
                   <button
                     onClick={handleDemoLogin}
                     disabled={loading}
-                    className="w-full bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-60 transition-all duration-200 transform hover:scale-[1.02]"
+                    className="w-full bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-60 transition-all duration-200 transform hover:scale-[1.02] touch-target"
                   >
                     {t('loginDemoAccount')}
                   </button>

@@ -1,7 +1,10 @@
 // components/Notification.js
 import Modal from './Modal';
+import { useLanguage } from '../lib/languageContext';
 
 export default function Notification({ notification, onClose }) {
+  const { t } = useLanguage();
+  
   if (!notification || !notification.isOpen) return null;
   
   const handleConfirm = () => {
@@ -27,7 +30,7 @@ export default function Notification({ notification, onClose }) {
           onClick={handleConfirm}
           className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-all duration-200"
         >
-          {notification.confirmText || 'OK'}
+          {notification.confirmText || t('ok')}
         </button>
       </div>
     </Modal>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
 import { normalizeNumberInput, validateIDXLots } from '../lib/utils';
+import { secureLogger } from './../lib/security';
 
 export default function StockInput({ onAdd, onComplete, exchangeRate }) {
   const [ticker, setTicker] = useState('');
@@ -17,7 +18,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
     try {
       // Validate input
       if (!ticker || !lots) {
-        throw new Error('Stock code and lot amount must be filled');
+        throw new Error(t('stockCodeAndLotRequired'));
       }
 
       // Validate lots is a positive whole number for IDX stocks
@@ -35,17 +36,17 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       // Additional validation: check for common invalid patterns
       const invalidPatterns = ['TEST', 'DEMO', 'NULL', 'NONE', 'INVALID'];
       if (invalidPatterns.includes(normalizedTicker)) {
-        throw new Error('Invalid stock code format');
+        throw new Error(t('invalidStockCodeFormat'));
       }
       
       // Check for numbers in ticker (IDX stocks should be letters only)
       if (/\d/.test(normalizedTicker)) {
-        throw new Error('Stock code should contain only letters');
+        throw new Error(t('stockCodeLettersOnly'));
       }
 
       // Format tickers for IDX
       const tickersToTry = [`${normalizedTicker}.JK`];
-      console.log('Submitting tickers:', tickersToTry);
+      secureLogger.log('Submitting tickers:', tickersToTry);
 
       // Set loading state
       setIsLoading(true);
@@ -65,14 +66,14 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       
       if (!response.ok) {
         if (response.status === 429) {
-          throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+          throw new Error(t('rateLimitExceeded'));
         }
         const errorText = await response.text();
-        throw new Error(`Failed to fetch stock price (HTTP ${response.status}): ${errorText}`);
+        throw new Error(t('failedToFetchStockPrice', { status: response.status, error: errorText }));
       }
 
       const data = await response.json();
-      console.log('API returned prices:', data.prices);
+      secureLogger.log('API returned prices:', data.prices);
       let stockPrice = null;
       let usedTicker = null;
       // Try each ticker in order
@@ -84,7 +85,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         }
       }
 
-      console.log('Used ticker for price:', usedTicker);
+      secureLogger.log('Used ticker for price:', usedTicker);
       if (!stockPrice) {
         // Check if the API returned any data but no valid stock price
         const hasAnyData = Object.keys(data.prices).length > 0;
@@ -111,12 +112,12 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         addedAt: new Date().toISOString()
       };
 
-      console.log('Adding stock with current price:', stock);
+      secureLogger.log('Adding stock with current price:', stock);
       onAdd(stock);
       setIsLoading(false);
       onComplete();
     } catch (error) {
-      console.error('Error adding stock:', error);
+      secureLogger.error('Error adding stock:', error);
       setError(error.message);
       setIsLoading(false);
     }

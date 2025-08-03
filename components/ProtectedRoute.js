@@ -2,11 +2,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/authContext';
+import { secureLogger } from './../lib/security';
+import { useLanguage } from '../lib/languageContext';
 
 export default function ProtectedRoute({ children, authPage = false, dashboardPage = false }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     // Tambahkan timeout untuk menghindari loading tanpa batas
@@ -45,7 +48,7 @@ export default function ProtectedRoute({ children, authPage = false, dashboardPa
     // Timeout jaga-jaga jika loading terlalu lama
     const timeoutId = setTimeout(() => {
       if (loading) {
-        console.log("Auth check timed out, redirecting");
+        secureLogger.log("Auth check timed out, redirecting");
         if (authPage) {
           router.push('/');
         } else {
@@ -62,7 +65,7 @@ export default function ProtectedRoute({ children, authPage = false, dashboardPa
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
         <div className="text-center text-white">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-          <p>Loading...</p>
+          <p>{t('loading')}</p>
         </div>
       </div>
     );

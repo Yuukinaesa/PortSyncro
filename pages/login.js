@@ -11,6 +11,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { isDemoAccountAvailable } from '../lib/utils';
+import { secureLogger } from './../lib/security';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -42,7 +43,7 @@ export default function Login() {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/');
     } catch (error) {
-      console.error('Login error:', error);
+      secureLogger.error('Login error:', error);
       switch (error.code) {
         case 'auth/user-not-found':
           setError(t('userNotFound'));
@@ -75,7 +76,7 @@ export default function Login() {
       const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL;
       const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
       
-      console.log('Demo credentials check:', {
+      secureLogger.log('Demo credentials check:', {
         email: demoEmail ? 'Set' : 'Not set',
         password: demoPassword ? 'Set' : 'Not set',
         emailValue: demoEmail ? `${demoEmail.substring(0, 3)}...` : 'undefined'
@@ -85,13 +86,13 @@ export default function Login() {
         throw new Error('Demo account credentials not configured');
       }
       
-      console.log('Attempting demo login with email:', demoEmail);
+      secureLogger.log('Attempting demo login with email:', demoEmail);
       await signInWithEmailAndPassword(auth, demoEmail, demoPassword);
       router.push('/');
     } catch (error) {
-      console.error('Demo login error:', error);
+      secureLogger.error('Demo login error:', error);
       if (error.message === 'Demo account credentials not configured') {
-        setError('Demo account is not available');
+        setError(t('demoAccountNotAvailable'));
       } else if (error.code === 'auth/invalid-credential') {
         setError(t('demoInvalidCredential'));
       } else if (error.code === 'auth/user-not-found') {
@@ -99,7 +100,7 @@ export default function Login() {
       } else if (error.code === 'auth/wrong-password') {
         setError(t('demoWrongPassword'));
       } else {
-        setError(t('demoLoginFailed') + ': ' + error.message);
+        setError(t('demoLoginFailed'));
       }
     } finally {
       setLoading(false);
@@ -129,8 +130,8 @@ export default function Login() {
             </p>
           </div>
           
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
-            <div className="text-center mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 sm:p-8">
+            <div className="text-center mb-6 sm:mb-8">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 {t('signIn')}
               </h2>
@@ -161,7 +162,7 @@ export default function Login() {
                   </div>
                   <input
                     type="email"
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors"
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors touch-target"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -182,7 +183,7 @@ export default function Login() {
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
-                    className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors"
+                    className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors touch-target"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -191,7 +192,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center touch-target"
                   >
                     {showPassword ? (
                       <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +211,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-60 transition-all duration-200 transform hover:scale-[1.02]"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-60 transition-all duration-200 transform hover:scale-[1.02] touch-target"
               >
                 {loading ? (
                   <div className="flex items-center justify-center">
@@ -241,7 +242,7 @@ export default function Login() {
                   <button
                     onClick={handleDemoLogin}
                     disabled={loading}
-                    className="w-full bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-60 transition-all duration-200 transform hover:scale-[1.02]"
+                    className="w-full bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-60 transition-all duration-200 transform hover:scale-[1.02] touch-target"
                   >
                     {loading ? (
                       <div className="flex items-center justify-center">

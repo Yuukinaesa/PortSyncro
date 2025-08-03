@@ -1,0 +1,10 @@
+{
+  "timestamp": "2025-08-03T11:29:29.905Z",
+  "score": 95,
+  "level": "EXCELLENT",
+  "issues": [],
+  "warnings": [
+    "Missing environment variables: NEXT_PUBLIC_ENCRYPTION_KEY"
+  ],
+  "recommendations": []
+}

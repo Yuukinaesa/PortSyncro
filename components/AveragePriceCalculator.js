@@ -100,7 +100,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
         purchases: validPurchases
       });
     } catch (error) {
-      setResult({ error: error.message });
+      setResult({ error: t('calculationError') });
     }
   };
 
