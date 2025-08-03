@@ -23,10 +23,15 @@ PortSyncro bridges the gap between smart diversification and manageable portfoli
 ## Key Features
 
 ✅ **Portfolio Synchronization** - Unify assets across multiple platforms
+
 ✅ **Smart Average Price Calculator** - Accurate calculations regardless of where you bought each asset
+
 ✅ **Real-time Performance Tracking** - Live updates from Yahoo Finance & crypto APIs
+
 ✅ **Dual Currency Support** - Gain/loss calculations in both IDR and USD
+
 ✅ **Comprehensive Analytics** - Detailed performance insights and reporting
+
 ✅ **Export Functionality** - Detailed analysis and reporting capabilities
 
 ## Security & Reliability
