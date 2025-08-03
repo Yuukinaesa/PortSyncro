@@ -20,6 +20,7 @@ import Modal from '../components/Modal';
 import AveragePriceCalculator from '../components/AveragePriceCalculator';
 import refreshOptimizer from '../lib/refreshOptimizer';
 import { usePortfolioState } from '../lib/usePortfolioState';
+import Notification from '../components/Notification';
 
 // Helper function to clean undefined values from objects
 const cleanUndefinedValues = (obj) => {
@@ -164,6 +165,7 @@ export default function Home() {
   const [sellingLoading, setSellingLoading] = useState(false);
   const [pricesLoading, setPricesLoading] = useState(false);
   const [showAverageCalculator, setShowAverageCalculator] = useState(false);
+  const [rateLimitNotification, setRateLimitNotification] = useState(null);
   
   // Use Portfolio State Manager
   const {
@@ -188,6 +190,8 @@ export default function Home() {
   // Add refs for intervals
   const refreshIntervalRef = useRef(null);
   const exchangeIntervalRef = useRef(null);
+  const initialRefreshDoneRef = useRef(false);
+  const isInitializingRef = useRef(false);
 
   // Memoize formatPrice function
   const formatPrice = useCallback((value, currency = 'IDR') => {
@@ -285,14 +289,40 @@ export default function Home() {
       if (!response.ok) {
         if (response.status === 429) {
           console.warn('Rate limit hit, will retry later');
+          // Mark rate limit hit in refresh optimizer
+          refreshOptimizer.markRateLimitHit();
+          
+          // Show rate limit notification with retry option
+          setRateLimitNotification({
+            isOpen: true,
+            title: t('rateLimitExceeded'),
+            message: t('rateLimitMessage') + ' Click OK to retry in 30 seconds.',
+            type: 'warning',
+            onConfirm: () => {
+              setRateLimitNotification(null);
+              // Retry after 30 seconds
+              setTimeout(async () => {
+                try {
+                  await performPriceFetch();
+                } catch (retryError) {
+                  console.error('Retry failed:', retryError);
+                }
+              }, 30000);
+            }
+          });
+          
           return; // Don't throw error for rate limiting
         }
         console.warn(`API error: ${response.status}`);
         return;
       }
-    
+
       const data = await response.json();
       console.log('Received prices:', data.prices);
+      
+      // Reset rate limit status on successful request
+      refreshOptimizer.resetRateLimit();
+      
       updatePrices(data.prices);
       
       // Force portfolio value update after price update
@@ -305,7 +335,7 @@ export default function Home() {
     } finally {
       setPricesLoading(false);
     }
-  }, [exchangeRate, assets, user?.uid, updatePrices, rebuildPortfolio]);
+  }, [exchangeRate, assets, user?.uid, updatePrices, rebuildPortfolio, t]);
 
   // Simplified price fetching function with debouncing and refresh optimizer
   const fetchPrices = useCallback(async (immediate = false) => {
@@ -320,7 +350,15 @@ export default function Home() {
         await performPriceFetch();
       });
     } else {
-      await performPriceFetch();
+      // For immediate refresh, check if we can refresh or queue it
+      if (refreshOptimizer.canRefresh()) {
+        await performPriceFetch();
+      } else {
+        console.log('Rate limited, queuing immediate refresh');
+        refreshOptimizer.queueRefresh(async () => {
+          await performPriceFetch();
+        });
+      }
     }
   }, [pricesLoading, performPriceFetch]);
 
@@ -374,51 +412,43 @@ export default function Home() {
     // Only set up intervals after initialization
     if (!isInitialized) return;
     
-    // Prevent multiple setups using a ref
-    if (exchangeIntervalRef.current || refreshIntervalRef.current) {
-      console.log('Intervals already set up, skipping');
-      return;
-    }
-    
     console.log('Setting up refresh intervals - isInitialized:', isInitialized);
     
-    // Initial refresh when component mounts
-    fetchExchangeRateData();
-    
-    // Initial refresh only when assets are available - ONCE ONLY
-    const initialRefreshTimer = setTimeout(() => {
+    // Initial refresh when component mounts (immediate) - ONLY ONCE
+    if (!initialRefreshDoneRef.current && !isInitializingRef.current) {
+      isInitializingRef.current = true;
+      
+      fetchExchangeRateData();
+      
+      // Immediate price refresh when web is first opened - ONLY ONCE
       if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
-        console.log('INITIAL REFRESH triggered (first time only)');
+        console.log('IMMEDIATE REFRESH triggered (first time opening web)');
         performPriceFetch();
       } else {
-        console.log('No assets available for initial refresh, skipping');
+        console.log('No assets available for immediate refresh, skipping');
       }
-    }, 2000); // Reduced delay for faster initial load
+      
+      initialRefreshDoneRef.current = true;
+      isInitializingRef.current = false;
+    }
     
     // Exchange rate update every 5 minutes (less frequent)
     exchangeIntervalRef.current = setInterval(() => {
+      console.log('AUTOMATIC EXCHANGE RATE REFRESH triggered (5 minute interval)');
       fetchExchangeRateData();
     }, 300000);
     
     // Price refresh every 5 minutes (only if assets exist) - less frequent for idle users
     refreshIntervalRef.current = setInterval(() => {
       if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
-        console.log('AUTOMATIC REFRESH triggered (5 minute interval)');
+        console.log('AUTOMATIC PRICE REFRESH triggered (5 minute interval)');
         performPriceFetch();
       }
     }, 300000); // Refresh every 5 minutes instead of 30 seconds
 
-    // Clean up the initial timer only
+    // Clean up intervals on unmount
     return () => {
-      clearTimeout(initialRefreshTimer);
-    };
-  }, [isInitialized, assets?.stocks?.length, assets?.crypto?.length, fetchExchangeRateData, performPriceFetch]); // Only depend on isInitialized to prevent multiple setups
-
-  // Separate useEffect for cleanup on unmount only
-  useEffect(() => {
-    return () => {
-      // Component is unmounting, clean up intervals
-      console.log('Component unmounting - cleaning up intervals');
+      console.log('Cleaning up refresh intervals');
       if (exchangeIntervalRef.current) {
         clearInterval(exchangeIntervalRef.current);
         exchangeIntervalRef.current = null;
@@ -427,9 +457,10 @@ export default function Home() {
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
       }
-      refreshOptimizer.reset();
     };
-  }, []); // Empty dependency array - only runs on mount/unmount
+  }, [isInitialized]); // Remove dependencies that cause re-renders
+
+  // Manual refresh functions
 
   // Save portfolio to Firestore whenever assets change
   useEffect(() => {
@@ -543,10 +574,48 @@ export default function Home() {
       // The Firebase listener will automatically update the portfolio state
       // No need to manually add to portfolio state manager
       
-      // Refresh prices after adding stock
+      // Immediately update portfolio with current price
+      const currentPrices = { ...prices };
+      currentPrices[`${stock.ticker}.JK`] = {
+        price: stock.price,
+        currency: stock.currency || 'IDR',
+        change: 0,
+        changeTime: '24h',
+        lastUpdate: new Date().toISOString()
+      };
+      updatePrices(currentPrices);
+      
+      // Rebuild portfolio immediately to reflect the new price
+      setTimeout(() => {
+        rebuildPortfolio();
+      }, 100);
+      
+      // Smart refresh - only fetch prices for the newly added asset
       setTimeout(async () => {
-        await fetchPrices(true);
-      }, 500);
+        try {
+          const response = await fetch('/api/prices', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              stocks: [`${stock.ticker}.JK`],
+              crypto: [],
+              exchangeRate: exchangeRate,
+              userId: user?.uid || null
+            }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const newPrices = { ...prices, ...data.prices };
+            updatePrices(newPrices);
+            rebuildPortfolio();
+          }
+        } catch (error) {
+          console.error('Error fetching updated price for new stock:', error);
+        }
+      }, 2000); // Wait 2 seconds before fetching updated price
       
       // Show success notification
       setConfirmModal({
@@ -594,7 +663,36 @@ export default function Home() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch crypto price');
+        if (response.status === 429) {
+          console.warn('Rate limit hit while adding crypto, will retry later');
+          // Mark rate limit hit in refresh optimizer
+          refreshOptimizer.markRateLimitHit();
+          
+          // Show rate limit notification with retry option
+          setConfirmModal({
+            isOpen: true,
+            title: t('rateLimitExceeded'),
+            message: t('rateLimitMessage') + ' Click OK to retry in 30 seconds.',
+            type: 'warning',
+            confirmText: 'OK',
+            onConfirm: () => {
+              setConfirmModal(null);
+              // Retry after 30 seconds
+              setTimeout(async () => {
+                try {
+                  await addCrypto(crypto);
+                } catch (retryError) {
+                  console.error('Retry failed:', retryError);
+                }
+              }, 30000);
+            }
+          });
+          return;
+        }
+        
+        // Handle other API errors
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch crypto price (HTTP ${response.status}): ${errorText}`);
       }
       
       const data = await response.json();
@@ -646,10 +744,48 @@ export default function Home() {
       // The Firebase listener will automatically update the portfolio state
       // No need to manually add to portfolio state manager
       
-      // Refresh prices after adding crypto
+      // Immediately update portfolio with current price
+      const currentPrices = { ...prices };
+      currentPrices[crypto.symbol] = {
+        price: crypto.price,
+        currency: 'USD',
+        change: 0,
+        changeTime: '24h',
+        lastUpdate: new Date().toISOString()
+      };
+      updatePrices(currentPrices);
+      
+      // Rebuild portfolio immediately to reflect the new price
+      setTimeout(() => {
+        rebuildPortfolio();
+      }, 100);
+      
+      // Smart refresh - only fetch prices for the newly added asset
       setTimeout(async () => {
-        await fetchPrices(true);
-      }, 500);
+        try {
+          const response = await fetch('/api/prices', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              stocks: [],
+              crypto: [crypto.symbol],
+              exchangeRate: exchangeRate,
+              userId: user?.uid || null
+            }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const newPrices = { ...prices, ...data.prices };
+            updatePrices(newPrices);
+            rebuildPortfolio();
+          }
+        } catch (error) {
+          console.error('Error fetching updated price for new crypto:', error);
+        }
+      }, 2000); // Wait 2 seconds before fetching updated price
       
       // Show success notification
       setConfirmModal({
@@ -985,6 +1121,10 @@ export default function Home() {
             updatePrices(data.prices);
             // Get the fresh price data
             priceData = data.prices[tickerKey];
+          } else if (response.status === 429) {
+            console.warn('Rate limit hit when fetching fresh price data for selling');
+            // Don't throw error, just use existing price data if available
+            priceData = asset.currentPrice ? { price: asset.currentPrice, currency: asset.currency || 'IDR' } : null;
           } else {
             console.warn(`API error when fetching fresh price data: ${response.status}`);
           }
@@ -1122,6 +1262,10 @@ export default function Home() {
             updatePrices(data.prices);
             // Get the fresh price data
             priceData = data.prices[crypto.symbol];
+          } else if (response.status === 429) {
+            console.warn('Rate limit hit when fetching fresh crypto price data for selling');
+            // Don't throw error, just use existing price data if available
+            priceData = asset.currentPrice ? { price: asset.currentPrice, currency: 'USD' } : null;
           } else {
             console.warn(`API error when fetching fresh crypto price data: ${response.status}`);
           }
@@ -1522,6 +1666,12 @@ export default function Home() {
             onClose={() => setShowAverageCalculator(false)}
           />
         )}
+        
+        {/* Rate Limit Notification */}
+        <Notification
+          notification={rateLimitNotification}
+          onClose={() => setRateLimitNotification(null)}
+        />
       </div>
     </ErrorBoundary>
   );

@@ -25,6 +25,9 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
       });
       
       if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       

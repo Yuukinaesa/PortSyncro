@@ -64,6 +64,9 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       });
       
       if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+        }
         const errorText = await response.text();
         throw new Error(`Failed to fetch stock price (HTTP ${response.status}): ${errorText}`);
       }

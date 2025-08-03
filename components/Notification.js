@@ -4,6 +4,14 @@ import Modal from './Modal';
 export default function Notification({ notification, onClose }) {
   if (!notification || !notification.isOpen) return null;
   
+  const handleConfirm = () => {
+    if (notification.onConfirm) {
+      notification.onConfirm();
+    } else {
+      onClose();
+    }
+  };
+  
   return (
     <Modal
       isOpen={notification.isOpen}
@@ -16,10 +24,10 @@ export default function Notification({ notification, onClose }) {
       </p>
       <div className="flex justify-end">
         <button
-          onClick={onClose}
+          onClick={handleConfirm}
           className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-all duration-200"
         >
-          Tutup
+          {notification.confirmText || 'OK'}
         </button>
       </div>
     </Modal>

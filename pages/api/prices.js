@@ -4,7 +4,7 @@ import { fetchStockPrices, fetchCryptoPrices } from '../../lib/fetchPrices';
 // Enhanced rate limiting with user-based tracking
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requests per minute
+const RATE_LIMIT_MAX_REQUESTS = 30; // Reduced from 100 to 30 requests per minute for better protection
 
 function checkRateLimit(identifier) {
   const now = Date.now();
@@ -63,7 +63,9 @@ export default async function handler(req, res) {
     console.log(`Rate limit exceeded for: ${rateLimitIdentifier}`);
     return res.status(429).json({ 
       message: 'Too many requests. Please try again later.',
-      retryAfter: 60
+      retryAfter: 60,
+      error: 'RATE_LIMIT_EXCEEDED',
+      identifier: rateLimitIdentifier
     });
   }
   

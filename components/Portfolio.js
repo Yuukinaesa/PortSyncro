@@ -899,7 +899,12 @@ export default function Portfolio({
         <div className="flex justify-center items-center py-12">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{t('updatingPrices')}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {assets?.stocks?.length === 0 && assets?.crypto?.length === 0 
+                ? t('loadingInitialData') 
+                : t('updatingPrices')
+              }
+            </p>
           </div>
         </div>
       ) : (
