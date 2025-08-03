@@ -81,7 +81,7 @@ PortSyncro bridges the gap between smart diversification and manageable portfoli
 
 In today's volatile market, having your investments spread across multiple platforms is smart risk management. But without proper tools, it becomes a nightmare to manage. PortSyncro gives you the security of diversification without the complexity of manual tracking.
 
-This project represents months of development and real-world problem-solving. It's not just another portfolio tracker—it's a solution born from actual investment challenges that many of us face.
+This project represents months of development and real-world problem-solving. It's not just another portfolio tracker, it's a solution born from actual investment challenges that many of us face.
 
 ---
 
