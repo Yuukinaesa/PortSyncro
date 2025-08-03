@@ -1014,7 +1014,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             }
                             
                             const gainUSD = asset.gainUSD !== undefined ? asset.gainUSD : gainLoss.gainUSD;
-                            return gainUSD === 0 ? '$0.00' : formatUSD(gainUSD);
+                            return gainUSD === 0 ? formatUSD(0) : formatUSD(gainUSD);
                           })()}
                         </span>
                         {/* Percentage */}

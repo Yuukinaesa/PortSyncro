@@ -197,7 +197,7 @@ export default function Home() {
   const formatPrice = useCallback((value, currency = 'IDR') => {
     try {
       if (value === undefined || value === null || isNaN(value) || value === 0) {
-        return currency === 'IDR' ? 'Rp0' : '$0.00';
+        return currency === 'IDR' ? formatIDR(0) : formatUSD(0);
       }
       
       if (currency === 'IDR') {

@@ -179,7 +179,7 @@ export default function TransactionHistory({
   // Format currency with better precision
   const formatCurrency = (value, currency) => {
     if (!value || isNaN(value)) {
-      return currency === 'IDR' ? 'Rp0' : '$0.00';
+      return currency === 'IDR' ? formatIDR(0) : formatUSD(0);
     }
     
     if (currency === 'IDR') {
