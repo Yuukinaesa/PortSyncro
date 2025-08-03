@@ -54,25 +54,58 @@ npm install
 npm run dev
 ```
 
-## 🛡️ Security Best Practices
+## 🌟 Key Features
 
-- Use environment variables for sensitive data
-- Validate all inputs before processing
-- Use HTTPS in production
-- Regular security audits with `npm audit`
-- Monitor security logs regularly
+- **📊 Real-time Portfolio Tracking** - Monitor stocks and crypto investments live
+- **💰 Average Price Calculator** - Advanced calculation for multiple transactions
+- **📈 Stock & Crypto Support** - Indonesian stocks (IDX) and global cryptocurrencies
+- **🔄 Transaction History** - Complete history with filtering and search
+- **🔐 Secure Authentication** - Firebase-based user management
+- **📱 Responsive Design** - Works on desktop and mobile devices
+- **🌍 Multi-language Support** - Indonesian and English interface
 
-## 📊 Security Score: 9.2/10
+## 🔗 Live Demo
 
-**Strengths:** Comprehensive validation, secure auth, encryption, rate limiting
-**Areas for improvement:** Replace console.log with secureLogger, update dependencies
+**[🌐 Visit PortSyncro Live](https://portsyncro.arfan.biz.id/)**
+
+## 📊 Data Sources
+
+- **Stocks**: Yahoo Finance API (Indonesia Stock Exchange)
+- **Cryptocurrencies**: CryptoCompare API (Global crypto data)
+- **Exchange Rates**: Exchange Rate API (USD/IDR conversion)
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ 
+- Firebase project
+
+### Environment Variables
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+NEXT_PUBLIC_ENCRYPTION_KEY=your_32_character_encryption_key
+```
+
+### Installation
+```bash
+git clone https://github.com/yourusername/portsyncro.git
+cd portsyncro
+npm install
+npm run dev
+```
 
 ## 🤝 Contributing
 
-1. Follow security guidelines in the codebase
-2. Use secureLogger for all logging
-3. Validate inputs in new features
-4. Test security measures thoroughly
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📄 License
 
@@ -80,4 +113,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Note**: Enterprise-grade security measures suitable for financial data management.
+**PortSyncro** - Sinkronisasi Portofolio yang Mudah untuk Kripto dan Saham
