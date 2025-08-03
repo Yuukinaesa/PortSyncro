@@ -19,30 +19,6 @@ A secure, real-time portfolio management application built with Next.js and Fire
   <img src="public/img/login.png" alt="Login" width="300" style="border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 5px;">
 </div>
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ 
-- Firebase project
-
-### Environment Variables
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-NEXT_PUBLIC_ENCRYPTION_KEY=your_32_character_encryption_key
-```
-
-### Installation
-```bash
-git clone https://github.com/yourusername/portsyncro.git
-cd portsyncro
-npm install
-npm run dev
-```
 
 ## 🌟 Key Features
 
@@ -54,16 +30,6 @@ npm run dev
 - **📱 Responsive Design** - Works on desktop and mobile devices
 - **🌍 Multi-language Support** - Indonesian and English interface
 
-## 🔗 Live Demo
-
-**[🌐 Visit PortSyncro Live](https://portsyncro.arfan.biz.id/)**
-
-## 📊 Data Sources
-
-- **Stocks**: Yahoo Finance API (Indonesia Stock Exchange)
-- **Cryptocurrencies**: CryptoCompare API (Global crypto data)
-- **Exchange Rates**: Exchange Rate API (USD/IDR conversion)
-
 ## 🔒 Security Features
 
 - **Firebase Authentication** with secure session management
@@ -74,35 +40,15 @@ npm run dev
 - **Security headers** (CSP, HSTS, X-Frame-Options)
 - **Real-time threat detection** and monitoring
 
-## 🚀 Quick Start
+## 📊 Data Sources
 
-### Prerequisites
-- Node.js 18+ 
-- Firebase project
+- **Stocks**: Yahoo Finance API (Indonesia Stock Exchange)
+- **Cryptocurrencies**: CryptoCompare API (Global crypto data)
+- **Exchange Rates**: Exchange Rate API (USD/IDR conversion)
 
-### Environment Variables
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-NEXT_PUBLIC_ENCRYPTION_KEY=your_32_character_encryption_key
-```
+## 🔗 Live Demo
 
-### Installation
-```bash
-git clone https://github.com/yourusername/portsyncro.git
-cd portsyncro
-npm install
-npm run dev
-```
+**[🌐 Visit PortSyncro Live](https://portsyncro.arfan.biz.id/)**
 
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
----
 
 **PortSyncro** - Sinkronisasi Portofolio yang Mudah untuk Kripto dan Saham
