@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/authContext';
+import { secureLogger } from './../lib/security';
 
 export default function ProtectedRoute({ children, authPage = false, dashboardPage = false }) {
   const { user, loading } = useAuth();
@@ -45,7 +46,7 @@ export default function ProtectedRoute({ children, authPage = false, dashboardPa
     // Timeout jaga-jaga jika loading terlalu lama
     const timeoutId = setTimeout(() => {
       if (loading) {
-        console.log("Auth check timed out, redirecting");
+        secureLogger.log("Auth check timed out, redirecting");
         if (authPage) {
           router.push('/');
         } else {

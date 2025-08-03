@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
 import { normalizeNumberInput } from '../lib/utils';
+import { secureLogger } from './../lib/security';
+import { decryptData } from '../lib/encryption';
 
 export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
   const [symbol, setSymbol] = useState('');
@@ -33,13 +35,29 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
       
       const data = await response.json();
       
-      if (data.prices && data.prices[symbol] && data.prices[symbol].price) {
-        return data.prices[symbol].price;
+      // Handle encrypted response if needed
+      let prices = data.prices;
+      if (data.security && data.security.encrypted && prices) {
+        try {
+          const decryptedPrices = decryptData(prices);
+          if (decryptedPrices) {
+            prices = decryptedPrices;
+          } else {
+            throw new Error('Failed to decrypt price data');
+          }
+        } catch (decryptError) {
+          secureLogger.error('Decryption error:', decryptError);
+          throw new Error('Failed to decrypt price data');
+        }
+      }
+      
+      if (prices && prices[symbol] && prices[symbol].price) {
+        return prices[symbol].price;
       }
       
       throw new Error('No price data available');
     } catch (error) {
-      console.error('Error fetching crypto price:', error);
+      secureLogger.error('Error fetching crypto price:', error);
       throw error;
     }
   };
@@ -96,7 +114,7 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
         addedAt: new Date().toISOString()
       };
       
-      console.log('Adding crypto with current price:', crypto);
+      secureLogger.log('Adding crypto with current price:', crypto);
       onAdd(crypto);
       
       setSymbol('');
@@ -106,7 +124,7 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
       if (onComplete) onComplete();
       
     } catch (err) {
-      console.error('Error in handleSubmit:', err);
+      secureLogger.error('Error in handleSubmit:', err);
       setError(t('failedToAddCrypto', { error: err.message }));
     } finally {
       setIsLoading(false);

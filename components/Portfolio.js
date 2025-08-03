@@ -6,6 +6,7 @@ import { fetchExchangeRate } from '../lib/fetchPrices';
 import { formatNumber, formatIDR, formatUSD, formatNumberUSD } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
 import { useTheme } from '../lib/themeContext';
+import { secureLogger } from './../lib/security';
 
 export default function Portfolio({ 
   assets, 
@@ -38,7 +39,7 @@ export default function Portfolio({
   // Only log when asset count actually changes
   useEffect(() => {
     if (assetCount.stocks > 0 || assetCount.crypto > 0) {
-      console.log('Portfolio component received assets:', assetCount);
+      secureLogger.log('Portfolio component received assets:', assetCount);
     }
   }, [assetCount]);
   
@@ -119,7 +120,7 @@ export default function Portfolio({
       setExchangeRateSource('exchangerate-api.com');
       setExchangeRateError(null);
     } catch (error) {
-      console.error('Error fetching exchange rate:', error);
+      secureLogger.error('Error fetching exchange rate:', error);
       setExchangeRateError('Failed to fetch exchange rate');
     } finally {
       setLoadingExchangeRate(false);
@@ -133,7 +134,7 @@ export default function Portfolio({
         await onRefreshPrices();
       }
     } catch (error) {
-      console.error('Error fetching prices:', error);
+      secureLogger.error('Error fetching prices:', error);
     }
   }, [onRefreshPrices]);
 
@@ -153,7 +154,7 @@ export default function Portfolio({
         await fetchRate();
       }
     } catch (error) {
-      console.error('Error during refresh:', error);
+      secureLogger.error('Error during refresh:', error);
     }
   }, [onRefreshPrices, onRefreshExchangeRate, fetchPrices, fetchRate]);
 
@@ -164,7 +165,7 @@ export default function Portfolio({
   //   const missingPrices = hasAssets && hasPrices && Object.keys(prices).length < (assets?.stocks?.length + assets?.crypto?.length);
 
   //   if (missingPrices && !debouncedLoading) {
-  //     console.log('Auto-refreshing due to missing prices');
+  //     secureLogger.log('Auto-refreshing due to missing prices');
   //     const autoRefreshTimer = setTimeout(() => {
   //       // Call parent refresh functions directly to avoid dependency issues
   //       if (onRefreshPrices) {
@@ -556,7 +557,7 @@ export default function Portfolio({
       }, 100);
       
     } catch (error) {
-      console.error('Error exporting portfolio:', error);
+      secureLogger.error('Error exporting portfolio:', error);
       setNotification({
         type: 'error',
         title: t('error'),

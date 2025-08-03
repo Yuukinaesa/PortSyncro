@@ -12,6 +12,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { isDemoAccountAvailable } from '../lib/utils';
+import { secureLogger } from '../lib/security';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -38,10 +39,10 @@ export default function Register() {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log("User registered successfully:", userCredential.user);
+      secureLogger.log("User registered successfully:", userCredential.user);
       router.push('/');
     } catch (error) {
-      console.error("Error signing up:", error);
+      secureLogger.error("Error signing up:", error);
       if (error.code === 'auth/email-already-in-use') {
         setError(t('emailAlreadyInUse'));
       } else if (error.code === 'auth/invalid-email') {
@@ -71,7 +72,7 @@ export default function Register() {
       await signInWithEmailAndPassword(auth, demoEmail, demoPassword);
       router.push('/');
     } catch (error) {
-      console.error('Demo login error:', error);
+      secureLogger.error('Demo login error:', error);
       if (error.message === 'Demo account credentials not configured') {
         setError('Demo account is not available');
       } else {

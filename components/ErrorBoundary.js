@@ -1,4 +1,5 @@
 import React from 'react';
+import { secureLogger } from './../lib/security';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -13,12 +14,12 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     // Log error to console for debugging
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    secureLogger.error('ErrorBoundary caught an error:', error, errorInfo);
     
     // Log additional context for debugging
     if (error.message.includes('Cannot read properties of undefined')) {
-      console.error('This appears to be a null/undefined reference error');
-      console.error('Error location:', errorInfo.componentStack);
+      secureLogger.error('This appears to be a null/undefined reference error');
+      secureLogger.error('Error location:', errorInfo.componentStack);
     }
     
     // Update state with error details

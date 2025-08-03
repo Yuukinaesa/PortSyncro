@@ -111,7 +111,6 @@ export default function Login() {
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4 transition-colors">
         <Head>
           <title>Login | PortSyncro</title>
-
         </Head>
 
         <div className="absolute top-4 right-4 flex gap-2">

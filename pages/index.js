@@ -21,6 +21,8 @@ import AveragePriceCalculator from '../components/AveragePriceCalculator';
 import refreshOptimizer from '../lib/refreshOptimizer';
 import { usePortfolioState } from '../lib/usePortfolioState';
 import Notification from '../components/Notification';
+import { secureLogger } from './../lib/security';
+import { generateSecureToken, decryptData } from '../lib/encryption';
 
 // Helper function to clean undefined values from objects
 const cleanUndefinedValues = (obj) => {
@@ -42,7 +44,7 @@ const cleanUndefinedValues = (obj) => {
 
 // Simplified function to build assets from transactions
 function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [] }) {
-  console.log('buildAssetsFromTransactions called with:', {
+  secureLogger.log('buildAssetsFromTransactions called with:', {
     transactionsLength: transactions?.length || 0,
     pricesKeys: Object.keys(prices || {}),
     currentAssetsStocks: currentAssets?.stocks?.length || 0,
@@ -51,7 +53,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
   
   // Early return if no transactions
   if (!transactions || transactions.length === 0) {
-    console.log('No transactions, returning current assets');
+    secureLogger.log('No transactions, returning current assets');
     return currentAssets;
   }
   
@@ -84,7 +86,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     // Skip delete transactions when building assets
     const validTransactions = txs.filter(tx => tx.type !== 'delete');
     if (validTransactions.length === 0) {
-      console.log(`Skipping ${ticker} - no valid transactions (only delete transactions)`);
+      secureLogger.log(`Skipping ${ticker} - no valid transactions (only delete transactions)`);
       return null;
     }
     
@@ -92,7 +94,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     
     // Check if the asset is fully sold (amount <= 0)
     if (pos.amount <= 0) {
-      console.log(`Skipping ${ticker} - fully sold (amount: ${pos.amount})`);
+      secureLogger.log(`Skipping ${ticker} - fully sold (amount: ${pos.amount})`);
       return null;
     }
     
@@ -120,7 +122,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     // Skip delete transactions when building assets
     const validTransactions = txs.filter(tx => tx.type !== 'delete');
     if (validTransactions.length === 0) {
-      console.log(`Skipping ${symbol} - no valid transactions (only delete transactions)`);
+      secureLogger.log(`Skipping ${symbol} - no valid transactions (only delete transactions)`);
       return null;
     }
     
@@ -128,7 +130,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     
     // Check if the asset is fully sold (amount <= 0)
     if (pos.amount <= 0) {
-      console.log(`Skipping ${symbol} - fully sold (amount: ${pos.amount})`);
+      secureLogger.log(`Skipping ${symbol} - fully sold (amount: ${pos.amount})`);
       return null;
     }
     
@@ -206,7 +208,7 @@ export default function Home() {
         return formatUSD(value, 2);
       }
     } catch (error) {
-      console.error('Error formatting price:', error);
+      secureLogger.error('Error formatting price:', error);
       return value.toString();
     }
   }, []);
@@ -221,12 +223,12 @@ export default function Home() {
           try {
             setLoading(true);
             const portfolio = await getUserPortfolio();
-            console.log('Loaded portfolio from Firestore:', portfolio);
+            secureLogger.log('Loaded portfolio from Firestore:', portfolio);
             
             // Initialize portfolio state manager
             initializePortfolio(portfolio);
           } catch (error) {
-            console.error("Error loading portfolio:", error);
+            secureLogger.error("Error loading portfolio:", error);
           } finally {
             setLoading(false);
           }
@@ -243,7 +245,7 @@ export default function Home() {
     
     try {
       if (!assets) {
-        console.log('No assets to fetch prices for');
+        secureLogger.log('No assets to fetch prices for');
         return;
       }
     
@@ -263,7 +265,7 @@ export default function Home() {
         .map(crypto => crypto.symbol);
     
       if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
-        console.log('No valid tickers to fetch');
+        secureLogger.log('No valid tickers to fetch');
         return;
       }
     
@@ -272,23 +274,28 @@ export default function Home() {
         crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim())
       };
     
-      console.log('Fetching prices for:', requestData);
+      secureLogger.log('Fetching prices for:', requestData);
     
+      // Generate CSRF token for the request
+      const csrfToken = generateSecureToken(32);
+      
       const response = await fetch('/api/prices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
         },
         body: JSON.stringify({
           ...requestData,
           exchangeRate: typeof exchangeRate === 'number' ? exchangeRate : null,
-          userId: user?.uid || null
+          userId: user?.uid || null,
+          csrfToken: csrfToken
         }),
       });
     
       if (!response.ok) {
         if (response.status === 429) {
-          console.warn('Rate limit hit, will retry later');
+          secureLogger.warn('Rate limit hit, will retry later');
           // Mark rate limit hit in refresh optimizer
           refreshOptimizer.markRateLimitHit();
           
@@ -305,7 +312,7 @@ export default function Home() {
                 try {
                   await performPriceFetch();
                 } catch (retryError) {
-                  console.error('Retry failed:', retryError);
+                  secureLogger.error('Retry failed:', retryError);
                 }
               }, 30000);
             }
@@ -313,17 +320,35 @@ export default function Home() {
           
           return; // Don't throw error for rate limiting
         }
-        console.warn(`API error: ${response.status}`);
+        secureLogger.warn(`API error: ${response.status}`);
         return;
       }
 
       const data = await response.json();
-      console.log('Received prices:', data.prices);
+      secureLogger.log('Received prices:', data.prices);
+      
+      // Handle encrypted response if needed
+      let prices = data.prices;
+      if (data.security && data.security.encrypted && prices) {
+        try {
+          const decryptedPrices = decryptData(prices);
+          if (decryptedPrices) {
+            prices = decryptedPrices;
+            secureLogger.log('Successfully decrypted prices');
+          } else {
+            secureLogger.error('Failed to decrypt prices');
+            return;
+          }
+        } catch (decryptError) {
+          secureLogger.error('Decryption error:', decryptError);
+          return;
+        }
+      }
       
       // Reset rate limit status on successful request
       refreshOptimizer.resetRateLimit();
       
-      updatePrices(data.prices);
+      updatePrices(prices);
       
       // Force portfolio value update after price update
       setTimeout(() => {
@@ -331,7 +356,7 @@ export default function Home() {
       }, 100);
       
     } catch (error) {
-      console.error('Error fetching prices:', error);
+      secureLogger.error('Error fetching prices:', error);
     } finally {
       setPricesLoading(false);
     }
@@ -340,7 +365,7 @@ export default function Home() {
   // Simplified price fetching function with debouncing and refresh optimizer
   const fetchPrices = useCallback(async (immediate = false) => {
     if (pricesLoading && !immediate) {
-      console.log('Skipping fetch - already loading prices');
+      secureLogger.log('Skipping fetch - already loading prices');
       return; // Prevent concurrent requests
     }
     
@@ -354,7 +379,7 @@ export default function Home() {
       if (refreshOptimizer.canRefresh()) {
         await performPriceFetch();
       } else {
-        console.log('Rate limited, queuing immediate refresh');
+        secureLogger.log('Rate limited, queuing immediate refresh');
         refreshOptimizer.queueRefresh(async () => {
           await performPriceFetch();
         });
@@ -370,7 +395,7 @@ export default function Home() {
         updateExchangeRate(rateData.rate);
       }
     } catch (error) {
-      console.error('Error fetching exchange rate:', error);
+      secureLogger.error('Error fetching exchange rate:', error);
       updateExchangeRate(null);
     }
   }, [updateExchangeRate]); // Add back the dependency
@@ -383,20 +408,20 @@ export default function Home() {
         updateExchangeRate(rateData.rate);
       }
     } catch (error) {
-      console.error('Error fetching exchange rate:', error);
+      secureLogger.error('Error fetching exchange rate:', error);
       updateExchangeRate(null);
     }
   }, [updateExchangeRate]); // Add back the dependency
 
   // Manual trigger for immediate refresh (prices only, not exchange rate)
   const triggerImmediateRefresh = useCallback(async () => {
-    console.log('Manual refresh triggered (prices only)');
+    secureLogger.log('Manual refresh triggered (prices only)');
     try {
       await performPriceFetch(); // Force immediate refresh
       rebuildPortfolio();
-      console.log('Manual refresh completed');
+      secureLogger.log('Manual refresh completed');
     } catch (error) {
-      console.error('Error in manual refresh:', error);
+      secureLogger.error('Error in manual refresh:', error);
     }
   }, [performPriceFetch, rebuildPortfolio]); // Add back the dependencies
 
@@ -412,7 +437,7 @@ export default function Home() {
     // Only set up intervals after initialization
     if (!isInitialized) return;
     
-    console.log('Setting up refresh intervals - isInitialized:', isInitialized);
+    secureLogger.log('Setting up refresh intervals - isInitialized:', isInitialized);
     
     // Initial refresh when component mounts (immediate) - ONLY ONCE
     if (!initialRefreshDoneRef.current && !isInitializingRef.current) {
@@ -422,10 +447,10 @@ export default function Home() {
       
       // Immediate price refresh when web is first opened - ONLY ONCE
       if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
-        console.log('IMMEDIATE REFRESH triggered (first time opening web)');
+        secureLogger.log('IMMEDIATE REFRESH triggered (first time opening web)');
         performPriceFetch();
       } else {
-        console.log('No assets available for immediate refresh, skipping');
+        secureLogger.log('No assets available for immediate refresh, skipping');
       }
       
       initialRefreshDoneRef.current = true;
@@ -434,21 +459,21 @@ export default function Home() {
     
     // Exchange rate update every 5 minutes (less frequent)
     exchangeIntervalRef.current = setInterval(() => {
-      console.log('AUTOMATIC EXCHANGE RATE REFRESH triggered (5 minute interval)');
+      secureLogger.log('AUTOMATIC EXCHANGE RATE REFRESH triggered (5 minute interval)');
       fetchExchangeRateData();
     }, 300000);
     
     // Price refresh every 5 minutes (only if assets exist) - less frequent for idle users
     refreshIntervalRef.current = setInterval(() => {
       if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
-        console.log('AUTOMATIC PRICE REFRESH triggered (5 minute interval)');
+        secureLogger.log('AUTOMATIC PRICE REFRESH triggered (5 minute interval)');
         performPriceFetch();
       }
     }, 300000); // Refresh every 5 minutes instead of 30 seconds
 
     // Clean up intervals on unmount
     return () => {
-      console.log('Cleaning up refresh intervals');
+      secureLogger.log('Cleaning up refresh intervals');
       if (exchangeIntervalRef.current) {
         clearInterval(exchangeIntervalRef.current);
         exchangeIntervalRef.current = null;
@@ -472,18 +497,18 @@ export default function Home() {
   // Fetch transactions and update portfolio state
   useEffect(() => {
     if (!user) {
-      console.log('No user found, skipping transaction fetch');
+      secureLogger.log('No user found, skipping transaction fetch');
       return;
     }
 
-    console.log('Fetching transactions for user:', user.uid);
+    secureLogger.log('Fetching transactions for user:', user.uid);
     const q = query(
       collection(db, 'users', user.uid, 'transactions'),
       orderBy('timestamp', 'desc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log('Received transaction snapshot:', snapshot.size, 'documents');
+      secureLogger.log('Received transaction snapshot:', snapshot.size, 'documents');
       const newTransactions = snapshot.docs.map(doc => {
         const data = doc.data();
         const timestamp = data.timestamp;
@@ -499,11 +524,11 @@ export default function Home() {
       // Update portfolio state manager
       updateTransactions(newTransactions);
     }, (error) => {
-      console.error('Error in transaction listener:', error);
+      secureLogger.error('Error in transaction listener:', error);
     });
 
     return () => {
-      console.log('Cleaning up transaction listener');
+      secureLogger.log('Cleaning up transaction listener');
       unsubscribe();
     };
   }, [user, updateTransactions]);
@@ -514,7 +539,7 @@ export default function Home() {
 
   const addStock = async (stock) => {
     try {
-      console.log('Adding stock:', stock);
+      secureLogger.log('Adding stock:', stock);
       
       if (!user) {
         throw new Error('User not authenticated');
@@ -569,7 +594,7 @@ export default function Home() {
       
       // Save to Firestore
       const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
-      console.log('Transaction saved with ID:', transactionRef.id);
+      secureLogger.log('Transaction saved with ID:', transactionRef.id);
       
       // The Firebase listener will automatically update the portfolio state
       // No need to manually add to portfolio state manager
@@ -608,12 +633,30 @@ export default function Home() {
           
           if (response.ok) {
             const data = await response.json();
-            const newPrices = { ...prices, ...data.prices };
+            
+            // Handle encrypted response if needed
+            let responsePrices = data.prices;
+            if (data.security && data.security.encrypted && responsePrices) {
+              try {
+                const decryptedPrices = decryptData(responsePrices);
+                if (decryptedPrices) {
+                  responsePrices = decryptedPrices;
+                } else {
+                  secureLogger.error('Failed to decrypt prices');
+                  return;
+                }
+              } catch (decryptError) {
+                secureLogger.error('Decryption error:', decryptError);
+                return;
+              }
+            }
+            
+            const newPrices = { ...prices, ...responsePrices };
             updatePrices(newPrices);
             rebuildPortfolio();
           }
         } catch (error) {
-          console.error('Error fetching updated price for new stock:', error);
+          secureLogger.error('Error fetching updated price for new stock:', error);
         }
       }, 2000); // Wait 2 seconds before fetching updated price
       
@@ -628,7 +671,7 @@ export default function Home() {
       });
 
     } catch (error) {
-      console.error('Error in addStock:', error);
+      secureLogger.error('Error in addStock:', error);
       setConfirmModal({
         isOpen: true,
         title: 'Error',
@@ -642,7 +685,7 @@ export default function Home() {
   
   const addCrypto = async (crypto) => {
     try {
-      console.log('Adding crypto:', crypto);
+      secureLogger.log('Adding crypto:', crypto);
       
       if (!user) {
         throw new Error('User not authenticated');
@@ -664,7 +707,7 @@ export default function Home() {
       
       if (!response.ok) {
         if (response.status === 429) {
-          console.warn('Rate limit hit while adding crypto, will retry later');
+          secureLogger.warn('Rate limit hit while adding crypto, will retry later');
           // Mark rate limit hit in refresh optimizer
           refreshOptimizer.markRateLimitHit();
           
@@ -682,7 +725,7 @@ export default function Home() {
                 try {
                   await addCrypto(crypto);
                 } catch (retryError) {
-                  console.error('Retry failed:', retryError);
+                  secureLogger.error('Retry failed:', retryError);
                 }
               }, 30000);
             }
@@ -702,7 +745,7 @@ export default function Home() {
         throw new Error('Invalid crypto price data received');
       }
       
-      console.log('Fetched crypto price:', cryptoPrice);
+      secureLogger.log('Fetched crypto price:', cryptoPrice);
       
       // Format timestamp
       const now = new Date();
@@ -739,7 +782,7 @@ export default function Home() {
       
       // Save to Firestore
       const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
-      console.log('Crypto transaction saved with ID:', transactionRef.id);
+      secureLogger.log('Crypto transaction saved with ID:', transactionRef.id);
       
       // The Firebase listener will automatically update the portfolio state
       // No need to manually add to portfolio state manager
@@ -778,12 +821,30 @@ export default function Home() {
           
           if (response.ok) {
             const data = await response.json();
-            const newPrices = { ...prices, ...data.prices };
+            
+            // Handle encrypted response if needed
+            let responsePrices = data.prices;
+            if (data.security && data.security.encrypted && responsePrices) {
+              try {
+                const decryptedPrices = decryptData(responsePrices);
+                if (decryptedPrices) {
+                  responsePrices = decryptedPrices;
+                } else {
+                  secureLogger.error('Failed to decrypt prices');
+                  return;
+                }
+              } catch (decryptError) {
+                secureLogger.error('Decryption error:', decryptError);
+                return;
+              }
+            }
+            
+            const newPrices = { ...prices, ...responsePrices };
             updatePrices(newPrices);
             rebuildPortfolio();
           }
         } catch (error) {
-          console.error('Error fetching updated price for new crypto:', error);
+          secureLogger.error('Error fetching updated price for new crypto:', error);
         }
       }, 2000); // Wait 2 seconds before fetching updated price
       
@@ -798,7 +859,7 @@ export default function Home() {
       });
 
     } catch (error) {
-      console.error('Error in addCrypto:', error);
+      secureLogger.error('Error in addCrypto:', error);
       setConfirmModal({
         isOpen: true,
         title: 'Error',
@@ -812,7 +873,7 @@ export default function Home() {
 
   // Portfolio State Manager handles all updates automatically
   const updateStock = (ticker, updatedStock) => {
-    console.log('updateStock called for:', ticker, updatedStock);
+    secureLogger.log('updateStock called for:', ticker, updatedStock);
     
     // Validate that lots is a whole number
     validateIDXLots(updatedStock.lots);
@@ -834,13 +895,13 @@ export default function Home() {
       description: 'Average price updated by user'
     };
     
-    console.log('Update transaction created:', updateTransaction);
+    secureLogger.log('Update transaction created:', updateTransaction);
     
     // Save to Firestore first
     const saveToFirestore = async () => {
       try {
         const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), updateTransaction);
-        console.log('Update transaction saved to Firestore with ID:', transactionRef.id);
+        secureLogger.log('Update transaction saved to Firestore with ID:', transactionRef.id);
         
         // Add to portfolio state manager
         addTransaction({
@@ -850,7 +911,7 @@ export default function Home() {
         });
         
         // Force portfolio rebuild with multiple attempts
-        console.log('Force portfolio rebuild after updating stock');
+        secureLogger.log('Force portfolio rebuild after updating stock');
         
         // First attempt - immediate
         rebuildPortfolio();
@@ -871,7 +932,7 @@ export default function Home() {
         }, 500);
         
       } catch (error) {
-        console.error('Error saving update transaction to Firestore:', error);
+        secureLogger.error('Error saving update transaction to Firestore:', error);
       }
     };
     
@@ -880,7 +941,7 @@ export default function Home() {
   };
 
   const updateCrypto = (symbol, updatedCrypto) => {
-    console.log('updateCrypto called for:', symbol, updatedCrypto);
+    secureLogger.log('updateCrypto called for:', symbol, updatedCrypto);
     
     // Create a transaction to update the average price
     const updateTransaction = {
@@ -899,13 +960,13 @@ export default function Home() {
       description: 'Average price updated by user'
     };
     
-    console.log('Update transaction created:', updateTransaction);
+    secureLogger.log('Update transaction created:', updateTransaction);
     
     // Save to Firestore first
     const saveToFirestore = async () => {
       try {
         const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), updateTransaction);
-        console.log('Update transaction saved to Firestore with ID:', transactionRef.id);
+        secureLogger.log('Update transaction saved to Firestore with ID:', transactionRef.id);
         
         // Add to portfolio state manager
         addTransaction({
@@ -915,7 +976,7 @@ export default function Home() {
         });
         
         // Force portfolio rebuild with multiple attempts
-        console.log('Force portfolio rebuild after updating crypto');
+        secureLogger.log('Force portfolio rebuild after updating crypto');
         
         // First attempt - immediate
         rebuildPortfolio();
@@ -936,7 +997,7 @@ export default function Home() {
         }, 500);
         
       } catch (error) {
-        console.error('Error saving update transaction to Firestore:', error);
+        secureLogger.error('Error saving update transaction to Firestore:', error);
       }
     };
     
@@ -946,12 +1007,12 @@ export default function Home() {
   
   const deleteStock = async (ticker) => {
     try {
-      console.log('DELETE stock:', ticker);
+      secureLogger.log('DELETE stock:', ticker);
       
       // Check if stock exists
       const stock = getAsset('stock', ticker);
       if (!stock) {
-        console.error('Stock not found:', ticker);
+        secureLogger.error('Stock not found:', ticker);
         return;
       }
       
@@ -984,7 +1045,7 @@ export default function Home() {
       });
       
     } catch (error) {
-      console.error('Error deleting stock:', error);
+      secureLogger.error('Error deleting stock:', error);
       setConfirmModal({
         isOpen: true,
         title: 'Error',
@@ -998,12 +1059,12 @@ export default function Home() {
   
   const deleteCrypto = async (symbol) => {
     try {
-      console.log('DELETE crypto:', symbol);
+      secureLogger.log('DELETE crypto:', symbol);
       
       // Check if crypto exists
       const crypto = getAsset('crypto', symbol);
       if (!crypto) {
-        console.error('Crypto not found:', symbol);
+        secureLogger.error('Crypto not found:', symbol);
         return;
       }
       
@@ -1036,7 +1097,7 @@ export default function Home() {
       });
 
     } catch (error) {
-      console.error('Error deleting crypto:', error);
+      secureLogger.error('Error deleting crypto:', error);
       setConfirmModal({
         isOpen: true,
         title: 'Error',
@@ -1055,7 +1116,7 @@ export default function Home() {
       // Find the stock index by ticker
       const stockIndex = assets?.stocks?.findIndex(stock => stock.ticker === ticker);
       if (stockIndex === -1) {
-        console.error('Stock not found:', ticker);
+        secureLogger.error('Stock not found:', ticker);
         return;
       }
       
@@ -1067,7 +1128,7 @@ export default function Home() {
       let priceData = prices[tickerKey];
       if (!priceData) {
         // Try to fetch fresh price data before selling
-        console.log('Price data not available, attempting to fetch fresh data...');
+        secureLogger.log('Price data not available, attempting to fetch fresh data...');
         
         // Fetch fresh prices immediately without debounce
         const stockTickers = [`${asset.ticker}.JK`];
@@ -1091,19 +1152,37 @@ export default function Home() {
           
           if (response.ok) {
             const data = await response.json();
+            
+            // Handle encrypted response if needed
+            let responsePrices = data.prices;
+            if (data.security && data.security.encrypted && responsePrices) {
+              try {
+                const decryptedPrices = decryptData(responsePrices);
+                if (decryptedPrices) {
+                  responsePrices = decryptedPrices;
+                } else {
+                  secureLogger.error('Failed to decrypt prices');
+                  return;
+                }
+              } catch (decryptError) {
+                secureLogger.error('Decryption error:', decryptError);
+                return;
+              }
+            }
+            
             // Update prices state with fresh data
-            updatePrices(data.prices);
+            updatePrices(responsePrices);
             // Get the fresh price data
-            priceData = data.prices[tickerKey];
+            priceData = responsePrices[tickerKey];
           } else if (response.status === 429) {
-            console.warn('Rate limit hit when fetching fresh price data for selling');
+            secureLogger.warn('Rate limit hit when fetching fresh price data for selling');
             // Don't throw error, just use existing price data if available
             priceData = asset.currentPrice ? { price: asset.currentPrice, currency: asset.currency || 'IDR' } : null;
           } else {
-            console.warn(`API error when fetching fresh price data: ${response.status}`);
+            secureLogger.warn(`API error when fetching fresh price data: ${response.status}`);
           }
         } catch (fetchError) {
-          console.error('Error fetching fresh price data:', fetchError);
+          secureLogger.error('Error fetching fresh price data:', fetchError);
         }
         
         // If still no price data after fresh fetch, throw error
@@ -1155,7 +1234,7 @@ export default function Home() {
       // Save transaction to Firestore
       if (user) {
         const docRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
-        console.log('Sell transaction saved with ID:', docRef.id, 'Data:', transactionData);
+        secureLogger.log('Sell transaction saved with ID:', docRef.id, 'Data:', transactionData);
       }
 
       // Show success notification
@@ -1170,13 +1249,13 @@ export default function Home() {
       
       // Force portfolio rebuild and refresh after selling
       setTimeout(async () => {
-        console.log('Forcing portfolio rebuild after sell transaction');
+        secureLogger.log('Forcing portfolio rebuild after sell transaction');
         await fetchPrices(true); // Force immediate refresh
         rebuildPortfolio(); // Force portfolio rebuild
       }, 500);
 
     } catch (error) {
-      console.error('Error selling stock:', error);
+      secureLogger.error('Error selling stock:', error);
       setConfirmModal({
         isOpen: true,
         title: 'Error Selling Stock',
@@ -1197,7 +1276,7 @@ export default function Home() {
       // Find the crypto index by symbol
       const cryptoIndex = assets?.crypto?.findIndex(crypto => crypto.symbol === symbol);
       if (cryptoIndex === -1) {
-        console.error('Crypto not found:', symbol);
+        secureLogger.error('Crypto not found:', symbol);
         return;
       }
       
@@ -1208,7 +1287,7 @@ export default function Home() {
       let priceData = prices[crypto.symbol];
       if (!priceData) {
         // Try to fetch fresh price data before selling
-        console.log('Crypto price data not available, attempting to fetch fresh data...');
+        secureLogger.log('Crypto price data not available, attempting to fetch fresh data...');
         
         // Fetch fresh prices immediately without debounce
         const cryptoSymbols = [crypto.symbol];
@@ -1232,19 +1311,37 @@ export default function Home() {
           
           if (response.ok) {
             const data = await response.json();
+            
+            // Handle encrypted response if needed
+            let responsePrices = data.prices;
+            if (data.security && data.security.encrypted && responsePrices) {
+              try {
+                const decryptedPrices = decryptData(responsePrices);
+                if (decryptedPrices) {
+                  responsePrices = decryptedPrices;
+                } else {
+                  secureLogger.error('Failed to decrypt prices');
+                  return;
+                }
+              } catch (decryptError) {
+                secureLogger.error('Decryption error:', decryptError);
+                return;
+              }
+            }
+            
             // Update prices state with fresh data
-            updatePrices(data.prices);
+            updatePrices(responsePrices);
             // Get the fresh price data
-            priceData = data.prices[crypto.symbol];
+            priceData = responsePrices[crypto.symbol];
           } else if (response.status === 429) {
-            console.warn('Rate limit hit when fetching fresh crypto price data for selling');
+            secureLogger.warn('Rate limit hit when fetching fresh crypto price data for selling');
             // Don't throw error, just use existing price data if available
             priceData = asset.currentPrice ? { price: asset.currentPrice, currency: 'USD' } : null;
           } else {
-            console.warn(`API error when fetching fresh crypto price data: ${response.status}`);
+            secureLogger.warn(`API error when fetching fresh crypto price data: ${response.status}`);
           }
         } catch (fetchError) {
-          console.error('Error fetching fresh crypto price data:', fetchError);
+          secureLogger.error('Error fetching fresh crypto price data:', fetchError);
         }
         
         // If still no price data after fresh fetch, throw error
@@ -1289,7 +1386,7 @@ export default function Home() {
       // Save transaction to Firestore
       if (user) {
         const docRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transaction);
-        console.log('Crypto sell transaction saved with ID:', docRef.id, 'Data:', transaction);
+        secureLogger.log('Crypto sell transaction saved with ID:', docRef.id, 'Data:', transaction);
       }
 
       // Show success notification
@@ -1304,13 +1401,13 @@ export default function Home() {
       
       // Force portfolio rebuild and refresh after selling
       setTimeout(async () => {
-        console.log('Forcing portfolio rebuild after sell transaction');
+        secureLogger.log('Forcing portfolio rebuild after sell transaction');
         await fetchPrices(true); // Force immediate refresh
         rebuildPortfolio(); // Force portfolio rebuild
       }, 500);
 
     } catch (error) {
-      console.error('Error selling crypto:', error);
+      secureLogger.error('Error selling crypto:', error);
       setConfirmModal({
         isOpen: true,
         title: 'Error Selling Crypto',
@@ -1555,7 +1652,7 @@ export default function Home() {
                     onTransactionsUpdate={() => {
                       // The Firebase listener will automatically update the transactions
                       // No need to manually update here
-                      console.log('Transaction updated, Firebase listener will handle refresh');
+                      secureLogger.log('Transaction updated, Firebase listener will handle refresh');
                     }}
                     exchangeRate={exchangeRate}
                   />
