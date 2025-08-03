@@ -7,7 +7,7 @@ import PropTypes from 'prop-types';
 import ErrorBoundary from './ErrorBoundary';
 import { useLanguage } from '../lib/languageContext';
 import { formatIDR, formatUSD, formatNumber, formatNumberUSD } from '../lib/utils';
-import { doc, deleteDoc, collection } from 'firebase/firestore';
+import { doc, deleteDoc, collection, updateDoc } from 'firebase/firestore';
 
 export default function TransactionHistory({ 
   transactions = [], 
@@ -38,24 +38,66 @@ export default function TransactionHistory({
   // Delete transaction function
   const deleteTransaction = async (transactionId) => {
     try {
-      // Delete from Firebase - use correct path
-      await deleteDoc(doc(db, 'users', user.uid, 'transactions', transactionId));
+      // Find the transaction to get its details
+      const transaction = transactions.find(tx => tx.id === transactionId);
       
-      // Update local state immediately for better UX
-      setFilteredTransactions(prev => prev.filter(tx => tx.id !== transactionId));
-      
-      // Call the callback to refresh transactions
-      if (onTransactionsUpdate) {
-        onTransactionsUpdate();
+      if (!transaction) {
+        throw new Error('Transaction not found');
       }
+      
+      // Show warning that this only deletes transaction history, not the asset
+      setConfirmModal({
+        title: t('confirmDelete'),
+        message: t('confirmDeleteTransactionHistory', { 
+          type: transaction.type, 
+          asset: transaction.ticker || transaction.symbol,
+          amount: transaction.amount 
+        }) + '\n\n' + t('deleteTransactionHistoryWarning'),
+        confirmText: t('delete'),
+        cancelText: t('cancel'),
+        onConfirm: async () => {
+          try {
+            // Instead of deleting the transaction, mark it as deleted from history
+            // This preserves the transaction for portfolio calculation but hides it from history
+            const transactionRef = doc(db, 'users', user.uid, 'transactions', transactionId);
+            
+            // Update the transaction to mark it as deleted from history
+            await updateDoc(transactionRef, {
+              deletedFromHistory: true,
+              deletedAt: new Date().toISOString()
+            });
+            
+            // Update local state immediately for better UX
+            setFilteredTransactions(prev => prev.filter(tx => tx.id !== transactionId));
+            
+            // Call the callback to refresh transactions
+            if (onTransactionsUpdate) {
+              onTransactionsUpdate();
+            }
+            
+            setConfirmModal(null);
+          } catch (error) {
+            console.error('Error deleting transaction:', error);
+            setConfirmModal({
+              isOpen: true,
+              title: 'Error',
+              message: 'Failed to delete transaction: ' + error.message,
+              type: 'error',
+              confirmText: 'OK',
+              onConfirm: () => setConfirmModal(null)
+            });
+          }
+        },
+        onCancel: () => setConfirmModal(null)
+      });
     } catch (error) {
-      console.error('Error deleting transaction:', error);
+      console.error('Error preparing transaction deletion:', error);
       
       // Show error message
       setConfirmModal({
         isOpen: true,
         title: 'Error',
-        message: 'Failed to delete transaction: ' + error.message,
+        message: 'Failed to prepare transaction deletion: ' + error.message,
         type: 'error',
         confirmText: 'OK',
         onConfirm: () => setConfirmModal(null)
@@ -66,21 +108,8 @@ export default function TransactionHistory({
 
 
   const handleDeleteClick = (transaction) => {
-    setConfirmModal({
-      title: t('confirmDelete'),
-      message: t('confirmDeleteTransaction', { 
-        type: t(transaction.type), 
-        asset: transaction.ticker || transaction.symbol,
-        amount: transaction.amount 
-      }),
-      confirmText: t('delete'),
-      cancelText: t('cancel'),
-      onConfirm: () => {
-        deleteTransaction(transaction.id);
-        setConfirmModal(null);
-      },
-      onCancel: () => setConfirmModal(null)
-    });
+    // Call the deleteTransaction function directly
+    deleteTransaction(transaction.id);
   };
 
 
@@ -96,6 +125,9 @@ export default function TransactionHistory({
     
     // Filter out 'update' transactions - hide them from history
     filtered = filtered.filter(tx => tx.type !== 'update');
+    
+    // Filter out transactions that are marked as deleted from history
+    filtered = filtered.filter(tx => !tx.deletedFromHistory);
     
     // Jika ada prop assetKey, filter transactions hanya untuk assetKey (ticker/symbol)
     if (assetKey) {
@@ -568,7 +600,7 @@ export default function TransactionHistory({
 TransactionHistory.propTypes = {
   transactions: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string.isRequired,
-    type: PropTypes.oneOf(['buy', 'sell', 'delete']).isRequired,
+    type: PropTypes.oneOf(['buy', 'sell', 'delete', 'update']).isRequired,
     ticker: PropTypes.string,
     symbol: PropTypes.string,
     amount: PropTypes.number.isRequired,
