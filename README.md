@@ -6,7 +6,7 @@ I've always been proactive about risk management. Seeing incidents like R*B Seku
 
 ## Why Split Across Different Platforms?
 
-When you invest in the same asset across multiple platforms, you're not just diversifying your holdings—you're protecting yourself from platform-specific risks. Imagine needing to withdraw funds during an emergency, only to find that your primary exchange or brokerage is experiencing technical issues or downtime. By spreading your investments across multiple platforms, you ensure that you always have access to at least some of your funds, regardless of which platform encounters problems.
+When you invest in the same asset across multiple platforms, you're not just diversifying your holdings, you're protecting yourself from platform-specific risks. Imagine needing to withdraw funds during an emergency, only to find that your primary exchange or brokerage is experiencing technical issues or downtime. By spreading your investments across multiple platforms, you ensure that you always have access to at least some of your funds, regardless of which platform encounters problems.
 
 ## The Challenge
 
@@ -53,7 +53,7 @@ PortSyncro bridges the gap between smart diversification and manageable portfoli
 
 In today's volatile market, having your investments spread across multiple platforms is smart risk management. But without proper tools, it becomes a nightmare to manage. PortSyncro gives you the security of diversification without the complexity of manual tracking.
 
-This project represents months of development and real-world problem-solving. It's not just another portfolio tracker—it's a solution born from actual investment challenges that many of us face.
+This project represents months of development and real-world problem-solving. It's not just another portfolio tracker, it's a solution born from actual investment challenges that many of us face.
 
 ## Live Demo
 
@@ -79,14 +79,10 @@ This project represents months of development and real-world problem-solving. It
   <img src="public/img/login.png" alt="Login" width="300" style="border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 5px;">
 </div>
 
-## What's Your Experience?
-
-Have you faced similar challenges with managing diversified portfolios? What tools do you currently use for portfolio tracking?
-
 ---
 
 **PortSyncro** - Sinkronisasi Portofolio yang Mudah untuk Kripto dan Saham
 
 *Built with ❤️ for the Indonesian investment community*
 
-#PortfolioManagement #InvestmentTools #FinTech #NextJS #React #PersonalFinance #IndonesianMarket #RiskManagement #PortfolioSynchronization #Cybersecurity
+
