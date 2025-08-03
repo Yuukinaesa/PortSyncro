@@ -50,5 +50,6 @@ A secure, real-time portfolio management application built with Next.js and Fire
 
 **[🌐 Visit PortSyncro Live](https://portsyncro.arfan.biz.id/)**
 
+---
 
 **PortSyncro** - Sinkronisasi Portofolio yang Mudah untuk Kripto dan Saham
