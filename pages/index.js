@@ -1711,9 +1711,7 @@ export default function Home() {
       <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white font-sans selection:bg-blue-500/30">
         <Head>
           <title>{`PortSyncro | ${t('tagline')}`}</title>
-          <meta name="mobile-web-app-capable" content="yes" />
           <meta name="description" content={t('tagline')} />
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         </Head>
 
         {/* Header - Sticky & Blurred */}
