@@ -4,14 +4,14 @@ import Head from 'next/head';
 import Portfolio from '../components/Portfolio';
 import StockInput from '../components/StockInput';
 import CryptoInput from '../components/CryptoInput';
-import ThemeToggle from '../components/ThemeToggle';
-import LanguageToggle from '../components/LanguageToggle';
+import CashInput from '../components/CashInput';
+import SettingsModal from '../components/SettingsModal';
 import { useAuth } from '../lib/authContext';
 import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
 import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { FiLogOut, FiUser } from 'react-icons/fi';
+import { FiLogOut, FiUser, FiCreditCard, FiSettings } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
 import TransactionHistory from '../components/TransactionHistory';
@@ -27,11 +27,11 @@ import { secureLogger } from './../lib/security';
 const cleanUndefinedValues = (obj) => {
   if (obj === null || obj === undefined) return null;
   if (typeof obj !== 'object') return obj;
-  
+
   if (Array.isArray(obj)) {
     return obj.map(item => cleanUndefinedValues(item)).filter(item => item !== null);
   }
-  
+
   const cleaned = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value !== undefined) {
@@ -42,29 +42,31 @@ const cleanUndefinedValues = (obj) => {
 };
 
 // Simplified function to build assets from transactions
-function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [] }) {
+function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [], cash: [] }) {
   secureLogger.log('buildAssetsFromTransactions called with:', {
     transactionsLength: transactions?.length || 0,
     pricesKeys: Object.keys(prices || {}),
     currentAssetsStocks: currentAssets?.stocks?.length || 0,
-    currentAssetsCrypto: currentAssets?.crypto?.length || 0
+    currentAssetsCrypto: currentAssets?.crypto?.length || 0,
+    currentAssetsCash: currentAssets?.cash?.length || 0
   });
-  
+
   // Early return if no transactions
   if (!transactions || transactions.length === 0) {
     secureLogger.log('No transactions, returning current assets');
     return currentAssets;
   }
-  
+
   // Use Map for better performance with large datasets
   const stocksMap = new Map();
   const cryptoMap = new Map();
+  const cashMap = new Map();
 
   // Process transactions in batches for better performance
   const batchSize = 100;
   for (let i = 0; i < transactions.length; i += batchSize) {
     const batch = transactions.slice(i, i + batchSize);
-    
+
     batch.forEach(tx => {
       if (tx.assetType === 'stock' && tx.ticker) {
         const key = tx.ticker.toUpperCase();
@@ -74,6 +76,10 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
         const key = tx.symbol.toUpperCase();
         if (!cryptoMap.has(key)) cryptoMap.set(key, []);
         cryptoMap.get(key).push(tx);
+      } else if (tx.assetType === 'cash' && tx.ticker) {
+        const key = tx.ticker.toUpperCase();
+        if (!cashMap.has(key)) cashMap.set(key, []);
+        cashMap.get(key).push(tx);
       }
     });
   }
@@ -81,35 +87,55 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
   const stocks = Array.from(stocksMap.entries()).map(([ticker, txs]) => {
     const priceObj = prices[`${ticker}.JK`] || prices[ticker];
     const currentPrice = priceObj ? priceObj.price : 0;
-    
+
     // Skip delete transactions when building assets
     const validTransactions = txs.filter(tx => tx.type !== 'delete');
     if (validTransactions.length === 0) {
       secureLogger.log(`Skipping ${ticker} - no valid transactions (only delete transactions)`);
       return null;
     }
-    
+
     const pos = calculatePositionFromTransactions(validTransactions, currentPrice);
-    
+
+    // Get market from transactions (assuming all txs for a ticker have same market)
+    const market = validTransactions[0]?.market || 'IDX';
+
     // Check if the asset is fully sold (amount <= 0)
     if (pos.amount <= 0) {
       secureLogger.log(`Skipping ${ticker} - fully sold (amount: ${pos.amount})`);
       return null;
     }
-    
+
     // Check if there's a manually set average price in current assets
     const existingAsset = currentAssets?.stocks?.find(s => s.ticker.toUpperCase() === ticker.toUpperCase());
     const useManualAvgPrice = existingAsset && existingAsset.avgPrice && existingAsset.avgPrice !== pos.avgPrice;
-    
+
     return {
       ticker: ticker,
-      lots: pos.amount,
+      lots: market === 'US' ? pos.amount : pos.amount / 100, // Display lots for IDX, raw shares for US (if considered 'lots' in UI, keep as is or adjust)
+      // Actually, if UI expects .lots to be the unit displayed, for US it should be shares.
+      // pos.amount is SHARES. 
+      // For IDX, we typically display lots (shares/100).
+      // For US, we display shares.
+      // So logic: if US, lots = pos.amount. If IDX, lots = pos.amount (wait, does UI divide by 100?)
+      // Let's check AssetTable again.
+      // AssetTable: {type === 'stock' ? asset.lots : asset.amount}
+      // logic in AssetTable for value calculation: const amount = isStock ? asset.lots * 100 : asset.amount;
+      // This implies asset.lots is expected to be 1/100 of shares.
+      // If I set lots = pos.amount (shares) for US, then AssetTable will calc value = shares * 100 * price. WRONG.
+      // So for US, I must trick AssetTable or update AssetTable.
+      // Easiest is to keep lots = pos.amount / 100 even for US, but that makes display wrong (0.01 lot for 1 share).
+      // So I MUST update AssetTable to handle market.
+      // Here I will store market.
       avgPrice: useManualAvgPrice ? existingAsset.avgPrice : pos.avgPrice,
       totalCost: pos.totalCost,
       currentPrice: currentPrice,
       gain: pos.gain,
       porto: pos.porto,
       gainPercentage: pos.gainPercentage || 0,
+      currency: market === 'US' ? 'USD' : 'IDR',
+      market: market,
+      type: 'stock',
       lastUpdate: new Date().toISOString()
     };
   }).filter(Boolean);
@@ -117,26 +143,26 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
   const crypto = Array.from(cryptoMap.entries()).map(([symbol, txs]) => {
     const priceObj = prices[symbol];
     const currentPrice = priceObj ? priceObj.price : 0;
-    
+
     // Skip delete transactions when building assets
     const validTransactions = txs.filter(tx => tx.type !== 'delete');
     if (validTransactions.length === 0) {
       secureLogger.log(`Skipping ${symbol} - no valid transactions (only delete transactions)`);
       return null;
     }
-    
+
     const pos = calculatePositionFromTransactions(validTransactions, currentPrice);
-    
+
     // Check if the asset is fully sold (amount <= 0)
     if (pos.amount <= 0) {
       secureLogger.log(`Skipping ${symbol} - fully sold (amount: ${pos.amount})`);
       return null;
     }
-    
+
     // Check if there's a manually set average price in current assets
     const existingAsset = currentAssets?.crypto?.find(c => c.symbol.toUpperCase() === symbol.toUpperCase());
     const useManualAvgPrice = existingAsset && existingAsset.avgPrice && existingAsset.avgPrice !== pos.avgPrice;
-    
+
     return {
       symbol: symbol,
       amount: pos.amount,
@@ -146,13 +172,50 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
       gain: pos.gain,
       porto: pos.porto,
       gainPercentage: pos.gainPercentage || 0,
+      currency: 'USD', // Crypto default to USD
+      type: 'crypto',
+      lastUpdate: new Date().toISOString()
+    };
+  }).filter(Boolean);
+
+  const cash = Array.from(cashMap.entries()).map(([ticker, txs]) => {
+    // For cash, price is always 1 (as it is the base currency value itself)
+    // We treat 'ticker' as the Bank/Wallet name
+    const currentPrice = 1;
+
+    // Skip delete transactions when building assets
+    const validTransactions = txs.filter(tx => tx.type !== 'delete');
+    if (validTransactions.length === 0) {
+      return null;
+    }
+
+    const pos = calculatePositionFromTransactions(validTransactions, currentPrice);
+
+    if (pos.amount <= 0) {
+      return null;
+    }
+
+    return {
+      ticker: ticker, // Bank Name
+      amount: pos.amount, // Total Balance
+      avgPrice: 1, // Always 1 for cash
+      totalCost: pos.amount, // Cost is same as amount for cash
+      currentPrice: 1,
+      gain: 0, // No gain/loss on cash holdings usually (unless currency diff, but here simplified)
+      porto: pos.amount,
+      portoIDR: pos.amount, // Assume IDR for now
+      portoUSD: 0, // TODO: Conversion if needed
+      gainPercentage: 0,
+      currency: 'IDR',
+      type: 'cash',
       lastUpdate: new Date().toISOString()
     };
   }).filter(Boolean);
 
   return {
     stocks: stocks,
-    crypto: crypto
+    crypto: crypto,
+    cash: cash
   };
 }
 
@@ -167,7 +230,21 @@ export default function Home() {
   const [pricesLoading, setPricesLoading] = useState(false);
   const [showAverageCalculator, setShowAverageCalculator] = useState(false);
   const [rateLimitNotification, setRateLimitNotification] = useState(null);
-  
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Hide Balance State (Lifted from Portfolio)
+  const [hideBalance, setHideBalance] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('hideBalance');
+      return saved === 'true';
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hideBalance', hideBalance);
+  }, [hideBalance]);
+
   // Use Portfolio State Manager
   const {
     assets,
@@ -187,7 +264,7 @@ export default function Home() {
     getPortfolioSummary,
     rebuildPortfolio
   } = usePortfolioState();
-  
+
   // Add refs for intervals
   const refreshIntervalRef = useRef(null);
   const exchangeIntervalRef = useRef(null);
@@ -200,7 +277,7 @@ export default function Home() {
       if (value === undefined || value === null || isNaN(value) || value === 0) {
         return currency === 'IDR' ? formatIDR(0) : formatUSD(0);
       }
-      
+
       if (currency === 'IDR') {
         return formatIDR(value, 0);
       } else {
@@ -223,7 +300,7 @@ export default function Home() {
             setLoading(true);
             const portfolio = await getUserPortfolio();
             secureLogger.log('Loaded portfolio from Firestore:', portfolio);
-            
+
             // Initialize portfolio state manager
             initializePortfolio(portfolio);
           } catch (error) {
@@ -241,40 +318,48 @@ export default function Home() {
   // Separate function for actual price fetching
   const performPriceFetch = useCallback(async () => {
     setPricesLoading(true);
-    
+
     try {
       if (!assets) {
         secureLogger.log('No assets to fetch prices for');
         return;
       }
-    
-      // Filter valid stocks
+
+      // Filter valid stocks and prepare tickers
       const validStocks = (assets?.stocks || []).filter(stock => {
         if (!stock || !stock.ticker || !stock.ticker.trim()) return false;
-        if (stock.lots <= 0) return false; // Remove avgPrice check
-        
-        const usStockTickers = ['TSLA', 'NVDA', 'MSTR', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'INVALID'];
-        const tickerUpper = stock.ticker.toUpperCase();
-        return tickerUpper.length <= 4 && !usStockTickers.includes(tickerUpper);
+        if (stock.lots <= 0) return false;
+        return true;
       });
-    
-      const stockTickers = validStocks.map(stock => `${stock.ticker}.JK`);
+
+      const stockTickers = validStocks.map(stock => {
+        // Respect the market property if available
+        if (stock.market === 'US') {
+          return stock.ticker;
+        }
+        // Fallback/Default to IDX
+        // If ticker already has .JK, leave it. If not, append .JK.
+        // This ensures compatibility with existing data that might be IDX implied.
+        const cleanTicker = stock.ticker.trim().toUpperCase();
+        return cleanTicker.endsWith('.JK') ? cleanTicker : `${cleanTicker}.JK`;
+      });
+
       const cryptoSymbols = (assets?.crypto || [])
         .filter(crypto => crypto && crypto.symbol && crypto.symbol.trim() && crypto.symbol.toUpperCase() !== 'INVALID')
         .map(crypto => crypto.symbol);
-    
+
       if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
         secureLogger.log('No valid tickers to fetch');
         return;
       }
-    
+
       const requestData = {
         stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
         crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim())
       };
-    
+
       secureLogger.log('Fetching prices for:', requestData);
-    
+
       const response = await fetch('/api/prices', {
         method: 'POST',
         headers: {
@@ -286,13 +371,13 @@ export default function Home() {
           userId: user?.uid || null
         }),
       });
-    
+
       if (!response.ok) {
         if (response.status === 429) {
           secureLogger.warn('Rate limit hit, will retry later');
           // Mark rate limit hit in refresh optimizer
           refreshOptimizer.markRateLimitHit();
-          
+
           // Show rate limit notification with retry option
           setRateLimitNotification({
             isOpen: true,
@@ -311,7 +396,7 @@ export default function Home() {
               }, 30000);
             }
           });
-          
+
           return; // Don't throw error for rate limiting
         }
         secureLogger.warn(`API error: ${response.status}`);
@@ -320,17 +405,17 @@ export default function Home() {
 
       const data = await response.json();
       secureLogger.log('Received prices:', data.prices);
-      
+
       // Reset rate limit status on successful request
       refreshOptimizer.resetRateLimit();
-      
+
       updatePrices(data.prices);
-      
+
       // Force portfolio value update after price update
       setTimeout(() => {
         rebuildPortfolio();
       }, 100);
-      
+
     } catch (error) {
       secureLogger.error('Error fetching prices:', error);
     } finally {
@@ -344,7 +429,7 @@ export default function Home() {
       secureLogger.log('Skipping fetch - already loading prices');
       return; // Prevent concurrent requests
     }
-    
+
     // Use refresh optimizer to prevent excessive calls
     if (!immediate) {
       await refreshOptimizer.triggerRefresh(async () => {
@@ -412,15 +497,15 @@ export default function Home() {
   useEffect(() => {
     // Only set up intervals after initialization
     if (!isInitialized) return;
-    
+
     secureLogger.log('Setting up refresh intervals - isInitialized:', isInitialized);
-    
+
     // Initial refresh when component mounts (immediate) - ONLY ONCE
     if (!initialRefreshDoneRef.current && !isInitializingRef.current) {
       isInitializingRef.current = true;
-      
+
       fetchExchangeRateData();
-      
+
       // Immediate price refresh when web is first opened - ONLY ONCE
       if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
         secureLogger.log('IMMEDIATE REFRESH triggered (first time opening web)');
@@ -428,17 +513,17 @@ export default function Home() {
       } else {
         secureLogger.log('No assets available for immediate refresh, skipping');
       }
-      
+
       initialRefreshDoneRef.current = true;
       isInitializingRef.current = false;
     }
-    
+
     // Exchange rate update every 5 minutes (less frequent)
     exchangeIntervalRef.current = setInterval(() => {
       secureLogger.log('AUTOMATIC EXCHANGE RATE REFRESH triggered (5 minute interval)');
       fetchExchangeRateData();
     }, 300000);
-    
+
     // Price refresh every 5 minutes (only if assets exist) - less frequent for idle users
     refreshIntervalRef.current = setInterval(() => {
       if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
@@ -489,14 +574,14 @@ export default function Home() {
         const data = doc.data();
         const timestamp = data.timestamp;
         const timestampISO = timestamp ? (timestamp.toDate ? timestamp.toDate().toISOString() : timestamp) : new Date().toISOString();
-        
+
         return {
           id: doc.id,
           ...data,
           timestamp: timestampISO
         };
       });
-      
+
       // Update portfolio state manager
       updateTransactions(newTransactions);
     }, (error) => {
@@ -516,7 +601,7 @@ export default function Home() {
   const addStock = async (stock) => {
     try {
       secureLogger.log('Adding stock:', stock);
-      
+
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -526,8 +611,11 @@ export default function Home() {
         throw new Error('Missing required fields: ticker or lots');
       }
 
-      // Validate numeric values
-      validateIDXLots(stock.lots);
+      // Validate numeric values ONLY for IDX
+      // For US, lots is shares/100 (can be fractional), so skip this validation or use different one
+      if (stock.market !== 'US') {
+        validateIDXLots(stock.lots);
+      }
 
       // Format timestamp
       const now = new Date();
@@ -541,56 +629,63 @@ export default function Home() {
       });
 
       // Calculate values based on currency
-      // For IDX stocks: price is per share, but we calculate based on lots
       let valueIDR, valueUSD;
+      const shareCount = stock.market === 'US' ? stock.lots : stock.lots * 100;
+
+      // Use Manual Average Price if available (User Input), otherwise use Current Market Price
+      // This ensures the Cost Basis is recorded correctly as per user input
+      const transactionPrice = stock.avgPrice || stock.price;
+
       if (stock.currency === 'IDR') {
-        valueIDR = stock.price * stock.lots * 100; // Calculate based on shares (1 lot = 100 shares)
+        valueIDR = transactionPrice * shareCount;
         valueUSD = exchangeRate && exchangeRate > 0 ? valueIDR / exchangeRate : 0;
-      } else {
-        valueUSD = stock.price * stock.lots * 100; // Calculate based on shares (1 lot = 100 shares)
+      } else { // USD
+        valueUSD = transactionPrice * shareCount;
         valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : 0;
       }
-      
+
       // Create transaction data
       const transactionData = {
         type: 'buy',
         assetType: 'stock',
         ticker: stock.ticker,
-        amount: stock.lots * 100, // Store amount in shares, not lots
-        price: stock.price,
+        amount: stock.market === 'US' ? stock.lots : stock.lots * 100, // Store amount in shares
+        price: transactionPrice, // Use the determined transaction price for cost basis
         valueIDR: valueIDR,
         valueUSD: valueUSD,
         date: formattedDate,
         timestamp: serverTimestamp(),
         currency: stock.currency,
+        market: stock.market || 'IDX', // Store market info
         status: 'completed',
         userId: user.uid,
+        broker: stock.broker || null, // Create asset with broker info
         ...(stock.entry && { entry: stock.entry })
       };
-      
+
       // Save to Firestore
       const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
       secureLogger.log('Transaction saved with ID:', transactionRef.id);
-      
-      // The Firebase listener will automatically update the portfolio state
-      // No need to manually add to portfolio state manager
-      
-      // Immediately update portfolio with current price
+
+      // Immediately update portfolio with current price (keep using current market price for display)
       const currentPrices = { ...prices };
-      currentPrices[`${stock.ticker}.JK`] = {
-        price: stock.price,
-        currency: stock.currency || 'IDR',
+      // Use proper key based on market
+      const priceKey = stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`;
+
+      currentPrices[priceKey] = {
+        price: stock.price, // Keep tracking CURRENT price for value, but cost basis is in transaction
+        currency: stock.currency || (stock.market === 'US' ? 'USD' : 'IDR'),
         change: 0,
         changeTime: '24h',
         lastUpdate: new Date().toISOString()
       };
       updatePrices(currentPrices);
-      
+
       // Rebuild portfolio immediately to reflect the new price
       setTimeout(() => {
         rebuildPortfolio();
       }, 100);
-      
+
       // Smart refresh - only fetch prices for the newly added asset
       setTimeout(async () => {
         try {
@@ -600,13 +695,13 @@ export default function Home() {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              stocks: [`${stock.ticker}.JK`],
+              stocks: [priceKey],
               crypto: [],
               exchangeRate: exchangeRate,
               userId: user?.uid || null
             }),
           });
-          
+
           if (response.ok) {
             const data = await response.json();
             const newPrices = { ...prices, ...data.prices };
@@ -617,7 +712,7 @@ export default function Home() {
           secureLogger.error('Error fetching updated price for new stock:', error);
         }
       }, 2000); // Wait 2 seconds before fetching updated price
-      
+
       // Show success notification
       setConfirmModal({
         isOpen: true,
@@ -640,129 +735,23 @@ export default function Home() {
       });
     }
   };
-  
+
   const addCrypto = async (crypto) => {
     try {
       secureLogger.log('Adding crypto:', crypto);
-      
+
       if (!user) {
         throw new Error('User not authenticated');
       }
 
-      // Fetch current crypto price
-      const response = await fetch('/api/prices', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          stocks: [],
-          crypto: [crypto.symbol],
-          exchangeRate: exchangeRate,
-          userId: user?.uid || null
-        }),
-      });
-      
-      if (!response.ok) {
-        if (response.status === 429) {
-          secureLogger.warn('Rate limit hit while adding crypto, will retry later');
-          // Mark rate limit hit in refresh optimizer
-          refreshOptimizer.markRateLimitHit();
-          
-          // Show rate limit notification with retry option
-          setConfirmModal({
-            isOpen: true,
-            title: t('rateLimitExceeded'),
-            message: t('rateLimitMessage') + ' Click OK to retry in 30 seconds.',
-            type: 'warning',
-            confirmText: 'OK',
-            onConfirm: () => {
-              setConfirmModal(null);
-              // Retry after 30 seconds
-              setTimeout(async () => {
-                try {
-                  await addCrypto(crypto);
-                } catch (retryError) {
-                  secureLogger.error('Retry failed:', retryError);
-                }
-              }, 30000);
-            }
-          });
-          return;
-        }
-        
-        // Handle other API errors
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch crypto price (HTTP ${response.status}): ${errorText}`);
-      }
-      
-      const data = await response.json();
-      const cryptoPrice = data.prices[crypto.symbol];
-      
-      if (!cryptoPrice || !cryptoPrice.price) {
-        throw new Error('Invalid crypto price data received');
-      }
-      
-      secureLogger.log('Fetched crypto price:', cryptoPrice);
-      
-      // Format timestamp
-      const now = new Date();
-      const formattedDate = now.toLocaleString('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-      
-      // Calculate total value based on current API price
-      const pricePerUnit = crypto.price || cryptoPrice.price;
-      const totalValueUSD = pricePerUnit * crypto.amount;
-      const totalValueIDR = exchangeRate && exchangeRate > 0 ? totalValueUSD * exchangeRate : 0;
-      
-      // Create transaction data
-      const transactionData = {
-        type: 'buy',
-        assetType: 'crypto',
-        symbol: crypto.symbol,
-        amount: crypto.amount,
-        price: pricePerUnit,
-        valueIDR: totalValueIDR,
-        valueUSD: totalValueUSD,
-        date: formattedDate,
-        timestamp: serverTimestamp(),
-        currency: 'USD',
-        status: 'completed',
-        userId: user.uid,
-        ...(crypto.entry && { entry: crypto.entry })
-      };
-      
-      // Save to Firestore
-      const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
-      secureLogger.log('Crypto transaction saved with ID:', transactionRef.id);
-      
-      // The Firebase listener will automatically update the portfolio state
-      // No need to manually add to portfolio state manager
-      
-      // Immediately update portfolio with current price
-      const currentPrices = { ...prices };
-      currentPrices[crypto.symbol] = {
-        price: crypto.price,
-        currency: 'USD',
-        change: 0,
-        changeTime: '24h',
-        lastUpdate: new Date().toISOString()
-      };
-      updatePrices(currentPrices);
-      
-      // Rebuild portfolio immediately to reflect the new price
-      setTimeout(() => {
-        rebuildPortfolio();
-      }, 100);
-      
-      // Smart refresh - only fetch prices for the newly added asset
-      setTimeout(async () => {
+      let cryptoPrice = null;
+
+      // Ensure we don't re-fetch for manual assets or if price is already reliable
+      if (crypto.isManual) {
+        cryptoPrice = { price: crypto.price, change: 0 };
+        secureLogger.log('Using manual price for crypto:', cryptoPrice);
+      } else {
+        // Fetch current crypto price
         try {
           const response = await fetch('/api/prices', {
             method: 'POST',
@@ -776,28 +765,116 @@ export default function Home() {
               userId: user?.uid || null
             }),
           });
-          
-          if (response.ok) {
+
+          if (!response.ok) {
+            if (response.status === 429) {
+              secureLogger.warn('Rate limit hit while adding crypto, will retry later');
+              // Mark rate limit hit in refresh optimizer
+              refreshOptimizer.markRateLimitHit();
+
+              // Show rate limit notification with retry option
+              setConfirmModal({
+                isOpen: true,
+                title: t('rateLimitExceeded'),
+                message: t('rateLimitMessage') + ' Click OK to retry in 30 seconds.',
+                type: 'warning',
+                confirmText: 'OK',
+                onConfirm: () => {
+                  setConfirmModal(null);
+                  // Retry after 30 seconds
+                  setTimeout(async () => {
+                    try {
+                      await addCrypto(crypto);
+                    } catch (retryError) {
+                      secureLogger.error('Retry failed:', retryError);
+                    }
+                  }, 30000);
+                }
+              });
+              return;
+            }
+
+            // Handle other API errors - Log but don't crash if we have a fallback
+            secureLogger.warn(`Failed to fetch crypto price (HTTP ${response.status})`);
+          } else {
             const data = await response.json();
-            const newPrices = { ...prices, ...data.prices };
-            updatePrices(newPrices);
-            rebuildPortfolio();
+            if (data.prices && data.prices[crypto.symbol]) {
+              cryptoPrice = data.prices[crypto.symbol];
+            }
           }
-        } catch (error) {
-          secureLogger.error('Error fetching updated price for new crypto:', error);
+        } catch (fetchErr) {
+          secureLogger.warn('Error fetching crypto price in addCrypto:', fetchErr);
         }
-      }, 2000); // Wait 2 seconds before fetching updated price
-      
-      // Show success notification
-      setConfirmModal({
-        isOpen: true,
-        title: t('success'),
-        message: t('cryptoSuccessfullyAdded', { symbol: crypto.symbol }),
-        type: 'success',
-        confirmText: t('ok'),
-        onConfirm: () => setConfirmModal(null)
+      }
+
+      // Fallback if API failed but we have a manual/user price
+      if ((!cryptoPrice || !cryptoPrice.price) && crypto.price > 0) {
+        secureLogger.log('Falling back to provided crypto price (Manual):', crypto.price);
+        cryptoPrice = { price: crypto.price, change: 0 };
+        // Force manual flag if it wasn't set, as we are now using manual price
+        crypto.isManual = true;
+      }
+
+      if (!cryptoPrice || !cryptoPrice.price) {
+        throw new Error('Invalid crypto price data received. Please provide a manual price.');
+      }
+
+      secureLogger.log('Fetched crypto price:', cryptoPrice);
+
+      // Format timestamp
+      const now = new Date();
+      const formattedDate = now.toLocaleString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
       });
 
+      // Calculate total value based on average price (Cost Basis) or current API price
+      // Use Manual Average Price if available (User Input), otherwise use Current Market Price
+      const transactionPrice = crypto.avgPrice || crypto.price || cryptoPrice.price;
+
+      const totalValueUSD = transactionPrice * crypto.amount;
+      const totalValueIDR = exchangeRate && exchangeRate > 0 ? totalValueUSD * exchangeRate : 0;
+
+      // Create transaction data
+      const transactionData = {
+        type: 'buy',
+        assetType: 'crypto',
+        symbol: crypto.symbol,
+        amount: crypto.amount,
+        price: transactionPrice, // Use cost basis price
+        valueIDR: totalValueIDR,
+        valueUSD: totalValueUSD,
+        date: formattedDate,
+        timestamp: serverTimestamp(),
+        currency: 'USD',
+        status: 'completed',
+        userId: user.uid,
+        exchange: crypto.exchange || null, // Create asset with exchange info
+        ...(crypto.entry && { entry: crypto.entry })
+      };
+
+      // Save to Firestore
+      const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
+      secureLogger.log('Crypto transaction saved with ID:', transactionRef.id);
+
+      // The Firebase listener will automatically update the portfolio state
+      // No need to manually add to portfolio state manager
+
+      // Immediately update portfolio with current price
+      const currentPrices = { ...prices };
+      currentPrices[crypto.symbol] = {
+        price: crypto.price,
+        currency: 'USD',
+        change: 0,
+        changeTime: '24h',
+        lastUpdate: new Date().toISOString()
+      };
+      updatePrices(currentPrices);
+      rebuildPortfolio();
     } catch (error) {
       secureLogger.error('Error in addCrypto:', error);
       setConfirmModal({
@@ -811,78 +888,180 @@ export default function Home() {
     }
   };
 
+  const addCash = async (cashAsset) => {
+    try {
+      secureLogger.log('Adding cash:', cashAsset);
+
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Format timestamp
+      const now = new Date();
+      const formattedDate = now.toLocaleString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      // Create transaction data for Cash
+      const transactionData = {
+        type: 'buy', // Treated as buy/deposit
+        assetType: 'cash',
+        ticker: cashAsset.ticker, // Bank Name
+        amount: cashAsset.amount,
+        price: 1, // 1:1 for cash
+        valueIDR: cashAsset.amount,
+        valueUSD: exchangeRate && exchangeRate > 0 ? cashAsset.amount / exchangeRate : 0,
+        date: formattedDate,
+        timestamp: serverTimestamp(),
+        currency: 'IDR',
+        status: 'completed',
+        userId: user.uid
+      };
+
+      // Save to Firestore
+      const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
+      secureLogger.log('Cash transaction saved with ID:', transactionRef.id);
+
+      // Success Notification
+      setConfirmModal({
+        isOpen: true,
+        title: t('success'),
+        message: 'Aset kas berhasil ditambahkan',
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+
+      // Rebuild
+      setTimeout(() => {
+        rebuildPortfolio();
+      }, 100);
+
+    } catch (error) {
+      secureLogger.error('Error in addCash:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: t('error'),
+        message: error.message,
+        type: 'error',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+    }
+  };
+
   // Portfolio State Manager handles all updates automatically
-  const updateStock = (ticker, updatedStock) => {
-    secureLogger.log('updateStock called for:', ticker, updatedStock);
-    
-    // Validate that lots is a whole number
-    validateIDXLots(updatedStock.lots);
-    
+  const updateStock = (ticker, updatedStock, oldAsset = null) => {
+    secureLogger.log('updateStock called for:', ticker, updatedStock, oldAsset);
+
+    // Determine market (default to IDX if not specified)
+    const isUS = updatedStock.market === 'US';
+    const shareCount = isUS ? parseFloat(updatedStock.lots) : parseFloat(updatedStock.lots) * 100;
+
+    // Validate that lots is a whole number ONLY for IDX
+    if (!isUS) {
+      validateIDXLots(updatedStock.lots);
+    }
+
     // Create a transaction to update the average price
     const updateTransaction = {
       type: 'update',
       assetType: 'stock',
       ticker: ticker.toUpperCase(),
-      amount: updatedStock.lots * 100, // Convert lots to shares for transaction
+      amount: shareCount, // Store amount in shares
       price: updatedStock.avgPrice, // Use the new average price (per share)
-      valueIDR: updatedStock.lots * 100 * updatedStock.avgPrice, // Convert to shares
-      valueUSD: exchangeRate && exchangeRate > 0 ? (updatedStock.lots * 100 * updatedStock.avgPrice) / exchangeRate : 0,
+      valueIDR: isUS
+        ? (exchangeRate && exchangeRate > 0 ? (shareCount * updatedStock.avgPrice * exchangeRate) : 0)
+        : (shareCount * updatedStock.avgPrice),
+      valueUSD: isUS
+        ? (shareCount * updatedStock.avgPrice)
+        : (exchangeRate && exchangeRate > 0 ? (shareCount * updatedStock.avgPrice) / exchangeRate : 0),
       date: new Date().toLocaleString('id-ID'),
       timestamp: serverTimestamp(),
-      currency: 'IDR',
+      currency: isUS ? 'USD' : 'IDR',
       status: 'completed',
       userId: user.uid,
-      description: 'Average price updated by user'
+      description: 'Average price updated by user',
+      broker: updatedStock.broker, // Save broker info
+      // Save manual price settings if present
+      useManualPrice: updatedStock.useManualPrice || false,
+      manualPrice: updatedStock.manualPrice || null
     };
-    
+
     secureLogger.log('Update transaction created:', updateTransaction);
-    
+
     // Save to Firestore first
     const saveToFirestore = async () => {
       try {
+        // Handle Broker Change: If broker changed, delete the old asset first
+        if (oldAsset && oldAsset.broker !== updatedStock.broker) {
+          secureLogger.log(`Broker changed from ${oldAsset.broker} to ${updatedStock.broker}. Deleting old asset...`);
+
+          const deleteTransaction = {
+            type: 'delete',
+            assetType: 'stock',
+            ticker: ticker.toUpperCase(),
+            amount: 0,
+            price: 0,
+            total: 0,
+            userId: user.uid,
+            timestamp: serverTimestamp(),
+            description: 'Asset moved to new broker',
+            broker: oldAsset.broker // Delete specific holding by OLD broker
+          };
+
+          await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
+          secureLogger.log('Old asset deleted successfully due to broker change');
+        }
+
         const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), updateTransaction);
         secureLogger.log('Update transaction saved to Firestore with ID:', transactionRef.id);
-        
+
         // Add to portfolio state manager
         addTransaction({
           id: transactionRef.id,
           ...updateTransaction,
           timestamp: new Date().toISOString()
         });
-        
+
         // Force portfolio rebuild with multiple attempts
         secureLogger.log('Force portfolio rebuild after updating stock');
-        
+
         // First attempt - immediate
         rebuildPortfolio();
-        
+
         // Second attempt - after a short delay
         setTimeout(() => {
           rebuildPortfolio();
         }, 300);
-        
+
         // Third attempt - ensure portfolio values are updated
         setTimeout(() => {
           rebuildPortfolio();
         }, 800);
-        
+
         // Force immediate refresh to update UI
         setTimeout(async () => {
           await triggerImmediateRefresh();
         }, 500);
-        
+
       } catch (error) {
         secureLogger.error('Error saving update transaction to Firestore:', error);
       }
     };
-    
+
     // Execute the save operation
     saveToFirestore();
   };
 
-  const updateCrypto = (symbol, updatedCrypto) => {
-    secureLogger.log('updateCrypto called for:', symbol, updatedCrypto);
-    
+  const updateCrypto = (symbol, updatedCrypto, oldAsset = null) => {
+    secureLogger.log('updateCrypto called for:', symbol, updatedCrypto, oldAsset);
+
     // Create a transaction to update the average price
     const updateTransaction = {
       type: 'update',
@@ -897,65 +1076,89 @@ export default function Home() {
       currency: 'USD',
       status: 'completed',
       userId: user.uid,
-      description: 'Average price updated by user'
+      description: 'Average price updated by user',
+      exchange: updatedCrypto.exchange, // Save exchange info
+      // Save manual price settings if present
+      useManualPrice: updatedCrypto.useManualPrice || false,
+      manualPrice: updatedCrypto.manualPrice || null
     };
-    
     secureLogger.log('Update transaction created:', updateTransaction);
-    
+
     // Save to Firestore first
     const saveToFirestore = async () => {
       try {
+        // Handle Exchange Change: If exchange changed, delete the old asset first
+        if (oldAsset && oldAsset.exchange !== updatedCrypto.exchange) {
+          secureLogger.log(`Exchange changed from ${oldAsset.exchange} to ${updatedCrypto.exchange}. Deleting old asset...`);
+
+          const deleteTransaction = {
+            type: 'delete',
+            assetType: 'crypto',
+            symbol: symbol.toUpperCase(),
+            amount: 0,
+            price: 0,
+            total: 0,
+            userId: user.uid,
+            timestamp: serverTimestamp(),
+            description: 'Asset moved to new exchange',
+            exchange: oldAsset.exchange // Delete specific holding by OLD exchange
+          };
+
+          await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
+          secureLogger.log('Old asset deleted successfully due to exchange change');
+        }
+
         const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), updateTransaction);
         secureLogger.log('Update transaction saved to Firestore with ID:', transactionRef.id);
-        
+
         // Add to portfolio state manager
         addTransaction({
           id: transactionRef.id,
           ...updateTransaction,
           timestamp: new Date().toISOString()
         });
-        
+
         // Force portfolio rebuild with multiple attempts
         secureLogger.log('Force portfolio rebuild after updating crypto');
-        
+
         // First attempt - immediate
         rebuildPortfolio();
-        
+
         // Second attempt - after a short delay
         setTimeout(() => {
           rebuildPortfolio();
         }, 300);
-        
+
         // Third attempt - ensure portfolio values are updated
         setTimeout(() => {
           rebuildPortfolio();
         }, 800);
-        
+
         // Force immediate refresh to update UI
         setTimeout(async () => {
           await triggerImmediateRefresh();
         }, 500);
-        
+
       } catch (error) {
         secureLogger.error('Error saving update transaction to Firestore:', error);
       }
     };
-    
+
     // Execute the save operation
     saveToFirestore();
   };
-  
-  const deleteStock = async (ticker) => {
+
+  const deleteStock = async (ticker, asset) => {
     try {
-      secureLogger.log('DELETE stock:', ticker);
-      
+      secureLogger.log('DELETE stock:', ticker, asset);
+
       // Check if stock exists
       const stock = getAsset('stock', ticker);
       if (!stock) {
         secureLogger.error('Stock not found:', ticker);
         return;
       }
-      
+
       // Add delete transaction to Firestore
       const deleteTransaction = {
         assetType: 'stock',
@@ -966,14 +1169,15 @@ export default function Home() {
         total: 0,
         userId: user.uid,
         timestamp: serverTimestamp(),
-        description: 'Asset deleted by user'
+        description: 'Asset deleted by user',
+        broker: asset?.broker || null // Delete specific holding by broker
       };
-      
+
       await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
-      
+
       // Don't manually delete from portfolio state manager - let the transaction listener handle it
       // This ensures consistency with the transaction-based approach
-      
+
       // Show success notification
       setConfirmModal({
         isOpen: true,
@@ -983,7 +1187,7 @@ export default function Home() {
         confirmText: t('ok'),
         onConfirm: () => setConfirmModal(null)
       });
-      
+
     } catch (error) {
       secureLogger.error('Error deleting stock:', error);
       setConfirmModal({
@@ -996,18 +1200,18 @@ export default function Home() {
       });
     }
   };
-  
-  const deleteCrypto = async (symbol) => {
+
+  const deleteCrypto = async (symbol, asset) => {
     try {
-      secureLogger.log('DELETE crypto:', symbol);
-      
+      secureLogger.log('DELETE crypto:', symbol, asset);
+
       // Check if crypto exists
       const crypto = getAsset('crypto', symbol);
       if (!crypto) {
         secureLogger.error('Crypto not found:', symbol);
         return;
       }
-      
+
       // Add delete transaction to Firestore
       const deleteTransaction = {
         assetType: 'crypto',
@@ -1018,14 +1222,15 @@ export default function Home() {
         total: 0,
         userId: user.uid,
         timestamp: serverTimestamp(),
-        description: 'Asset deleted by user'
+        description: 'Asset deleted by user',
+        exchange: asset?.exchange || null // Delete specific holding by exchange
       };
-      
+
       await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
-      
+
       // Don't manually delete from portfolio state manager - let the transaction listener handle it
       // This ensures consistency with the transaction-based approach
-      
+
       // Show success notification
       setConfirmModal({
         isOpen: true,
@@ -1052,24 +1257,24 @@ export default function Home() {
   const handleSellStock = async (ticker, asset, amountToSell) => {
     try {
       setSellingLoading(true);
-      
+
       // Find the stock index by ticker
       const stockIndex = assets?.stocks?.findIndex(stock => stock.ticker === ticker);
       if (stockIndex === -1) {
         secureLogger.error('Stock not found:', ticker);
         return;
       }
-      
+
       const stock = assets?.stocks?.[stockIndex];
-      
+
       // Get current price from prices state using correct ticker format
       const tickerKey = `${asset.ticker}.JK`;
-      
+
       let priceData = prices[tickerKey];
       if (!priceData) {
         // Try to fetch fresh price data before selling
         secureLogger.log('Price data not available, attempting to fetch fresh data...');
-        
+
         // Fetch fresh prices immediately without debounce
         const stockTickers = [`${asset.ticker}.JK`];
         const requestData = {
@@ -1077,7 +1282,7 @@ export default function Home() {
           crypto: [],
           exchangeRate: exchangeRate
         };
-        
+
         try {
           const response = await fetch('/api/prices', {
             method: 'POST',
@@ -1089,7 +1294,7 @@ export default function Home() {
               userId: user?.uid || null
             }),
           });
-          
+
           if (response.ok) {
             const data = await response.json();
             // Update prices state with fresh data
@@ -1106,7 +1311,7 @@ export default function Home() {
         } catch (fetchError) {
           secureLogger.error('Error fetching fresh price data:', fetchError);
         }
-        
+
         // If still no price data after fresh fetch, throw error
         if (!priceData) {
           throw new Error(t('priceDataUnavailable'));
@@ -1136,7 +1341,7 @@ export default function Home() {
         minute: '2-digit',
         second: '2-digit'
       });
-      
+
       const transactionData = {
         type: 'sell',
         ticker: asset.ticker,
@@ -1150,7 +1355,8 @@ export default function Home() {
         currency: priceData.currency,
         date: formattedDate,
         userId: user ? user.uid : null,
-        status: 'completed'
+        status: 'completed',
+        broker: asset.broker || null // Add broker to identify specific holding
       };
 
       // Save transaction to Firestore
@@ -1168,7 +1374,7 @@ export default function Home() {
         confirmText: t('ok'),
         onConfirm: () => setConfirmModal(null)
       });
-      
+
       // Force portfolio rebuild and refresh after selling
       setTimeout(async () => {
         secureLogger.log('Forcing portfolio rebuild after sell transaction');
@@ -1194,14 +1400,14 @@ export default function Home() {
   const handleSellCrypto = async (symbol, asset, amountToSell) => {
     try {
       setSellingLoading(true);
-      
+
       // Find the crypto index by symbol
       const cryptoIndex = assets?.crypto?.findIndex(crypto => crypto.symbol === symbol);
       if (cryptoIndex === -1) {
         secureLogger.error('Crypto not found:', symbol);
         return;
       }
-      
+
       const crypto = assets?.crypto?.[cryptoIndex];
       if (!crypto) return;
 
@@ -1210,7 +1416,7 @@ export default function Home() {
       if (!priceData) {
         // Try to fetch fresh price data before selling
         secureLogger.log('Crypto price data not available, attempting to fetch fresh data...');
-        
+
         // Fetch fresh prices immediately without debounce
         const cryptoSymbols = [crypto.symbol];
         const requestData = {
@@ -1218,7 +1424,7 @@ export default function Home() {
           crypto: cryptoSymbols,
           exchangeRate: exchangeRate
         };
-        
+
         try {
           const response = await fetch('/api/prices', {
             method: 'POST',
@@ -1230,7 +1436,7 @@ export default function Home() {
               userId: user?.uid || null
             }),
           });
-          
+
           if (response.ok) {
             const data = await response.json();
             // Update prices state with fresh data
@@ -1247,7 +1453,7 @@ export default function Home() {
         } catch (fetchError) {
           secureLogger.error('Error fetching fresh crypto price data:', fetchError);
         }
-        
+
         // If still no price data after fresh fetch, throw error
         if (!priceData) {
           throw new Error(t('cryptoPriceUnavailable'));
@@ -1270,7 +1476,7 @@ export default function Home() {
         minute: '2-digit',
         second: '2-digit'
       });
-      
+
       const transaction = {
         type: 'sell',
         assetType: 'crypto',
@@ -1281,10 +1487,11 @@ export default function Home() {
         valueIDR,
         valueUSD,
         timestamp: serverTimestamp(), // Use serverTimestamp for consistency
+        currency: asset.currency || 'USD',
         date: formattedDate,
-        currency: 'USD',
         userId: user ? user.uid : null,
-        status: 'completed'
+        status: 'completed',
+        exchange: asset.exchange || null // Add exchange to identify specific holding
       };
 
       // Save transaction to Firestore
@@ -1302,7 +1509,8 @@ export default function Home() {
         confirmText: t('ok'),
         onConfirm: () => setConfirmModal(null)
       });
-      
+
+
       // Force portfolio rebuild and refresh after selling
       setTimeout(async () => {
         secureLogger.log('Forcing portfolio rebuild after sell transaction');
@@ -1328,325 +1536,426 @@ export default function Home() {
   // Handle average price calculator result
 
 
+  const handleWithdrawCash = async (ticker, asset, amountToWithdraw) => {
+    try {
+      setSellingLoading(true);
+
+      // Save transaction (SELL/WITHDRAW) to Firestore
+      const now = new Date();
+      const formattedDate = now.toLocaleString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      const transactionData = {
+        type: 'sell', // Use 'sell' logic for withdrawal (subtracts amount)
+        ticker: ticker, // Bank Name
+        assetType: 'cash',
+        amount: amountToWithdraw,
+        price: 1,
+        avgPrice: 1,
+        valueIDR: amountToWithdraw,
+        valueUSD: exchangeRate && exchangeRate > 0 ? amountToWithdraw / exchangeRate : 0,
+        timestamp: serverTimestamp(),
+        currency: 'IDR',
+        date: formattedDate,
+        userId: user ? user.uid : null,
+        status: 'completed',
+        description: 'Cash withdrawal'
+      };
+
+      if (user) {
+        const docRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
+        secureLogger.log('Cash withdrawal transaction saved with ID:', docRef.id);
+      }
+
+      setConfirmModal({
+        isOpen: true,
+        title: t('success'),
+        message: `Berhasil menarik ${formatIDR(amountToWithdraw)} dari ${ticker}`,
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+
+      // Force portfolio rebuild
+      setTimeout(async () => {
+        rebuildPortfolio();
+      }, 500);
+
+    } catch (error) {
+      secureLogger.error('Error withdrawing cash:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: t('error'),
+        message: error.message,
+        type: 'error',
+        onConfirm: () => setConfirmModal(null)
+      });
+    } finally {
+      setSellingLoading(false);
+    }
+  };
+
+
+  // Handle cash updates
+  const updateCash = async (ticker, updatedAsset) => {
+    secureLogger.log('updateCash called for:', ticker, updatedAsset.amount);
+    try {
+      if (!user) return;
+
+      const newAmount = parseFloat(updatedAsset.amount);
+      const currentAsset = assets?.cash?.find(c => c.ticker === ticker);
+      const currentAmount = currentAsset ? parseFloat(currentAsset.amount) : 0;
+
+      if (isNaN(newAmount) || newAmount < 0) {
+        throw new Error('Invalid amount');
+      }
+
+      const diff = newAmount - currentAmount;
+      if (Math.abs(diff) < 0.01) return; // No change
+
+      const type = diff > 0 ? 'buy' : 'sell'; // buy=Deposit, sell=Withdraw
+      const amount = Math.abs(diff);
+
+      const transaction = {
+        assetType: 'cash',
+        ticker: ticker.toUpperCase(),
+        type: type,
+        amount: amount,
+        price: 1,
+        total: amount,
+        userId: user.uid,
+        timestamp: serverTimestamp(),
+        description: 'Manual Balance Correction'
+      };
+
+      await addDoc(collection(db, 'users', user.uid, 'transactions'), transaction);
+
+      // Show success
+      setConfirmModal({
+        isOpen: true,
+        title: t('success'),
+        message: `Saldo ${ticker} berhasil diperbarui`,
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+
+      // Refresh
+      setTimeout(() => rebuildPortfolio(), 500);
+
+    } catch (error) {
+      secureLogger.error('Error updating cash:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: t('error'),
+        message: 'Gagal memperbarui saldo: ' + error.message,
+        type: 'error',
+        onConfirm: () => setConfirmModal(null)
+      });
+    }
+  };
+
+  const deleteCash = async (ticker) => {
+    try {
+      secureLogger.log('DELETE cash:', ticker);
+
+      // Check if cash asset exists
+      // const cash = getAsset('cash', ticker); // getAsset might need update
+
+      // Add delete transaction to Firestore
+      const deleteTransaction = {
+        assetType: 'cash',
+        ticker: ticker.toUpperCase(), // Bank Name
+        type: 'delete',
+        amount: 0,
+        price: 1,
+        total: 0,
+        userId: user.uid,
+        timestamp: serverTimestamp(),
+        description: 'Asset deleted by user'
+      };
+
+      await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
+
+      // Show success notification
+      setConfirmModal({
+        isOpen: true,
+        title: t('success'),
+        message: t('assetSuccessfullyDeleted', { asset: ticker }),
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+
+    } catch (error) {
+      secureLogger.error('Error deleting cash:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: t('error'),
+        message: t('failedToDeleteAsset', { error: error.message }),
+        type: 'error',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+    }
+  };
+
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-dark-900 dark:via-dark-800 dark:to-dark-900 text-gray-800 dark:text-white transition-all duration-300">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white font-sans selection:bg-blue-500/30">
         <Head>
-          <title>PortSyncro | {t('tagline')}</title>
+          <title>{`PortSyncro | ${t('tagline')}`}</title>
+          <meta name="mobile-web-app-capable" content="yes" />
           <meta name="description" content={t('tagline')} />
           <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         </Head>
-        
-        <main className="container mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-6 lg:py-8 font-['Inter'] scrollbar-thin">
-          {/* Header Section - Enhanced with PortSyncro Logo */}
-          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8">
-            <div className="flex items-center justify-center sm:justify-start space-x-4">
-              {/* Brand Name and Tagline with Design */}
-              <div className="text-center sm:text-left">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-teal-500 bg-clip-text text-transparent animate-fade-in">
-                  PortSyncro
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base lg:text-lg mt-1 animate-fade-in">
-                  {t('tagline')}
-                </p>
+
+        {/* Header - Sticky & Blurred */}
+        <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 transition-all duration-300">
+          <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+            {/* Logo area */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">PortSyncro</h1>
+                <p className="text-[10px] font-medium text-gray-500 leading-tight max-w-[180px] sm:max-w-none">{t('tagline')}</p>
               </div>
             </div>
-            
-            {/* User Controls - Enhanced */}
-            <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:space-x-3">
-              {/* Tab Navigation - Enhanced */}
-              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-full sm:w-auto shadow-lg">
-                <button 
-                  onClick={() => setActiveTab('portfolio')}
-                  className={`nav-tab-mobile sm:nav-tab ${
-                    activeTab === 'portfolio' 
-                      ? 'nav-tab-active' 
-                      : 'nav-tab-inactive'
-                  }`}
-                >
-                  <span className="hidden sm:inline">{t('portfolio')}</span>
-                  <span className="sm:hidden">Portfolio</span>
-                </button>
-                <button 
-                  onClick={() => setActiveTab('add')}
-                  className={`nav-tab-mobile sm:nav-tab ${
-                    activeTab === 'add' 
-                      ? 'nav-tab-active' 
-                      : 'nav-tab-inactive'
-                  }`}
-                >
-                  <span className="hidden sm:inline">{t('addAsset')}</span>
-                  <span className="sm:hidden">Tambah</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('history')}
-                  className={`nav-tab-mobile sm:nav-tab ${
-                    activeTab === 'history'
-                      ? 'nav-tab-active'
-                      : 'nav-tab-inactive'
-                  }`}
-                >
-                  <span className="hidden sm:inline">{t('history')}</span>
-                  <span className="sm:hidden">Riwayat</span>
-                </button>
-              </div>
-              
-              {/* Average Calculator Button - Enhanced */}
-              <button
-                onClick={() => setShowAverageCalculator(true)}
-                className="btn-success px-3 sm:px-4 py-2.5 sm:py-2 lg:py-2.5 text-sm font-medium flex items-center gap-2 hover-lift touch-target"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                <span className="hidden sm:inline">{t('averagePriceCalculator')}</span>
-                <span className="sm:hidden">Kalkulator</span>
-              </button>
-              
 
-              
-              {/* User Info and Controls - Enhanced */}
-              <div className="flex items-center justify-center sm:justify-end space-x-2 sm:space-x-3">
-                <LanguageToggle />
-                <ThemeToggle />
-                
-                {/* User Email - Enhanced */}
-                <div className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm min-w-0 shadow-md hover:shadow-lg transition-all duration-200">
-                  <FiUser className="text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
-                  <span className="truncate max-w-[120px] sm:max-w-[150px] lg:max-w-[200px] text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
-                    {user?.email}
-                  </span>
+            {/* Right Actions */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+                title={t('settings') || "Settings"}
+              >
+                <FiSettings className="w-5 h-5" />
+              </button>
+
+              <div className="h-8 w-[1px] bg-gray-800 mx-1 hidden sm:block"></div>
+
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex flex-col items-end">
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-200">{user?.email?.split('@')[0]}</span>
                 </div>
-                
-                {/* Logout Button - Enhanced */}
-                <button 
+                <button
                   onClick={logout}
-                  className="btn-ghost p-2.5 sm:p-2 rounded-full flex-shrink-0 hover-lift touch-target"
+                  className="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all"
                   title={t('logout')}
                 >
-                  <FiLogOut className="w-4 h-4" />
+                  <FiLogOut className="w-5 h-5" />
                 </button>
               </div>
             </div>
           </div>
-          
+        </header>
+
+        <main className="container mx-auto px-4 py-8 pb-20">
+
+          {/* Navigation Controls (Floating ish) */}
+          <div className="flex justify-center mb-8">
+            <div className="flex items-center p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20">
+              {[
+                { id: 'portfolio', label: t('portfolio'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
+                { id: 'add', label: t('addAsset'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> },
+                { id: 'history', label: t('history'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                     relative flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300
+                     ${activeTab === tab.id
+                      ? 'text-white bg-blue-600 shadow-lg shadow-blue-900/20'
+                      : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#0d1117]'}
+                   `}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="text-center">
-                <div className="spinner-glow w-12 h-12 mb-4"></div>
-                <p className="text-gray-600 dark:text-gray-400 animate-pulse-soft">{t('loadingPortfolio')}</p>
-              </div>
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-16 h-16 border-4 border-blue-600 border-t-white/20 rounded-full animate-spin mb-6"></div>
+              <p className="text-gray-400 font-medium animate-pulse">{t('loadingPortfolio')}</p>
             </div>
           ) : (
-            <>
+            <div className="animate-fade-in-up">
               {activeTab === 'add' ? (
-                <div className="space-y-6 sm:space-y-8">
-                  {/* Add Asset Header */}
-                  <div className="text-center">
-                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                      {t('addAsset')}
-                    </h2>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">
-                      {t('addAssetDesc') || 'Add your stocks and cryptocurrencies to track your portfolio'}
-                    </p>
+                <div className="space-y-8 max-w-6xl mx-auto">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('addAsset')}</h2>
+                    <p className="text-gray-500 dark:text-gray-400">{t('addAssetDesc') || 'Expand your portfolio by adding new assets'}</p>
                   </div>
-                  
-                  {/* Asset Forms Grid */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-                    {/* Stock Input Card */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 lg:p-8 hover:shadow-md transition-shadow duration-200">
-                      <div className="flex items-center mb-4 sm:mb-6">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mr-3 sm:mr-4">
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
-                            {t('addStock')}
-                          </h3>
-                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                            {t('addStockDesc') || 'Add Indonesian stocks to your portfolio'}
-                          </p>
-                        </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Bank/Cash */}
+                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 hover:border-blue-500/30 transition-all duration-300 group shadow-sm">
+                      <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-green-600 group-hover:text-white transition-all text-green-600 dark:text-green-500">
+                        <FiCreditCard className="w-6 h-6" />
                       </div>
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addCash') || 'Bank & E-Wallet'}</h3>
+                      <p className="text-sm text-gray-500 mb-6">{t('addCashDesc')}</p>
                       <ErrorBoundary>
-                        <StockInput onAdd={addStock} onComplete={() => setActiveTab('portfolio')} />
+                        <CashInput onAdd={addCash} onComplete={() => setActiveTab('portfolio')} />
                       </ErrorBoundary>
                     </div>
-                    
-                    {/* Crypto Input Card */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 lg:p-8 hover:shadow-md transition-shadow duration-200">
-                      <div className="flex items-center mb-4 sm:mb-6">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mr-3 sm:mr-4">
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
-                            {t('addCrypto')}
-                          </h3>
-                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                            {t('addCryptoDesc') || 'Add cryptocurrencies to your portfolio'}
-                          </p>
-                        </div>
+
+                    {/* Stock */}
+                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 hover:border-blue-500/30 transition-all duration-300 group shadow-sm">
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-all text-blue-600 dark:text-blue-500">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                       </div>
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addStock')}</h3>
+                      <p className="text-sm text-gray-500 mb-6">{t('addStockDesc') || 'Indonesian & US Stocks'}</p>
+                      <ErrorBoundary>
+                        <StockInput onAdd={addStock} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
+                      </ErrorBoundary>
+                    </div>
+
+                    {/* Crypto */}
+                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 hover:border-purple-500/30 transition-all duration-300 group shadow-sm">
+                      <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-purple-600 group-hover:text-white transition-all text-purple-600 dark:text-purple-500">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addCrypto')}</h3>
+                      <p className="text-sm text-gray-500 mb-6">{t('addCryptoDesc')}</p>
                       <ErrorBoundary>
                         <CryptoInput onAdd={addCrypto} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
                       </ErrorBoundary>
                     </div>
                   </div>
-                  
-                  {/* Quick Actions */}
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl p-4 sm:p-6 lg:p-8 border border-blue-100 dark:border-blue-800">
-                    <div className="text-center">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 sm:mb-3">
-                        {t('quickActions') || 'Quick Actions'}
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-4 sm:mb-6">
-                        {t('quickActionsDesc') || 'Need help calculating average prices or managing your portfolio?'}
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
-                        <button
-                          onClick={() => setShowAverageCalculator(true)}
-                          className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 text-sm touch-target"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                          <span className="hidden sm:inline">{t('averagePriceCalculator')}</span>
-                          <span className="sm:hidden">Kalkulator</span>
-                        </button>
-                        <button
-                          onClick={() => setActiveTab('portfolio')}
-                          className="px-4 sm:px-6 py-2 sm:py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 text-sm touch-target"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                          </svg>
-                          <span className="hidden sm:inline">{t('viewPortfolio') || 'View Portfolio'}</span>
-                          <span className="sm:hidden">Portfolio</span>
-                        </button>
-                      </div>
+
+                  <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-900/30 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-gray-900 dark:text-white">{t('quickActions')}</h4>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{t('quickActionsDesc')}</p>
                     </div>
+                    <button
+                      onClick={() => setShowAverageCalculator(true)}
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20 rounded-xl"
+                    >
+                      {t('averagePriceCalculator')}
+                    </button>
                   </div>
                 </div>
               ) : activeTab === 'portfolio' ? (
                 <ErrorBoundary>
-                  <Portfolio 
-                    assets={assets} 
+                  <Portfolio
+                    assets={assets}
                     onUpdateStock={updateStock}
                     onUpdateCrypto={updateCrypto}
+                    onUpdateCash={updateCash}
                     onAddAsset={() => setActiveTab('add')}
                     onSellStock={handleSellStock}
                     onSellCrypto={handleSellCrypto}
+                    onSellCash={handleWithdrawCash}
                     onDeleteStock={deleteStock}
                     onDeleteCrypto={deleteCrypto}
-                                          onRefreshPrices={performPriceFetch}
+                    onDeleteCash={deleteCash}
+                    onRefreshPrices={performPriceFetch}
                     onRefreshExchangeRate={handleRefreshExchangeRate}
                     prices={prices}
                     exchangeRate={exchangeRate}
                     sellingLoading={sellingLoading}
                     pricesLoading={pricesLoading}
                     isUpdatingPortfolio={portfolioLoading}
+                    hideBalance={hideBalance}
+                    onOpenSettings={() => setIsSettingsOpen(true)}
                   />
                 </ErrorBoundary>
               ) : activeTab === 'history' ? (
                 <ErrorBoundary>
-                  <TransactionHistory 
+                  <TransactionHistory
                     transactions={transactions}
                     user={user}
-                    onTransactionsUpdate={() => {
-                      // The Firebase listener will automatically update the transactions
-                      // No need to manually update here
-                      secureLogger.log('Transaction updated, Firebase listener will handle refresh');
-                    }}
+                    onTransactionsUpdate={() => { }}
                     exchangeRate={exchangeRate}
                   />
                 </ErrorBoundary>
               ) : null}
-            </>
+            </div>
           )}
+          <SettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            hideBalance={hideBalance}
+            onToggleHideBalance={() => setHideBalance(!hideBalance)}
+            onOpenCalculator={() => setShowAverageCalculator(true)}
+          />
         </main>
-        
-        {/* Data Sources Information */}
-        <section className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
-          <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
-            <div className="max-w-4xl mx-auto">
-              <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-3 sm:mb-4 text-gray-800 dark:text-white text-center">
-                {t('dataSources')}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-                {/* Stock Data */}
-                <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center mb-2 sm:mb-3">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
-                      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    </div>
-                    <h4 className="font-semibold text-gray-800 dark:text-white text-sm sm:text-base">{t('stockData')}</h4>
-                  </div>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{t('stockDataSource')}</p>
-                </div>
 
-                {/* Crypto Data */}
-                <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center mb-2 sm:mb-3">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
-                      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <h4 className="font-semibold text-gray-800 dark:text-white text-sm sm:text-base">{t('cryptoData')}</h4>
+        {/* Footer */}
+        <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0d1117] mt-12 py-12 transition-colors duration-300">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 text-sm">
+              <div>
+                <h5 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                   </div>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{t('cryptoDataSource')}</p>
-                </div>
-
-                {/* Exchange Rate */}
-                <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center mb-2 sm:mb-3">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
-                      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                      </svg>
-                    </div>
-                    <h4 className="font-semibold text-gray-800 dark:text-white text-sm sm:text-base">{t('exchangeRate')}</h4>
-                  </div>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{t('exchangeRateSource')}</p>
-                </div>
+                  {t('stockData')}
+                </h5>
+                <p className="text-gray-500 leading-relaxed">{t('stockDataSource')}</p>
               </div>
-              
+              <div>
+                <h5 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                  </div>
+                  {t('cryptoData')}
+                </h5>
+                <p className="text-gray-500 leading-relaxed">{t('cryptoDataSource')}</p>
+              </div>
+              <div>
+                <h5 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center text-green-600 dark:text-green-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  {t('exchangeRate')}
+                </h5>
+                <p className="text-gray-500 leading-relaxed">{t('exchangeRateSource')}</p>
+              </div>
+            </div>
 
+            <div className="pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-gray-500 dark:text-gray-600">{t('copyright', { year: new Date().getFullYear() })}</p>
+              <div className="flex items-center gap-4">
+              </div>
             </div>
           </div>
-        </section>
-        
-        <footer className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 lg:py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800">
-          <p className="text-xs sm:text-sm">{t('copyright', { year: new Date().getFullYear() })}</p>
         </footer>
-        
-        {/* Modal for confirmations and errors */}
-        <Modal 
+
+        <Modal
           isOpen={confirmModal?.isOpen || false}
           title={confirmModal?.title || ''}
           type={confirmModal?.type || 'info'}
           onClose={() => setConfirmModal(null)}
           onConfirm={confirmModal?.onConfirm}
         >
-          {confirmModal?.message && <p>{confirmModal.message}</p>}
+          {confirmModal?.message && <p className="text-gray-700 dark:text-gray-300">{confirmModal.message}</p>}
         </Modal>
-        
-        {/* Average Price Calculator Modal */}
+
         {showAverageCalculator && (
           <AveragePriceCalculator
             isOpen={showAverageCalculator}
             onClose={() => setShowAverageCalculator(false)}
           />
         )}
-        
-        {/* Rate Limit Notification */}
+
         <Notification
           notification={rateLimitNotification}
           onClose={() => setRateLimitNotification(null)}

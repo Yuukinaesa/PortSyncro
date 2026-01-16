@@ -12,6 +12,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { isDemoAccountAvailable } from '../lib/utils';
 import { secureLogger } from './../lib/security';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiLogIn, FiActivity } from 'react-icons/fi';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -23,13 +24,9 @@ export default function Login() {
   const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
 
-  // Reset error when inputs change (but not immediately)
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => {
-        setError(null);
-      }, 5000); // Clear error after 5 seconds
-      
+      const timer = setTimeout(() => setError(null), 5000);
       return () => clearTimeout(timer);
     }
   }, [email, password, error]);
@@ -45,23 +42,11 @@ export default function Login() {
     } catch (error) {
       secureLogger.error('Login error:', error);
       switch (error.code) {
-        case 'auth/user-not-found':
-          setError(t('userNotFound'));
-          break;
-        case 'auth/wrong-password':
-          setError(t('wrongPassword'));
-          break;
-        case 'auth/invalid-email':
-          setError(t('invalidEmail'));
-          break;
-        case 'auth/invalid-credential':
-          setError(t('invalidCredential'));
-          break;
-        case 'auth/too-many-requests':
-          setError(t('tooManyRequests'));
-          break;
-        default:
-          setError(t('loginFailed', { error: error.message }));
+        case 'auth/user-not-found': setError(t('userNotFound')); break;
+        case 'auth/wrong-password': setError(t('wrongPassword')); break;
+        case 'auth/invalid-email': setError(t('invalidEmail')); break;
+        case 'auth/too-many-requests': setError(t('tooManyRequests')); break;
+        default: setError(t('loginFailed', { error: error.message }));
       }
     } finally {
       setLoading(false);
@@ -71,37 +56,15 @@ export default function Login() {
   const handleDemoLogin = async () => {
     setError('');
     setLoading(true);
-
     try {
       const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL;
       const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
-      
-      secureLogger.log('Demo credentials check:', {
-        email: demoEmail ? 'Set' : 'Not set',
-        password: demoPassword ? 'Set' : 'Not set',
-        emailValue: demoEmail ? `${demoEmail.substring(0, 3)}...` : 'undefined'
-      });
-      
-      if (!demoEmail || !demoPassword) {
-        throw new Error('Demo account credentials not configured');
-      }
-      
-      secureLogger.log('Attempting demo login with email:', demoEmail);
+      if (!demoEmail || !demoPassword) throw new Error('Demo account credentials not configured');
       await signInWithEmailAndPassword(auth, demoEmail, demoPassword);
       router.push('/');
     } catch (error) {
       secureLogger.error('Demo login error:', error);
-      if (error.message === 'Demo account credentials not configured') {
-        setError(t('demoAccountNotAvailable'));
-      } else if (error.code === 'auth/invalid-credential') {
-        setError(t('demoInvalidCredential'));
-      } else if (error.code === 'auth/user-not-found') {
-        setError(t('demoUserNotFound'));
-      } else if (error.code === 'auth/wrong-password') {
-        setError(t('demoWrongPassword'));
-      } else {
-        setError(t('demoLoginFailed'));
-      }
+      setError(t('demoLoginFailed'));
     } finally {
       setLoading(false);
     }
@@ -109,60 +72,61 @@ export default function Login() {
 
   return (
     <ProtectedRoute authPage={true}>
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4 transition-colors">
-        <Head>
-          <title>Login | PortSyncro</title>
+      <Head>
+        <title>Login | PortSyncro</title>
+      </Head>
 
-        </Head>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] flex items-center justify-center px-4 relative overflow-hidden">
+        {/* Background Decoration */}
+        <div className="absolute top-0 left-0 w-full h-96 bg-blue-100 dark:bg-blue-900/10 blur-[100px] rounded-b-full pointer-events-none" />
 
-        <div className="absolute top-4 right-4 flex gap-2">
+        <div className="absolute top-6 right-6 flex gap-3 z-10">
           <LanguageToggle />
           <ThemeToggle />
         </div>
 
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-teal-500 bg-clip-text text-transparent mb-2">
+        <div className="w-full max-w-md space-y-8 relative z-10">
+          <div className="text-center space-y-2">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-blue-900/20">
+              <FiActivity className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
               PortSyncro
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">
+            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
               {t('tagline')}
             </p>
           </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 sm:p-8">
-            <div className="text-center mb-6 sm:mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+
+          <div className="bg-white dark:bg-[#161b22] rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 p-8">
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
                 {t('signIn')}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
+              <p className="text-gray-500 text-sm">
                 {t('welcomeBack') || 'Welcome back to your portfolio'}
               </p>
             </div>
 
             {error && (
-              <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-200 px-4 py-3 rounded-xl text-sm flex items-center">
-                <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
+              <div className="mb-6 bg-red-900/20 border border-red-800 text-red-200 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-shake">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleLogin} className="space-y-6">
+            <form onSubmit={handleLogin} className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                   {t('email')}
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                    </svg>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 dark:text-gray-500 group-focus-within:text-blue-500 transition-colors">
+                    <FiMail className="w-5 h-5" />
                   </div>
                   <input
                     type="email"
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors touch-target"
+                    className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 transition-all"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -172,18 +136,21 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  {t('password')}
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+                <div className="flex justify-between mb-2 ml-1">
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    {t('password')}
+                  </label>
+                  <Link href="/reset-password" className="text-xs font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+                    {t('forgotPassword')}
+                  </Link>
+                </div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 dark:text-gray-500 group-focus-within:text-blue-500 transition-colors">
+                    <FiLock className="w-5 h-5" />
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
-                    className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 dark:text-white transition-colors touch-target"
+                    className="w-full pl-11 pr-12 py-3.5 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 transition-all"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -192,18 +159,9 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center touch-target"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
                   >
-                    {showPassword ? (
-                      <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                      </svg>
-                    ) : (
-                      <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
+                    {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
@@ -211,18 +169,15 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-60 transition-all duration-200 transform hover:scale-[1.02] touch-target"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 px-4 rounded-xl font-bold shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-[0.98] flex items-center justify-center gap-2"
               >
                 {loading ? (
-                  <div className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    {t('processing')}
-                  </div>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  t('signIn')
+                  <>
+                    <FiLogIn className="w-5 h-5" />
+                    {t('signIn')}
+                  </>
                 )}
               </button>
             </form>
@@ -231,10 +186,10 @@ export default function Login() {
               <div className="mt-6">
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+                    <div className="w-full border-t border-gray-800" />
                   </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">{t('or')}</span>
+                  <div className="relative flex justify-center text-xs uppercase tracking-widest">
+                    <span className="px-3 bg-white dark:bg-[#161b22] text-gray-500">{t('or')}</span>
                   </div>
                 </div>
 
@@ -242,36 +197,21 @@ export default function Login() {
                   <button
                     onClick={handleDemoLogin}
                     disabled={loading}
-                    className="w-full bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-60 transition-all duration-200 transform hover:scale-[1.02] touch-target"
+                    className="w-full bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-3.5 px-4 rounded-xl font-bold transition-all transform active:scale-[0.98] flex items-center justify-center gap-2"
                   >
-                    {loading ? (
-                      <div className="flex items-center justify-center">
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        {t('processing')}
-                      </div>
-                    ) : (
-                      t('loginDemoAccount')
-                    )}
+                    {t('loginDemoAccount')}
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="mt-8 space-y-3 text-center">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="mt-8 text-center">
+              <p className="text-sm text-gray-500">
                 {t('dontHaveAccount')} {' '}
-                <Link href="/register" className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors">
+                <Link href="/register" className="font-bold text-blue-400 hover:text-blue-300 transition-colors">
                   {t('register')}
                 </Link>
-              </div>
-              <div className="text-sm">
-                <Link href="/reset-password" className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors">
-                  {t('forgotPassword')}
-                </Link>
-              </div>
+              </p>
             </div>
           </div>
         </div>

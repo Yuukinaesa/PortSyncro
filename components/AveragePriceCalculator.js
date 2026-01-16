@@ -8,10 +8,10 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
   const { t, language } = useLanguage();
   const [assetType, setAssetType] = useState('stock');
   const [symbol, setSymbol] = useState('');
-  
+
   // Helper function to get default currency based on asset type
   const getDefaultCurrency = (type) => type === 'crypto' ? 'USD' : 'IDR';
-  
+
   const [purchases, setPurchases] = useState([
     { source: '', amount: '', price: '', currency: getDefaultCurrency('stock'), amountNormalized: '', priceNormalized: '' }
   ]);
@@ -31,14 +31,14 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
 
   const updatePurchase = (index, field, value) => {
     const newPurchases = [...purchases];
-    
+
     if (field === 'amount' || field === 'price') {
       const normalizedValue = normalizeNumberInput(value);
       newPurchases[index] = { ...newPurchases[index], [field]: value, [`${field}Normalized`]: normalizedValue };
     } else {
       newPurchases[index] = { ...newPurchases[index], [field]: value };
     }
-    
+
     if (field === 'currency') {
       newPurchases.forEach((purchase, i) => {
         if (i !== index) {
@@ -46,7 +46,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
         }
       });
     }
-    
+
     setPurchases(newPurchases);
   };
 
@@ -114,79 +114,58 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-        <div className={`fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 ${isOpen ? 'block' : 'hidden'}`} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', minHeight: '100vh' }} onClick={onClose}>
-      
-      {/* Subtle backdrop with gentle blur */}
-      <div 
-        className={`absolute inset-0 bg-white/10 dark:bg-black/10 backdrop-blur-sm transition-all duration-300 ${isOpen ? 'block' : 'hidden'}`}
-        style={{ 
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0, 
-          width: '100%', 
-          height: '100%'
-        }}
-      />
-        
-                {/* Modal */}
-        <div 
-          className="relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 animate-modal-in flex flex-col"
-          onClick={(e) => e.stopPropagation()}
-        >
+    <div className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={onClose}>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+
+      {/* Modal Container */}
+      <div
+        className="relative w-full max-w-2xl bg-white dark:bg-[#161b22] rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800 shrink-0">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
             {t('averagePriceCalculator')}
           </h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200 dark:hover:text-gray-300 dark:hover:bg-gray-800"
+            className="p-2 rounded-xl text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#0d1117] transition-all duration-200"
           >
             <FiX className="h-5 w-5" />
           </button>
         </div>
-        
+
         {/* Content - Scrollable */}
-        <div 
-          className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
           <ErrorBoundary>
             {/* Asset Type Selection */}
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                 {t('assetType')}
               </label>
-              <div className="flex space-x-3">
+              <div className="flex bg-gray-100 dark:bg-[#0d1117] rounded-xl p-1 border border-gray-200 dark:border-gray-800">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={() => {
                     setAssetType('stock');
-                    // Update all purchase currencies to IDR when switching to stock
                     setPurchases(purchases.map(p => ({ ...p, currency: 'IDR' })));
                   }}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    assetType === 'stock'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${assetType === 'stock'
+                    ? 'bg-white dark:bg-[#1f2937] text-blue-600 dark:text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-600 dark:hover:text-gray-400'
+                    }`}
                 >
                   {t('stock')}
                 </button>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={() => {
                     setAssetType('crypto');
-                    // Update all purchase currencies to USD when switching to crypto
                     setPurchases(purchases.map(p => ({ ...p, currency: 'USD' })));
                   }}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    assetType === 'crypto'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${assetType === 'crypto'
+                    ? 'bg-white dark:bg-[#1f2937] text-blue-600 dark:text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-600 dark:hover:text-gray-400'
+                    }`}
                 >
                   {t('crypto')}
                 </button>
@@ -194,117 +173,104 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
             </div>
 
             {/* Symbol Input */}
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                 {assetType === 'stock' ? t('stockCode') : t('cryptoSymbol')}
               </label>
               <input
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                onClick={(e) => e.stopPropagation()}
                 placeholder={assetType === 'stock' ? 'BBCA' : 'BTC'}
-                className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                className="w-full px-4 py-3 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-medium"
               />
             </div>
 
             {/* Purchases Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
                   {t('purchases')}
                 </h4>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    addPurchase();
-                  }}
-                  className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 flex items-center gap-2 text-sm font-medium"
+                  onClick={addPurchase}
+                  className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 border border-blue-600/20 rounded-lg transition-all text-xs font-bold flex items-center gap-2"
                 >
-                  <FiPlus className="w-4 h-4" />
+                  <FiPlus className="w-3.5 h-3.5" />
                   {t('addPurchase')}
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {purchases.map((purchase, index) => (
-                  <div key={index} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div key={index} className="bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl p-4 relative group hover:border-gray-300 dark:hover:border-gray-700 transition-all">
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
                       {/* Source */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <div className="sm:col-span-4">
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
                           {assetType === 'stock' ? t('broker') : t('exchange')}
                         </label>
                         <input
                           type="text"
                           value={purchase.source}
                           onChange={(e) => updatePurchase(index, 'source', e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
                           placeholder={assetType === 'stock' ? 'Stockbit' : 'Binance'}
-                          className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                          className="w-full px-3 py-2 bg-white dark:bg-[#161b22] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder-gray-500"
                         />
                       </div>
 
                       {/* Amount */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
                           {assetType === 'stock' ? t('lots') : t('amount')}
                         </label>
                         <input
                           type="text"
                           value={purchase.amount}
                           onChange={(e) => updatePurchase(index, 'amount', e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          placeholder={assetType === 'stock' ? '10' : '0.5'}
-                          className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                          placeholder="0"
+                          className="w-full px-3 py-2 bg-white dark:bg-[#161b22] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none font-mono placeholder-gray-500"
                         />
                       </div>
 
-                      {/* Price */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {t('price')}
-                        </label>
-                        <input
-                          type="text"
-                          value={purchase.price}
-                          onChange={(e) => updatePurchase(index, 'price', e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          placeholder="1000"
-                          className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                        />
-                      </div>
-
-                      {/* Currency */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {t('currency')}
-                        </label>
-                        <select
-                          value={purchase.currency}
-                          onChange={(e) => updatePurchase(index, 'currency', e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                        >
-                          <option value="IDR">IDR</option>
-                          <option value="USD">USD</option>
-                        </select>
+                      {/* Price & Currency */}
+                      <div className="sm:col-span-5 flex gap-2">
+                        <div className="flex-1">
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                            {t('price')}
+                          </label>
+                          <input
+                            type="text"
+                            value={purchase.price}
+                            onChange={(e) => updatePurchase(index, 'price', e.target.value)}
+                            placeholder="0"
+                            className="w-full px-3 py-2 bg-white dark:bg-[#161b22] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none font-mono placeholder-gray-500"
+                          />
+                        </div>
+                        <div className="w-20">
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                            {t('currency')}
+                          </label>
+                          <select
+                            value={purchase.currency}
+                            onChange={(e) => updatePurchase(index, 'currency', e.target.value)}
+                            className="w-full px-2 py-2 bg-white dark:bg-[#161b22] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
+                          >
+                            <option value="IDR">IDR</option>
+                            <option value="USD">USD</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
 
                     {/* Remove Button */}
                     {purchases.length > 1 && (
-                      <div className="flex justify-end mt-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removePurchase(index);
-                          }}
-                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200"
-                        >
-                          <FiX className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => removePurchase(index)}
+                        className="absolute -top-2 -right-2 bg-white dark:bg-[#161b22] text-gray-400 hover:text-red-500 border border-gray-200 dark:border-gray-700 hover:border-red-500 rounded-full p-1 shadow-lg transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <FiX className="w-3 h-3" />
+                      </button>
                     )}
                   </div>
                 ))}
@@ -312,68 +278,47 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
             </div>
 
             {/* Calculate Button */}
-            <div className="flex justify-center">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  calculateAverage();
-                }}
-                className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 text-lg font-medium"
-              >
-                {t('calculateAverage')}
-              </button>
-            </div>
+            <button
+              onClick={calculateAverage}
+              className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
+            >
+              {t('calculateAverage')}
+            </button>
 
             {/* Results */}
             {result && (
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+              <div className="animate-fade-in-up">
                 {result.error ? (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm text-red-800 dark:text-red-200">
-                          {result.error}
-                        </p>
-                      </div>
+                  <div className="bg-red-900/20 border border-red-800 rounded-xl p-4 flex items-center gap-3">
+                    <div className="shrink-0 text-red-500">
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
                     </div>
+                    <p className="text-sm text-red-200 font-medium">{result.error}</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {t('calculationResults')}
-                    </h4>
-                    
-                    {/* Average Price - Single Prominent Card */}
-                    <div className="text-center p-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg">
-                      <p className="text-sm text-blue-100 font-medium mb-2">
-                        {t('averagePrice')}
-                      </p>
-                      <p className="text-3xl font-bold text-white">
+
+                  <div className="bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+                    <div className="p-6 text-center border-b border-gray-200 dark:border-gray-800">
+                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">{t('averagePriceEstimate') || 'Estimasi Harga Rata-Rata'}</p>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
                         {result.currency === 'IDR' ? formatIDR(result.averagePrice) : formatUSD(result.averagePrice)}
                       </p>
-                      <p className="text-xs text-blue-200 mt-2">
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-mono">
                         {assetType === 'stock' ? t('perShare') : t('perUnit')}
                       </p>
                     </div>
-
-                    {/* Purchase Details */}
-                    <div>
-                      <h5 className="text-md font-medium text-gray-900 dark:text-white mb-3">
-                        {t('purchaseDetails')}
-                      </h5>
+                    <div className="p-4 bg-white dark:bg-[#161b22]">
+                      <h5 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 ml-1">{t('purchaseDetails')}</h5>
                       <div className="space-y-2">
                         {result.purchases.map((purchase, index) => (
-                          <div key={index} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              {purchase.source || `${t('purchase')} ${index + 1}`}
+                          <div key={index} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl">
+                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                              {purchase.source || `#${index + 1}`}
                             </span>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {purchase.amount} × {purchase.currency === 'IDR' ? formatIDR(purchase.price) : formatUSD(purchase.price)}
+                            <span className="text-sm font-mono text-gray-700 dark:text-gray-200">
+                              {purchase.amount} <span className="text-gray-400 dark:text-gray-600">x</span> {purchase.currency === 'IDR' ? formatIDR(purchase.price) : formatUSD(purchase.price)}
                             </span>
                           </div>
                         ))}
@@ -382,35 +327,27 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                   </div>
                 )}
               </div>
-            )}
-          </ErrorBoundary>
-        </div>
+            )
+            }
+          </ErrorBoundary >
+        </div >
 
-        {/* Action Buttons - Fixed at Bottom */}
-        <div 
-          className="flex justify-end gap-3 p-6 border-t border-gray-100 dark:border-gray-800 flex-shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
+        {/* Footer Actions */}
+        < div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161b22] flex justify-between shrink-0" >
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              resetForm();
-            }}
-            className="px-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium"
+            onClick={resetForm}
+            className="px-4 py-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white text-xs font-bold transition-colors"
           >
             {t('reset')}
           </button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 text-sm font-medium"
+            onClick={onClose}
+            className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-[#0d1117] dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl text-xs font-bold transition-all"
           >
             {t('close')}
           </button>
-        </div>
-      </div>
-    </div>
+        </div >
+      </div >
+    </div >
   );
 } 

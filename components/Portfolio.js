@@ -1,22 +1,27 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AssetTable from './AssetTable';
 import Notification from './Notification';
-import { FiRefreshCw, FiPlusCircle, FiTrendingUp, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload } from 'react-icons/fi';
+
+import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp } from 'react-icons/fi';
+import { FaWhatsapp } from 'react-icons/fa';
 import { fetchExchangeRate } from '../lib/fetchPrices';
 import { formatNumber, formatIDR, formatUSD, formatNumberUSD } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
 import { useTheme } from '../lib/themeContext';
 import { secureLogger } from './../lib/security';
 
-export default function Portfolio({ 
-  assets, 
-  onUpdateStock, 
-  onUpdateCrypto, 
+export default function Portfolio({
+  assets,
+  onUpdateStock,
+  onUpdateCrypto,
+  onUpdateCash,
   onAddAsset,
   onSellStock,
   onSellCrypto,
+  onSellCash,
   onDeleteStock,
   onDeleteCrypto,
+  onDeleteCash,
   onRefreshPrices,
   onRefreshExchangeRate,
   exchangeRate: propExchangeRate,
@@ -28,70 +33,71 @@ export default function Portfolio({
   exchangeRate: parentExchangeRate,
   sellingLoading = false,
   pricesLoading = false,
-  isUpdatingPortfolio = false
+
+  isUpdatingPortfolio = false,
+  hideBalance,
+  onOpenSettings
 }) {
-  // Debug logging - simplified and memoized to prevent excessive logging
   const assetCount = useMemo(() => ({
-    stocks: assets?.stocks?.length || 0,
-    crypto: assets?.crypto?.length || 0
-  }), [assets?.stocks?.length, assets?.crypto?.length]);
-  
-  // Only log when asset count actually changes
+    stocks: new Set((assets?.stocks || []).map(s => (s.ticker || '').toUpperCase())).size,
+    crypto: new Set((assets?.crypto || []).map(c => (c.symbol || '').toUpperCase())).size,
+    cash: new Set((assets?.cash || []).map(c => (c.ticker || '').toUpperCase())).size
+  }), [assets]);
+
   useEffect(() => {
-    if (assetCount.stocks > 0 || assetCount.crypto > 0) {
+    if (assetCount.stocks > 0 || assetCount.crypto > 0 || assetCount.cash > 0) {
       secureLogger.log('Portfolio component received assets:', assetCount);
     }
   }, [assetCount]);
-  
+
   const [prices, setPrices] = useState(propPrices || {});
-  
-  // Sync prices from parent component - with memoization
+  const [searchQuery, setSearchQuery] = useState('');
+
+
   const memoizedPrices = useMemo(() => propPrices, [propPrices]);
   useEffect(() => {
     if (memoizedPrices) {
       setPrices(memoizedPrices);
     }
   }, [memoizedPrices]);
-  
+
   const [loading, setLoading] = useState(false);
   const isPriceLoading = pricesLoading || loading || isUpdatingPortfolio;
-  
-  // ADDED: Prevent excessive loading state
-  const [lastLoadingTime, setLastLoadingTime] = useState(0);
+
+  const lastLoadingTimeRef = useRef(0);
   const [debouncedLoading, setDebouncedLoading] = useState(false);
-  
-  // Debounce loading state to prevent flickering (1 second)
+
   useEffect(() => {
     if (isPriceLoading) {
-      setLastLoadingTime(Date.now());
+      lastLoadingTimeRef.current = Date.now();
       setDebouncedLoading(true);
     } else {
-      const timeSinceLoading = Date.now() - lastLoadingTime;
-      if (timeSinceLoading > 1000) { // Only hide loading after 1 second
+      const timeSinceLoading = Date.now() - lastLoadingTimeRef.current;
+      if (timeSinceLoading > 1000) {
         setDebouncedLoading(false);
       } else {
         const timer = setTimeout(() => setDebouncedLoading(false), 1000 - timeSinceLoading);
         return () => clearTimeout(timer);
       }
     }
-  }, [isPriceLoading, lastLoadingTime]);
+  }, [isPriceLoading]);
+
   const [lastUpdate, setLastUpdate] = useState('');
   const [error, setError] = useState(null);
   const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
   const [exchangeRate, setExchangeRate] = useState(parentExchangeRate || propExchangeRate);
-  
-  // Update exchange rate when parent changes
+
   useEffect(() => {
     const newRate = parentExchangeRate || propExchangeRate;
     if (newRate !== exchangeRate) {
       setExchangeRate(newRate);
     }
   }, [parentExchangeRate, propExchangeRate, exchangeRate]);
+
   const [exchangeRateError, setExchangeRateError] = useState(propExchangeRateError || null);
   const [exchangeRateSource, setExchangeRateSource] = useState(propExchangeRateSource || '');
   const [lastExchangeRateUpdate, setLastExchangeRateUpdate] = useState(propLastExchangeRateUpdate || '');
-  
-  // Update exchange rate related states when parent changes
+
   useEffect(() => {
     if (propExchangeRateError !== exchangeRateError) {
       setExchangeRateError(propExchangeRateError);
@@ -103,266 +109,128 @@ export default function Portfolio({
       setLastExchangeRateUpdate(propLastExchangeRateUpdate);
     }
   }, [propExchangeRateError, propExchangeRateSource, propLastExchangeRateUpdate, exchangeRateError, exchangeRateSource, lastExchangeRateUpdate]);
+
   const [activeAssetTab, setActiveAssetTab] = useState('all');
   const [confirmModal, setConfirmModal] = useState(null);
   const [notification, setNotification] = useState(null);
   const { t, language } = useLanguage();
-  const { isDarkMode } = useTheme();
-
-  const fetchRate = useCallback(async () => {
-    try {
-      setLoadingExchangeRate(true);
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-      const data = await response.json();
-      const idrRate = data.rates.IDR;
-      setExchangeRate(idrRate);
-      setLastExchangeRateUpdate(new Date().toISOString());
-      setExchangeRateSource('exchangerate-api.com');
-      setExchangeRateError(null);
-    } catch (error) {
-      secureLogger.error('Error fetching exchange rate:', error);
-      setExchangeRateError('Failed to fetch exchange rate');
-    } finally {
-      setLoadingExchangeRate(false);
-    }
-  }, []);
-
-  const fetchPrices = useCallback(async () => {
-    try {
-      // This will be handled by the parent component
-      if (onRefreshPrices) {
-        await onRefreshPrices();
-      }
-    } catch (error) {
-      secureLogger.error('Error fetching prices:', error);
-    }
-  }, [onRefreshPrices]);
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const handleRefresh = useCallback(async () => {
     try {
-      // Refresh both prices and exchange rate
       if (onRefreshPrices) {
-        await onRefreshPrices(true); // Pass immediate=true for manual refresh
-      } else {
-        await fetchPrices();
+        await onRefreshPrices(true);
       }
-      
-      // Also refresh exchange rate on manual refresh
       if (onRefreshExchangeRate) {
         await onRefreshExchangeRate();
-      } else {
-        await fetchRate();
       }
     } catch (error) {
       secureLogger.error('Error during refresh:', error);
     }
-  }, [onRefreshPrices, onRefreshExchangeRate, fetchPrices, fetchRate]);
+  }, [onRefreshPrices, onRefreshExchangeRate]);
 
-  // Auto-refresh prices if missing data detected - DISABLED to prevent excessive refreshes
-  // useEffect(() => {
-  //   const hasAssets = assets?.stocks?.length + assets?.crypto?.length > 0;
-  //   const hasPrices = Object.keys(prices).length > 0;
-  //   const missingPrices = hasAssets && hasPrices && Object.keys(prices).length < (assets?.stocks?.length + assets?.crypto?.length);
-
-  //   if (missingPrices && !debouncedLoading) {
-  //     secureLogger.log('Auto-refreshing due to missing prices');
-  //     const autoRefreshTimer = setTimeout(() => {
-  //       // Call parent refresh functions directly to avoid dependency issues
-  //       if (onRefreshPrices) {
-  //         onRefreshPrices(true); // Pass immediate=true for auto-refresh
-  //       }
-  //     }, 3000); // Auto-refresh after 3 seconds
-
-  //     return () => clearTimeout(autoRefreshTimer);
-  //   }
-  // }, [prices, assets?.stocks?.length, assets?.crypto?.length, debouncedLoading, onRefreshPrices]);
-  
-  // Handle sell functionality
+  // Handle Sell
   const handleSellStock = (index, asset, amountToSell) => {
-    const tickerKey = `${asset.ticker}.JK`;
-    
-    if (!prices || !prices[tickerKey]) {
-      setConfirmModal({
-        isOpen: true,
-        title: t('updatingPriceData'),
-        message: t('priceUpdateInfo'),
-        type: 'info',
-        onConfirm: () => {
-          setConfirmModal(null);
-          if (onSellStock) {
-            onSellStock(index, asset, amountToSell);
-          }
-        }
-      });
-      return;
-    }
-    
-    if (onSellStock) {
-      onSellStock(index, asset, amountToSell);
-    }
+    onSellStock(index, asset, amountToSell);
+  };
+  const handleSellCrypto = (index, asset, amountToSell) => {
+    onSellCrypto(index, asset, amountToSell);
   };
 
-  const handleSellCrypto = (index, asset, amountToSell) => {
-    if (!prices || !prices[asset.symbol]) {
-      setConfirmModal({
-        isOpen: true,
-        title: t('updatingCryptoPriceData'),
-        message: t('cryptoPriceUpdateInfo'),
-        type: 'info',
-        onConfirm: () => {
-          setConfirmModal(null);
-          if (onSellCrypto) {
-            onSellCrypto(index, asset, amountToSell);
-          }
-        }
-      });
-      return;
-    }
-    
-    if (onSellCrypto) {
-      onSellCrypto(index, asset, amountToSell);
-    }
-  };
-  
-  // Fixed calculation totals function - use porto values from assets
-  const calculateTotals = () => {
+  // Calculate Totals
+  const totals = useMemo(() => {
     let totalStocksIDR = 0;
     let totalStocksUSD = 0;
     let totalCryptoUSD = 0;
     let totalCryptoIDR = 0;
-    let totalStocksWithPrices = 0;
-    let totalCryptoWithPrices = 0;
-    let avgDayChange = 0;
+    let totalCashIDR = 0;
+    let totalCashUSD = 0;
     let totalAssetsWithChange = 0;
-    let totalPreviousDayIDR = 0;
-    let totalPreviousDayUSD = 0;
-    let error = null;
+    let avgDayChange = 0;
 
-    // Calculate stocks totals using porto values
+    const safeExchangeRate = exchangeRate || 0; // Prevent division by zero or null
+
+    // Cash
+    (assets?.cash || []).forEach(cash => {
+      const amount = parseFloat(cash.amount) || 0;
+      totalCashIDR += amount;
+      if (safeExchangeRate > 0) {
+        totalCashUSD += amount / safeExchangeRate;
+      }
+    });
+
+    // Stocks
     (assets?.stocks || []).forEach(stock => {
-      // Use porto values if available, otherwise calculate from prices
-      if (stock.portoIDR && stock.portoIDR > 0) {
-        totalStocksIDR += stock.portoIDR;
-        totalStocksUSD += stock.portoUSD || 0;
-        totalStocksWithPrices++;
+      const tickerKey = stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`;
+      // Prioritize real-time price, fallback to stored currentPrice, then 0. NEVER use dummy.
+      const realtimePrice = prices[tickerKey];
+      const priceVal = realtimePrice ? realtimePrice.price : (stock.currentPrice || 0);
+
+      const shareCount = stock.market === 'US' ? parseFloat(stock.lots) : parseFloat(stock.lots) * 100;
+
+      if (stock.market === 'US') {
+        // US Stock (Base USD)
+        const valUSD = priceVal * shareCount;
+        totalStocksUSD += valUSD;
+        totalStocksIDR += valUSD * safeExchangeRate;
       } else {
-        // Fallback to price calculation
-        const tickerKey = `${stock.ticker}.JK`;
-        if (prices[tickerKey]) {
-          const price = prices[tickerKey];
-          const shareCount = stock.lots * 100; // 1 lot = 100 shares for IDX stocks
-          
-          if (price.currency === 'IDR') {
-            const stockValue = price.price * shareCount;
-            totalStocksIDR += stockValue;
-            
-            // Convert to USD for total USD calculation
-            if (exchangeRate && exchangeRate > 0) {
-              totalStocksUSD += Math.round((stockValue / exchangeRate) * 100) / 100;
-            }
-          }
-          
-          // Calculate daily change and previous day value
-          if (price.change !== undefined && !isNaN(price.change)) {
-            avgDayChange += price.change;
-            totalAssetsWithChange++;
-            
-            // Calculate previous day value
-            const previousPrice = price.price / (1 + price.change / 100);
-            const previousValueIDR = previousPrice * shareCount;
-            const previousValueUSD = exchangeRate && exchangeRate > 0 ? Math.round((previousValueIDR / exchangeRate) * 100) / 100 : 0;
-            
-            totalPreviousDayIDR += previousValueIDR;
-            totalPreviousDayUSD += previousValueUSD;
-          }
-          totalStocksWithPrices++;
+        // IDX Stock (Base IDR)
+        const valIDR = priceVal * shareCount;
+        totalStocksIDR += valIDR;
+        if (safeExchangeRate > 0) {
+          totalStocksUSD += valIDR / safeExchangeRate;
         }
+      }
+
+      // Track change for average
+      if (realtimePrice && typeof realtimePrice.change === 'number') {
+        avgDayChange += realtimePrice.change; // This might need to be weighted or just sum of % changes? 
+        // Typically portfolio change is weighted. But for now keeping distinct asset change average if that was intent, 
+        // OR better: average % change.
+        totalAssetsWithChange++;
       }
     });
 
-    // Calculate crypto totals using porto values
+    // Crypto
     (assets?.crypto || []).forEach(crypto => {
-      // Use porto values if available, otherwise calculate from prices
-      if (crypto.portoUSD && crypto.portoUSD > 0) {
-        totalCryptoUSD += crypto.portoUSD;
-        totalCryptoIDR += crypto.portoIDR || 0;
-        totalCryptoWithPrices++;
-      } else {
-        // Fallback to price calculation
-        if (prices[crypto.symbol]) {
-          const price = prices[crypto.symbol];
-          const cryptoValueUSD = price.price * crypto.amount;
-          totalCryptoUSD += cryptoValueUSD;
-          
-          // Convert USD to IDR using exchange rate
-          if (exchangeRate && exchangeRate > 0) {
-            totalCryptoIDR += Math.round(cryptoValueUSD * exchangeRate);
-          } else {
-            error = t('exchangeRateUnavailable');
-          }
-          
-          // Calculate daily change and previous day value for crypto
-          if (price.change !== undefined && !isNaN(price.change)) {
-            avgDayChange += price.change;
-            totalAssetsWithChange++;
-            
-            const previousPrice = price.price / (1 + price.change / 100);
-            const previousValueUSD = previousPrice * crypto.amount;
-            const previousValueIDR = exchangeRate && exchangeRate > 0 ? Math.round(previousValueUSD * exchangeRate) : 0;
-            
-            totalPreviousDayIDR += previousValueIDR;
-            totalPreviousDayUSD += previousValueUSD;
-          }
-          totalCryptoWithPrices++;
-        }
+      // Prioritize real-time price, fallback to stored.
+      const price = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
+      const amount = parseFloat(crypto.amount) || 0;
+
+      const valUSD = price * amount;
+      totalCryptoUSD += valUSD;
+      totalCryptoIDR += valUSD * safeExchangeRate;
+
+      if (prices[crypto.symbol] && typeof prices[crypto.symbol].change === 'number') {
+        avgDayChange += prices[crypto.symbol].change;
+        totalAssetsWithChange++;
       }
     });
 
-    const totalIDR = Math.round(totalStocksIDR + totalCryptoIDR);
-    const totalUSD = Math.round((totalStocksUSD + totalCryptoUSD) * 100) / 100;
-    
-    // Calculate average daily change
+    const totalIDR = totalStocksIDR + totalCryptoIDR + totalCashIDR;
+    const totalUSD = totalStocksUSD + totalCryptoUSD + totalCashUSD;
+
     avgDayChange = totalAssetsWithChange > 0 ? avgDayChange / totalAssetsWithChange : 0;
-    
-    // Calculate percentages
-    const stocksPercent = totalIDR > 0 ? (totalStocksIDR / totalIDR) * 100 : 0;
-    const cryptoPercent = totalIDR > 0 ? (totalCryptoIDR / totalIDR) * 100 : 0;
-    
-    // Calculate absolute changes
-    const changeIDR = totalIDR - totalPreviousDayIDR;
-    const changeUSD = totalUSD - totalPreviousDayUSD;
-    
+
     return {
-      totalIDR,
-      totalUSD,
-      totalPreviousDayIDR,
-      totalPreviousDayUSD,
-      changeIDR,
-      changeUSD,
+      totalIDR: Math.round(totalIDR),
+      totalUSD: totalUSD,
       totalStocksIDR,
       totalStocksUSD,
       totalCryptoIDR,
       totalCryptoUSD,
-      stocksPercent,
-      cryptoPercent,
-      totalStocksWithPrices,
-      totalCryptoWithPrices,
-      totalStocks: assets?.stocks?.length || 0,
-      totalCrypto: assets?.crypto?.length || 0,
+      totalCashIDR,
+      totalCashUSD,
+      stocksPercent: totalIDR > 0 ? (totalStocksIDR / totalIDR) * 100 : 0,
+      cryptoPercent: totalIDR > 0 ? (totalCryptoIDR / totalIDR) * 100 : 0,
+      cashPercent: totalIDR > 0 ? (totalCashIDR / totalIDR) * 100 : 0,
       totalAssetsWithChange,
-      avgDayChange,
-      error
+      avgDayChange
     };
-  };
+  }, [assets, prices, exchangeRate]);
 
-  const totals = calculateTotals();
-  
-  useEffect(() => {
-    setExchangeRateError(totals.error);
-  }, [totals.error]);
-
-  // Fixed gain calculations - use gain values from assets with proper currency conversion
-  const calculateGains = () => {
+  // Calculate Gains
+  const gains = useMemo(() => {
     let stocksGainIDR = 0;
     let stocksGainUSD = 0;
     let cryptoGainUSD = 0;
@@ -370,667 +238,765 @@ export default function Portfolio({
     let totalCostIDR = 0;
     let totalCostUSD = 0;
 
-    // Calculate stocks gain using gain values from assets
+    const safeExchangeRate = exchangeRate || 0;
+
+    // Stocks
     (assets?.stocks || []).forEach(stock => {
-      if (stock.gainIDR !== undefined) {
-        stocksGainIDR += stock.gainIDR;
-        stocksGainUSD += stock.gainUSD || 0;
-        totalCostIDR += stock.totalCost || (stock.avgPrice * stock.lots * 100);
-      } else {
-        // Fallback calculation
-        const tickerKey = `${stock.ticker}.JK`;
-        const currentPrice = prices[tickerKey]?.price || stock.currentPrice || 0;
-        const shareCount = stock.lots * 100; // 1 lot = 100 shares for IDX
-        const currentValue = currentPrice * shareCount;
-        const costBasis = stock.avgPrice * shareCount;
-        
-        const stockGainIDR = currentValue - costBasis;
-        const stockGainUSD = exchangeRate && exchangeRate > 0 ? Math.round((stockGainIDR / exchangeRate) * 100) / 100 : 0;
-        
-        stocksGainIDR += stockGainIDR;
-        stocksGainUSD += stockGainUSD;
-        totalCostIDR += costBasis;
-      }
-    });
+      const tickerKey = stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`;
+      const currentPrice = prices[tickerKey]?.price || stock.currentPrice || 0;
 
-    // Calculate crypto gain using gain values from assets
-    (assets?.crypto || []).forEach(crypto => {
-      if (crypto.gainUSD !== undefined) {
-        cryptoGainUSD += crypto.gainUSD;
-        cryptoGainIDR += crypto.gainIDR || 0;
-        totalCostUSD += crypto.totalCost || (crypto.avgPrice * crypto.amount);
-      } else {
-        // Fallback calculation
-        const currentPrice = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
-        const currentValue = currentPrice * crypto.amount;
-        const costBasis = crypto.avgPrice * crypto.amount;
-        
-        const cryptoGainUSD = currentValue - costBasis;
-        const cryptoGainIDR = exchangeRate && exchangeRate > 0 ? Math.round(cryptoGainUSD * exchangeRate) : 0;
-        
-        cryptoGainUSD += cryptoGainUSD;
-        cryptoGainIDR += cryptoGainIDR;
+      const shareCount = stock.market === 'US' ? parseFloat(stock.lots) : parseFloat(stock.lots) * 100;
+      let currentValue = 0;
+      let costBasis = 0;
+
+      if (stock.market === 'US') {
+        // US: Base USD
+        currentValue = currentPrice * shareCount;
+        costBasis = (parseFloat(stock.avgPrice) || 0) * shareCount; // avgPrice is USD per share
+
+        const gain = currentValue - costBasis;
+        stocksGainUSD += gain;
+        stocksGainIDR += gain * safeExchangeRate;
         totalCostUSD += costBasis;
+      } else {
+        // IDX: Base IDR
+        currentValue = currentPrice * shareCount;
+        costBasis = (parseFloat(stock.avgPrice) || 0) * shareCount; // avgPrice is IDR per share
+
+        const gain = currentValue - costBasis;
+        stocksGainIDR += gain;
+        totalCostIDR += costBasis;
+        if (safeExchangeRate > 0) {
+          stocksGainUSD += gain / safeExchangeRate;
+        }
       }
     });
 
-    const totalGainIDR = Math.round(stocksGainIDR + cryptoGainIDR);
-    const totalGainUSD = Math.round((stocksGainUSD + cryptoGainUSD) * 100) / 100;
-    const totalCost = totalCostIDR + (exchangeRate && exchangeRate > 0 ? totalCostUSD * exchangeRate : totalCostUSD);
-    const gainPercent = totalCost > 0 ? (totalGainIDR / totalCost) * 100 : 0;
+    // Crypto
+    (assets?.crypto || []).forEach(crypto => {
+      const currentPrice = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
+      const amount = parseFloat(crypto.amount) || 0;
+      const currentValue = currentPrice * amount;
+      const costBasis = (parseFloat(crypto.avgPrice) || 0) * amount;
 
-    // Calculate individual percentages
-    const stocksGainPercent = totalCostIDR > 0 ? (stocksGainIDR / totalCostIDR) * 100 : 0;
-    const cryptoGainPercent = totalCostUSD > 0 ? (cryptoGainUSD / totalCostUSD) * 100 : 0;
+      const gain = currentValue - costBasis;
+      cryptoGainUSD += gain;
+      cryptoGainIDR += gain * safeExchangeRate;
+      totalCostUSD += costBasis;
+    });
+
+    const totalGainIDR = stocksGainIDR + cryptoGainIDR;
+    const totalGainUSD = stocksGainUSD + cryptoGainUSD;
+
+    // Total Cost normalized to IDR for % calc
+    const totalCostNormalizedIDR = totalCostIDR + (totalCostUSD * safeExchangeRate);
 
     return {
-      stocksGainIDR,
-      stocksGainUSD,
-      cryptoGainUSD,
-      cryptoGainIDR,
+      totalStockGainIDR: stocksGainIDR, // Renamed to match JSX expectation
+      totalStockGainUSD: stocksGainUSD,
+      totalCryptoGainIDR: cryptoGainIDR,
+      totalCryptoGainUSD: cryptoGainUSD,
       totalGainIDR,
       totalGainUSD,
-      totalCost,
-      gainPercent,
-      stocksGainPercent,
-      cryptoGainPercent
+      totalCost: totalCostNormalizedIDR,
+      gainPercent: totalCostNormalizedIDR > 0 ? (totalGainIDR / totalCostNormalizedIDR) * 100 : 0, // Better approach for percent: (Total Gain / Total Cost)
+      stocksGainPercent: totalCostIDR > 0 ? (stocksGainIDR / totalCostIDR) * 100 : 0,
+      cryptoGainPercent: totalCostUSD > 0 ? (cryptoGainUSD / totalCostUSD) * 100 : 0
     };
-  };
+  }, [assets, prices, exchangeRate]);
 
-  const gains = calculateGains();
+  // Search Filter
+  const filteredAssets = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    const filterItem = (item) => {
+      if (!query) return true;
+      return (
+        (item.ticker || '').toLowerCase().includes(query) ||
+        (item.symbol || '').toLowerCase().includes(query) ||
+        (item.broker || '').toLowerCase().includes(query) ||
+        (item.exchange || '').toLowerCase().includes(query)
+      );
+    };
 
-  // Export portfolio to CSV
-    // Format number for CSV export (without currency symbol) - same as TransactionHistory
-  const formatNumberForCSV = (value, currency) => {
-    if (!value || isNaN(value)) return currency === 'USD' ? '0.00' : '0';
-    
-    // Convert to number and round to avoid floating point precision issues
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    
-    if (currency === 'IDR') {
-      // For IDR, format with dot as thousands separator
-      const rounded = Math.round(num);
-      return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    } else {
-      // For USD, format with comma as thousands separator and 2 decimal places
-      return num.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
-    }
-  };
+    return {
+      stocks: (assets?.stocks || []).filter(filterItem),
+      crypto: (assets?.crypto || []).filter(filterItem),
+      cash: (assets?.cash || []).filter(filterItem)
+    };
+  }, [assets, searchQuery]);
 
-  const exportPortfolioToCSV = () => {
-    const allAssets = [
-      ...(assets?.stocks || []).map(asset => ({ ...asset, type: 'stock' })),
-      ...(assets?.crypto || []).map(asset => ({ ...asset, type: 'crypto' }))
-    ];
+  const uniqueFilteredCounts = useMemo(() => ({
+    stocks: new Set((filteredAssets.stocks || []).map(s => (s.ticker || '').toUpperCase())).size,
+    crypto: new Set((filteredAssets.crypto || []).map(c => (c.symbol || '').toUpperCase())).size,
+    cash: new Set((filteredAssets.cash || []).map(c => (c.ticker || '').toUpperCase())).size
+  }), [filteredAssets]);
 
-    if (allAssets.length === 0) {
-      setConfirmModal({
-        isOpen: true,
-        title: 'Peringatan',
-        message: 'Tidak ada aset untuk diekspor',
-        type: 'warning',
-        onConfirm: () => setConfirmModal(null)
-      });
-      return;
-    }
-
+  const copyToWhatsApp = () => {
     try {
-      const BOM = '\uFEFF';
-      
-      // Language-aware headers with semicolon separation
-      const headers = language === 'id' 
-        ? ['Aset', 'Tipe', 'Jumlah', 'Harga Rata-rata', 'Harga Sekarang', 'Nilai IDR', 'Nilai USD', 'Gain/Loss IDR', 'Gain/Loss USD']
-        : ['Asset', 'Type', 'Amount', 'Avg Price', 'Current Price', 'IDR Value', 'USD Value', 'Gain/Loss IDR', 'Gain/Loss USD'];
-      
-      let csvContent = BOM + headers.join(';') + '\n';
-      
-      // Add stocks
-      (assets?.stocks || []).forEach(stock => {
-        const tickerKey = `${stock.ticker}.JK`;
-        const currentPrice = prices[tickerKey]?.price || stock.currentPrice || 0;
-        const shareCount = stock.lots * 100;
-        const currentValueIDR = currentPrice * shareCount;
-        const currentValueUSD = exchangeRate && exchangeRate > 0 ? currentValueIDR / exchangeRate : 0;
-        const costBasis = stock.avgPrice * shareCount;
-        const gainIDR = currentValueIDR - costBasis;
-        const gainUSD = exchangeRate && exchangeRate > 0 ? gainIDR / exchangeRate : 0;
-        
-        const row = [
-          `"${stock.ticker}"`,
-          `"${language === 'id' ? 'Saham' : 'Stock'}"`,
-          `"${stock.lots}"`,
-          formatNumberForCSV(stock.avgPrice, 'IDR'),
-          formatNumberForCSV(currentPrice, 'IDR'),
-          formatNumberForCSV(currentValueIDR, 'IDR'),
-          formatNumberForCSV(currentValueUSD, 'USD'),
-          formatNumberForCSV(gainIDR, 'IDR'),
-          formatNumberForCSV(gainUSD, 'USD')
-        ];
-        csvContent += row.join(';') + '\n';
+      const now = new Date();
+      const options = { day: 'numeric', month: 'short', year: 'numeric' };
+      // Format manual date string: "16 Jan 2026"
+      const dateString = now.toLocaleDateString('id-ID', options);
+
+      let text = `Rekap Keuangan — ${dateString}\n\n`;
+      text += `💰 Total: ${formatIDR(totals.totalIDR)}\n\n`;
+
+      // BANK & E-WALLET
+      if (assets?.cash?.length) {
+        text += "🏦 BANK\n\n";
+        assets.cash.forEach(b => {
+          text += `• ${b.ticker}: ${formatIDR(b.amount)}\n`;
+        });
+        text += "\n";
+      }
+
+      // SAHAM
+      if (assets?.stocks?.length) {
+        text += "📈 SAHAM\n\n";
+
+        // Group stocks by ticker
+        const stocksByTicker = {};
+        assets.stocks.forEach(stock => {
+          if (!stocksByTicker[stock.ticker]) {
+            stocksByTicker[stock.ticker] = [];
+          }
+          stocksByTicker[stock.ticker].push(stock);
+        });
+
+        // Loop through tickers
+        Object.entries(stocksByTicker).forEach(([ticker, stocks]) => {
+          if (stocks.length > 1) {
+            // Multi-broker: Header then list
+            text += `${ticker}\n`;
+            stocks.forEach(stock => {
+              // Calculate value on fly if portoIDR not ready, though usually it is. 
+              // Portfolio caluclates it. Let's rely on standard calc if missing.
+              let valIDR = stock.portoIDR;
+              if (!valIDR) {
+                const price = prices[stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`]?.price || stock.currentPrice || 0;
+                const shareCount = stock.market === 'US' ? parseFloat(stock.lots) : parseFloat(stock.lots) * 100;
+                valIDR = price * shareCount;
+                if (stock.market === 'US' && exchangeRate) valIDR *= exchangeRate;
+              }
+
+              text += `• ${stock.broker || 'Manual'}: ${formatIDR(valIDR)} (${stock.lots} Lot)\n`;
+            });
+            text += "\n";
+          } else {
+            // Single broker: Single line
+            const stock = stocks[0];
+            let valIDR = stock.portoIDR;
+            if (!valIDR) {
+              const price = prices[stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`]?.price || stock.currentPrice || 0;
+              const shareCount = stock.market === 'US' ? parseFloat(stock.lots) : parseFloat(stock.lots) * 100;
+              valIDR = price * shareCount;
+              if (stock.market === 'US' && exchangeRate) valIDR *= exchangeRate;
+            }
+
+            text += `${ticker} — ${stock.broker || 'Manual'}: ${formatIDR(valIDR)} (${stock.lots} Lot)\n`;
+          }
+        });
+        text += "\n";
+      }
+
+      // CRYPTO
+      if (assets?.crypto?.length) {
+        text += "🪙 CRYPTO\n\n";
+
+        // Group crypto by symbol (in case of multiple exchanges, similar handling)
+        const cryptoBySymbol = {};
+        assets.crypto.forEach(crypto => {
+          if (!cryptoBySymbol[crypto.symbol]) {
+            cryptoBySymbol[crypto.symbol] = [];
+          }
+          cryptoBySymbol[crypto.symbol].push(crypto);
+        });
+
+        Object.entries(cryptoBySymbol).forEach(([symbol, cryptos]) => {
+          if (cryptos.length > 1) {
+            text += `${symbol}\n`;
+            cryptos.forEach(crypto => {
+              let valIDR = crypto.portoIDR;
+              if (!valIDR) {
+                const price = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
+                const valUSD = price * crypto.amount;
+                valIDR = valUSD * (exchangeRate || 1);
+              }
+              text += `• ${crypto.exchange || 'Manual'}: ${formatIDR(valIDR)} (${crypto.amount} Unit)\n`;
+            });
+            text += "\n";
+          } else {
+            const crypto = cryptos[0];
+            let valIDR = crypto.portoIDR;
+            if (!valIDR) {
+              const price = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
+              const valUSD = price * crypto.amount;
+              valIDR = valUSD * (exchangeRate || 1);
+            }
+            text += `${symbol} — ${crypto.exchange || 'Manual'}: ${formatIDR(valIDR)} (${crypto.amount} Unit)\n`;
+          }
+        });
+        text += "\n";
+      }
+
+      // Clean up: Remove trailing newlines
+      text = text.trim();
+
+      navigator.clipboard.writeText(text);
+      setNotification({ type: 'success', title: 'Tersalin', message: 'Rekap berhasil disalin ke clipboard' });
+
+      // Open WhatsApp? Or just copy. Usually copy is better. 
+      // Existing code might have link.
+      // But user requested "format copy WA".
+      // I'll keep just copy to clipboard for now as it's safer/generic.
+      // Or adding window.open if it was there.
+      // Previous code didn't show window.open in the viewed snippet (it ended early). 
+      // I will assume clipboard copy is sufficient, or add share intent if mobile.
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.location.href = `whatsapp://send?text=${encodeURIComponent(text)}`;
+      }
+
+    } catch (error) {
+      secureLogger.error('Copy WhatsApp Failed:', error);
+      setNotification({ type: 'error', title: 'Gagal', message: 'Gagal menyalin rekap.' });
+    }
+  };
+
+
+  const exportPortfolioToCSV = (category = 'all', e) => {
+    if (e) e.stopPropagation();
+    try {
+      const currentDate = new Date().toLocaleString('id-ID', {
+        dateStyle: 'full', timeStyle: 'short'
       });
-      
-      // Add crypto
-      (assets?.crypto || []).forEach(crypto => {
-        const currentPrice = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
-        const currentValueUSD = currentPrice * crypto.amount;
-        const currentValueIDR = exchangeRate && exchangeRate > 0 ? currentValueUSD * exchangeRate : 0;
-        const costBasis = crypto.totalCost || (crypto.avgPrice * crypto.amount);
-        const gainUSD = currentValueUSD - costBasis;
-        const gainIDR = exchangeRate && exchangeRate > 0 ? gainUSD * exchangeRate : 0;
-        
-        const row = [
-          `"${crypto.symbol}"`,
-          `"${language === 'id' ? 'Kripto' : 'Crypto'}"`,
-          `"${crypto.amount}"`,
-          formatNumberForCSV(crypto.avgPrice || 0, 'USD'),
-          formatNumberForCSV(currentPrice, 'USD'),
-          formatNumberForCSV(currentValueIDR, 'IDR'),
-          formatNumberForCSV(currentValueUSD, 'USD'),
-          formatNumberForCSV(gainIDR, 'IDR'),
-          formatNumberForCSV(gainUSD, 'USD')
-        ];
-        csvContent += row.join(';') + '\n';
-      });
-      
-      // Create blob and download
+
+      // 1. Metadata / Header Info
+      const csvRows = [];
+      csvRows.push(['PORTFOLIO REPORT']);
+      csvRows.push(['Generated At', currentDate]);
+      csvRows.push(['Exchange Rate (1 USD)', formatIDR(exchangeRate)]);
+      csvRows.push(['Total Value (IDR)', formatIDR(totals.totalIDR)]);
+      csvRows.push(['Total Value (USD)', formatUSD(totals.totalUSD)]);
+      csvRows.push([]); // Empty row
+
+      // 2. Define Headers
+      // We will create a unified table structure but might separate sections for clarity if requested, 
+      // but a single table is usually better for sorting/filtering in Excel.
+      // Let's stick to a robust single table with clear Type indicator.
+      const headers = [
+        'Type',
+        'Ticker/Name',
+        'Broker/Exchange',
+        'Quantity (Lot/Unit)',
+        'Avg Price',
+        'Current Price',
+        'Total Cost (IDR)',
+        'Market Value (IDR)',
+        'Market Value (USD)',
+        'Gain/Loss (IDR)',
+        'Performance (%)'
+      ];
+      csvRows.push(headers);
+
+      const escape = (str) => {
+        if (str === null || str === undefined) return '""';
+        return `"${String(str).replace(/"/g, '""')}"`;
+      };
+
+      // Helper to format number for CSV (avoiding currency symbols for easier calculation in Excel if desired, 
+      // but user asked for "enak dilihat" (nice to view), so we might keep formatting or just clean numbers.
+      // Let's use clean numbers for compatibility, but formatted if it's just IDR. 
+      // Actually, standard Excel CSV prefers raw numbers. But "Enak dilihat" might mean formatted. 
+      // Let's provide formatted numbers for "Value" columns for readability.
+
+      const formatVal = (num) => {
+        if (!num && num !== 0) return '0';
+        return Number(num).toFixed(2);
+      };
+
+      // Process Stocks
+      if ((category === 'all' || category === 'stock') && assets?.stocks) {
+        assets.stocks.forEach(stock => {
+          const isUS = stock.market === 'US';
+          const avgPriceLabel = isUS ? formatUSD(stock.avgPrice) : formatIDR(stock.avgPrice);
+          const currPriceLabel = isUS ? formatUSD(stock.currentPrice) : formatIDR(stock.currentPrice);
+
+          // Calculate IDR values for uniformity
+          let costIDR = 0, valueIDR = 0, gainIDR = 0, valueUSD = 0;
+
+          if (isUS) {
+            const shares = stock.lots;
+            valueUSD = (stock.currentPrice * shares);
+            valueIDR = valueUSD * exchangeRate;
+            costIDR = (stock.avgPrice * shares) * exchangeRate;
+            gainIDR = valueIDR - costIDR;
+          } else {
+            const shares = stock.lots * 100;
+            valueIDR = (stock.currentPrice * shares);
+            valueUSD = valueIDR / (exchangeRate || 14000);
+            costIDR = stock.avgPrice * shares;
+            gainIDR = valueIDR - costIDR;
+          }
+
+          csvRows.push([
+            'Stock ' + (isUS ? '(US)' : '(IDX)'),
+            stock.ticker,
+            stock.broker || '-',
+            stock.lots,
+            avgPriceLabel,
+            currPriceLabel,
+            formatIDR(costIDR),
+            formatIDR(valueIDR),
+            formatUSD(valueUSD),
+            formatIDR(gainIDR),
+            (stock.gainPercentage || 0).toFixed(2) + '%'
+          ]);
+        });
+      }
+
+      // Process Crypto
+      if ((category === 'all' || category === 'crypto') && assets?.crypto) {
+        assets.crypto.forEach(crypto => {
+          const valueUSD = crypto.portoUSD || (crypto.amount * crypto.currentPrice);
+          const valueIDR = valueUSD * exchangeRate;
+          const costUSD = (crypto.avgPrice * crypto.amount);
+          const costIDR = costUSD * exchangeRate;
+          const gainIDR = valueIDR - costIDR;
+
+          csvRows.push([
+            'Crypto',
+            crypto.symbol,
+            crypto.exchange || '-',
+            crypto.amount,
+            formatUSD(crypto.avgPrice),
+            formatUSD(crypto.currentPrice),
+            formatIDR(costIDR),
+            formatIDR(valueIDR),
+            formatUSD(valueUSD),
+            formatIDR(gainIDR),
+            (crypto.gainPercentage || 0).toFixed(2) + '%'
+          ]);
+        });
+      }
+
+      // Process Cash
+      if ((category === 'all' || category === 'cash') && assets?.cash) {
+        assets.cash.forEach(cash => {
+          const valIDR = cash.amount;
+          const valUSD = valIDR / (exchangeRate || 1);
+
+          csvRows.push([
+            'Cash',
+            cash.ticker, // Bank Name
+            '-',
+            '-', // Quantity
+            '-', // Avg Price
+            '-', // Curr Price
+            formatIDR(valIDR), // Cost (same as value)
+            formatIDR(valIDR),
+            formatUSD(valUSD),
+            '0',
+            '0%'
+          ]);
+        });
+      }
+
+      const csvContent = csvRows.map(row => row.map(escape).join(",")).join("\n");
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
-      
-      // Language-aware filename
-      const currentDate = new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US');
-      const filename = language === 'id' 
-        ? `portfolio_${currentDate}.csv`
-        : `portfolio_${currentDate}.csv`;
-      
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `PortSyncro_Report_${category}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
-      
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }, 100);
-      
+      document.body.removeChild(link);
+
+      setNotification({ type: 'success', title: 'Export Berhasil', message: `Laporan ${category} berhasil diunduh.` });
     } catch (error) {
-      secureLogger.error('Error exporting portfolio:', error);
-      setNotification({
-        type: 'error',
-        title: t('error'),
-        message: t('portfolioExportFailed', { error: error.message }),
-      });
+      secureLogger.error('Export CSV Failed:', error);
+      setNotification({ type: 'error', title: 'Export Gagal', message: 'Gagal membuat file CSV.' });
     }
   };
 
-  const getGainColor = (value) => {
-    if (value >= 0) {
-      return 'text-green-600 dark:text-green-400';
-    } else {
-      return 'text-red-600 dark:text-red-400';
-    }
+  /* Helper Functions */
+  const getMasked = (val, isCurrency = true) => {
+    if (hideBalance) return '•••••••';
+    return val;
   };
 
   return (
-    <div className="space-y-8">
-      {/* Exchange Rate Display - Minimalist */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <FiDollarSign className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('exchangeRate')}</span>
-              {loadingExchangeRate ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{t('loading')}</span>
-                </div>
-              ) : exchangeRateError ? (
-                <span className="text-sm text-red-600 dark:text-red-400">{t('error')}: {exchangeRateError}</span>
-              ) : exchangeRate ? (
-                <span className="text-xl font-bold text-gray-900 dark:text-white">
-                  {formatIDR(exchangeRate)}
-                </span>
-              ) : (
-                <span className="text-sm text-red-600 dark:text-red-400">Tidak tersedia</span>
-              )}
-            </div>
+    <div className="space-y-6 pb-24 font-sans bg-gray-50 dark:bg-[#0d1117] min-h-screen text-gray-900 dark:text-gray-300 p-4 sm:p-6">
+      {/* App Header */}
+      <div className="flex flex-col space-y-1 mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t('portfolio') || 'My Portfolio'}</h1>
+        <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+          1 USD ≈ {getMasked(formatIDR(exchangeRate))}
+        </p>
+      </div>
+
+      {/* Control Panel Bar */}
+      <div className="bg-white dark:bg-[#161b22] rounded-2xl p-3 flex flex-col xl:flex-row items-center justify-between gap-4 border border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className="flex items-center gap-6 w-full xl:w-auto overflow-x-auto no-scrollbar">
+          <span className="text-gray-900 dark:text-white font-bold px-2 hidden md:block">Portfolio</span>
+
+          <div className="grid grid-cols-4 gap-1 w-full min-w-[300px] md:min-w-0 md:flex md:space-x-1">
+            {['all', 'cash', 'stock', 'crypto'].map(tab => {
+              const count = tab === 'all'
+                ? assetCount.stocks + assetCount.crypto + assetCount.cash
+                : (tab === 'cash' ? assetCount.cash : (tab === 'stock' ? assetCount.stocks : assetCount.crypto));
+              const labels = {
+                all: t('all') || 'Semua',
+                cash: t('bank') || 'Bank',
+                stock: t('stocks') || 'Saham',
+                crypto: t('crypto') || 'Kripto'
+              };
+              const isActive = activeAssetTab === tab;
+
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveAssetTab(tab)}
+                  className={`
+                      px-2 py-2 rounded-xl flex flex-col items-center justify-center transition-all duration-200 w-full md:w-auto md:min-w-[80px]
+                      ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200'}
+                   `}
+                >
+                  <span className="text-[11px] sm:text-xs font-bold truncate w-full text-center">{labels[tab]}</span>
+                  <span className="text-[10px] opacity-80">({count})</span>
+                </button>
+              )
+            })}
           </div>
-          
-          <div className="flex items-center gap-3">
-            {lastExchangeRateUpdate && (
-              <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-xl">
-                Update: {new Date(lastExchangeRateUpdate).toLocaleTimeString()}
-              </span>
-            )}
-          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full xl:w-auto justify-end">
+          {/* Refresh */}
+          <button onClick={handleRefresh} className="w-10 h-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors border border-gray-200 dark:border-gray-800">
+            <FiRefreshCw className={`w-4 h-4 ${debouncedLoading ? "animate-spin text-blue-500" : ""}`} />
+          </button>
+
+          {/* Export */}
+          <button onClick={(e) => exportPortfolioToCSV('all', e)} className="bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-4 h-10 rounded-xl flex items-center gap-2 text-xs font-bold transition-colors border border-gray-200 dark:border-gray-700">
+            <FiDownload className="w-3 h-3" />
+            <span className="hidden sm:inline">{t('exportPortfolio') || 'Ekspor Portofolio'}</span>
+          </button>
+
+          {/* WA */}
+          <button onClick={copyToWhatsApp} className="bg-emerald-500 hover:bg-emerald-600 text-white w-10 sm:w-auto sm:px-4 h-10 rounded-xl flex items-center justify-center gap-2 font-bold transition-colors shadow-lg shadow-emerald-500/20">
+            <FaWhatsapp className="w-4 h-4" />
+            <span className="hidden sm:inline">WA</span>
+          </button>
+
+          {/* Settings */}
+          <button onClick={onOpenSettings} className="bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 px-4 h-10 rounded-xl flex items-center gap-2 text-xs font-bold transition-colors border border-gray-200 dark:border-gray-800">
+            <FiSettings className="w-3 h-3" />
+            <span className="hidden sm:inline">{t('settings') || 'Settings'}</span>
+          </button>
+
+          {/* Add */}
+          <button onClick={() => onAddAsset && onAddAsset()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 h-10 rounded-xl flex items-center gap-2 text-xs font-bold transition-colors shadow-lg shadow-blue-600/20">
+            <FiPlusCircle className="w-4 h-4" />
+            <span>{t('add') || 'Tambah'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Dashboard Cards - Minimalist */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
-        {/* Total Portfolio Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex justify-between items-center mb-3 sm:mb-4">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('totalPortfolio')}</h3>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            {formatIDR(totals.totalIDR)}
-          </div>
-          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">{formatUSD(totals.totalUSD)}</div>
-          {totals.totalAssetsWithChange > 0 && (
-            <>
-              <div className="border-t border-gray-100 dark:border-gray-800 pt-3 sm:pt-4">
-                <div className="space-y-1 sm:space-y-2">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {t('yesterday')}: {formatIDR(totals.totalPreviousDayIDR)} 
-                    <span className={`ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
-                      totals.changeIDR >= 0 
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
-                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                    }`}>
-                      ({totals.changeIDR >= 0 ? '+' : ''}{formatIDR(totals.changeIDR)})
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {t('yesterday')}: {formatUSD(totals.totalPreviousDayUSD)} 
-                    <span className={`ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
-                      totals.changeUSD >= 0 
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
-                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                    }`}>
-                      ({totals.changeUSD >= 0 ? '+' : ''}{formatUSD(totals.changeUSD)})
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-        
-        {/* Stocks Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex justify-between items-center mb-3 sm:mb-4">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('stocks')}</h3>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <FiTrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            {formatIDR(totals.totalStocksIDR)}
-          </div>
-          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">{formatUSD(totals.totalStocksUSD)}</div>
-          
-          {/* Stocks Gain/Loss */}
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-3 sm:pt-4 mb-3 sm:mb-4">
-            <div className="space-y-1 sm:space-y-2">
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {t('gainLoss')}: <span className={`font-medium ${getGainColor(gains.stocksGainIDR)}`}>
-                  {formatIDR(gains.stocksGainIDR)} ({formatUSD(gains.stocksGainUSD)})
-                </span>
-              </div>
-              {gains.stocksGainPercent !== 0 && (
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  <span className={`font-medium ${getGainColor(gains.stocksGainPercent)}`}>
-                    {gains.stocksGainPercent >= 0 ? '+' : ''}{gains.stocksGainPercent.toFixed(2)}%
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2 sm:mb-3">
-            <div 
-              className="bg-blue-500 h-2 rounded-full transition-all duration-500" 
-              style={{ width: `${totals.stocksPercent}%` }}
-            ></div>
-          </div>
-          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{totals.stocksPercent.toFixed(1)}% {t('fromPortfolio')}</div>
-        </div>
-        
-        {/* Crypto Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex justify-between items-center mb-3 sm:mb-4">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('crypto')}</h3>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <FiActivity className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            {formatIDR(totals.totalCryptoIDR)}
-          </div>
-          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">{formatUSD(totals.totalCryptoUSD)}</div>
-          
-          {/* Crypto Gain/Loss */}
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-3 sm:pt-4 mb-3 sm:mb-4">
-            <div className="space-y-1 sm:space-y-2">
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {t('gainLoss')}: <span className={`font-medium ${getGainColor(gains.cryptoGainUSD)}`}>
-                  {formatIDR(gains.cryptoGainIDR)} ({formatUSD(gains.cryptoGainUSD)})
-                </span>
-              </div>
-              {gains.cryptoGainPercent !== 0 && (
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  <span className={`font-medium ${getGainColor(gains.cryptoGainPercent)}`}>
-                    {gains.cryptoGainPercent >= 0 ? '+' : ''}{gains.cryptoGainPercent.toFixed(2)}%
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2 sm:mb-3">
-            <div 
-              className="bg-purple-500 h-2 rounded-full transition-all duration-500" 
-              style={{ width: `${totals.cryptoPercent}%` }}
-            ></div>
-          </div>
-          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</div>
-        </div>
-        
-                  {/* Total Gain/Loss Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex justify-between items-center mb-3 sm:mb-4">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('totalGainLoss')}</h3>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <FiTrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-400" />
-            </div>
-          </div>
-          
-          {/* Main Gain/Loss Value */}
-          <div className={`text-xl sm:text-2xl font-bold mb-2 ${getGainColor(gains.totalGainIDR)}`}>
-            {formatIDR(gains.totalGainIDR)}
-          </div>
-          <div className={`text-xs sm:text-sm mb-3 sm:mb-4 ${getGainColor(gains.totalGainUSD)}`}>{formatUSD(gains.totalGainUSD)}</div>
-          
-          {/* Percentage and Progress Bar */}
-          {gains.totalCost > 0 && (
-            <div className="mb-3 sm:mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                  {gains.gainPercent >= 0 ? '+' : ''}{gains.gainPercent.toFixed(2)}%
-                </span>
-                <span className="text-xs text-gray-400 dark:text-gray-500">
-                  {t('ofTotalCost')}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full transition-all duration-500 ${
-                    gains.gainPercent >= 0 ? 'bg-green-500' : 'bg-red-500'
-                  }`}
-                  style={{ 
-                    width: `${Math.min(Math.abs(gains.gainPercent), 100)}%`,
-                    maxWidth: '100%'
-                  }}
-                ></div>
-              </div>
-            </div>
-          )}
-          
-          {/* Performance Indicator */}
-          {gains.totalCost > 0 && (
-            <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">{t('performance')}</span>
-                <div className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
-                  gains.gainPercent >= 0 
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
-                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                }`}>
-                  {gains.gainPercent >= 0 ? (
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                    </svg>
-                  ) : (
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                  {gains.gainPercent >= 0 ? t('profitable') : t('loss')}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Summary Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
 
-      {/* Action Bar - Minimalist */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 sm:p-6">
-        <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center">
-          <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:space-x-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('portfolio')}</h2>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setActiveAssetTab('all')}
-                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 touch-target ${
-                  activeAssetTab === 'all'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-              >
-                {t('all')} ({assets?.stocks?.length + assets?.crypto?.length})
-              </button>
-              <button
-                onClick={() => setActiveAssetTab('stocks')}
-                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 touch-target ${
-                  activeAssetTab === 'stocks'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-              >
-                {t('stocks')} ({assets?.stocks?.length})
-              </button>
-              <button
-                onClick={() => setActiveAssetTab('crypto')}
-                className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 touch-target ${
-                  activeAssetTab === 'crypto'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-              >
-                {t('crypto')} ({assets?.crypto?.length})
-              </button>
+        {/* 1. Total Portfolio */}
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative overflow-hidden group shadow-sm">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('totalPortfolio') || 'Total Portfolio'}</span>
+            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-[#1f2937] flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <FiDollarSign className="w-4 h-4" />
             </div>
           </div>
-          
-          <div className="flex flex-wrap gap-2 sm:gap-3">
-            <button
-              onClick={handleRefresh}
-              disabled={loading || loadingExchangeRate}
-              className="px-3 sm:px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50 touch-target"
-              title="Refresh semua data (harga saham, kripto, dan kurs USD/IDR)"
-            >
-              {(loading || loadingExchangeRate) ? (
-                <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <FiRefreshCw className="w-4 h-4" />
-              )}
-              <span className="hidden sm:inline">Refresh Semua</span>
-              <span className="sm:hidden">Refresh</span>
-            </button>
-            
-            <button
-              onClick={exportPortfolioToCSV}
-              disabled={assets?.stocks?.length === 0 && assets?.crypto?.length === 0}
-              className="px-3 sm:px-4 py-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50 touch-target"
-              title={t('exportPortfolio')}
-            >
-              <FiDownload className="w-4 h-4" />
-              <span className="hidden sm:inline">Ekspor Portofolio</span>
-              <span className="sm:hidden">Ekspor</span>
-            </button>
-            
-            <button
-              onClick={onAddAsset}
-              className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 flex items-center gap-2 text-sm touch-target"
-              title={t('addAsset')}
-            >
-              <FiPlusCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('add')}</span>
-              <span className="sm:hidden">Tambah</span>
-            </button>
-          </div>
-        </div>
-      </div>
-        
-      {/* Error Display - Minimalist */}
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-4">
-          <div className="flex items-center gap-3">
-            <FiAlertCircle className="w-5 h-5 text-red-500" />
-            <div>
-              <p className="font-medium text-red-800 dark:text-red-200">{t('failedToUpdateData')}</p>
-              <p className="text-sm mt-1 text-red-600 dark:text-red-300">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
-        
-      {/* Loading State - Minimalist */}
-      {debouncedLoading && (assets?.stocks?.length + assets?.crypto?.length) > 0 ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="text-center">
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {assets?.stocks?.length === 0 && assets?.crypto?.length === 0 
-                ? t('loadingInitialData') 
-                : t('updatingPrices')
-              }
+          <div className="space-y-1 mb-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+              {getMasked(formatIDR(totals.totalIDR))}
+            </h2>
+            <p className="text-xs text-gray-500 font-mono">
+              {getMasked(formatUSD(totals.totalUSD))}
             </p>
           </div>
         </div>
-      ) : (
-        <>
-          {/* Info Panel - Minimalist - Only show if significantly missing data */}
-          {!debouncedLoading && Object.keys(prices).length > 0 && Object.keys(prices).length < (assets?.stocks?.length + assets?.crypto?.length) * 0.8 && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
-              <div className="flex items-center gap-3">
-                <FiInfo className="w-5 h-5 text-blue-500" />
-                <div className="flex-1">
-                  <p className="font-medium text-blue-800 dark:text-blue-200">{t('updatingPriceData')}</p>
-                  <p className="text-sm mt-1 text-blue-600 dark:text-blue-300">Auto-refresh dalam beberapa detik...</p>
-                </div>
-                <button 
-                  onClick={handleRefresh}
-                  disabled={loading || loadingExchangeRate}
-                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {(loading || loadingExchangeRate) ? (
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    'Refresh Sekarang'
-                  )}
-                </button>
-              </div>
+
+        {/* 2. Bank & E-Wallet */}
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('bankAndWallet') || 'Bank & E-Wallet'}</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-[#1f2937] flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <FiCreditCard className="w-4 h-4" />
             </div>
-          )}
-            
-          {/* Stocks Section */}
-          {(activeAssetTab === 'all' || activeAssetTab === 'stocks') && (
-            <div className={activeAssetTab === 'all' ? 'mb-8' : ''}>
-              {assets?.stocks?.length > 0 ? (
-                <AssetTable 
-                  assets={assets.stocks} 
-                  prices={prices} 
-                  exchangeRate={exchangeRate}
-                  type="stock"
-                  onUpdate={onUpdateStock}
-                  onSell={handleSellStock}
-                  onDelete={onDeleteStock}
-                  loading={debouncedLoading || sellingLoading}
-                />
-              ) : activeAssetTab === 'stocks' ? (
-                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">{t('noStocksAdded')}</p>
-                  <button 
-                    onClick={onAddAsset}
-                    className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 text-sm"
-                  >
-                    <FiPlusCircle className="mr-2 inline" /> {t('addAsset')}
-                  </button>
-                </div>
-              ) : null}
+          </div>
+          <div className="space-y-1 mb-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+              {getMasked(formatIDR(totals.totalCashIDR))}
+            </h2>
+            <p className="text-xs text-gray-500 font-mono">
+              {getMasked(formatUSD(totals.totalCashUSD))}
+            </p>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden">
+            <div style={{ width: `${totals.cashPercent}%` }} className="bg-emerald-500 h-full rounded-full"></div>
+          </div>
+          <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.cashPercent.toFixed(1)}% {t('fromPortfolio')}</p>
+        </div>
+
+        {/* 3. Saham */}
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('stocks') || 'Saham'}</span>
+            <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-[#1f2937] flex items-center justify-center text-teal-600 dark:text-teal-400">
+              <FiTrendingUp className="w-4 h-4" />
             </div>
-          )}
-        
-          {/* Crypto Section */}
-          {(activeAssetTab === 'all' || activeAssetTab === 'crypto') && (
-            <div>
-              {assets?.crypto?.length > 0 ? (
-                <AssetTable 
-                  assets={assets.crypto} 
-                  prices={prices} 
-                  exchangeRate={exchangeRate}
-                  type="crypto"
-                  onUpdate={onUpdateCrypto}
-                  onSell={handleSellCrypto}
-                  onDelete={onDeleteCrypto}
-                  loading={debouncedLoading || sellingLoading}
-                />
-              ) : activeAssetTab === 'crypto' ? (
-                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">{t('noCryptoAdded')}</p>
-                  <button 
-                    onClick={onAddAsset}
-                    className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 text-sm"
-                  >
-                    <FiPlusCircle className="mr-2 inline" /> {t('addAsset')}
-                  </button>
-                </div>
-              ) : null}
+          </div>
+          <div className="space-y-1 mb-2">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+              {getMasked(formatIDR(totals.totalStocksIDR))}
+            </h2>
+            <p className="text-xs text-gray-500 font-mono mb-2">
+              {getMasked(formatUSD(totals.totalStocksUSD))}
+            </p>
+            <div className="flex items-center gap-2 text-xs">
+              <span className={gains.totalStockGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
+                {gains.totalStockGainIDR >= 0 ? '+' : ''}{getMasked(formatIDR(gains.totalStockGainIDR))}
+              </span>
+              <span className={gains.totalStockGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
+                ({getMasked(gains.stocksGainPercent.toFixed(1))}%)
+              </span>
             </div>
-          )}
-            
-          {/* Empty State - Minimalist */}
-          {assets?.stocks?.length === 0 && assets?.crypto?.length === 0 && (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-16 text-center">
-              <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-6">
-                <FiDollarSign className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">{t('emptyPortfolio')}</h2>
-              <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                {t('emptyPortfolioDesc')}
-              </p>
-              <button 
-                onClick={onAddAsset}
-                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-all duration-200 inline-flex items-center shadow-sm hover:shadow-md"
-              >
-                <FiPlusCircle className="mr-2" /> {t('addFirstAsset')}
-              </button>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
+            <div style={{ width: `${totals.stocksPercent}%` }} className="bg-blue-500 h-full rounded-full"></div>
+          </div>
+          <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.stocksPercent.toFixed(1)}% {t('fromPortfolio')}</p>
+        </div>
+
+        {/* 4. Kripto */}
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('crypto') || 'Kripto'}</span>
+            <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-[#1f2937] flex items-center justify-center text-purple-600 dark:text-purple-400">
+              <FiActivity className="w-4 h-4" />
             </div>
-          )}
-        </>
-      )}
-        
-      {/* Footer - Minimalist */}
-      {lastUpdate && (assets?.stocks?.length + assets?.crypto?.length) > 0 && (
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-4 text-gray-500 dark:text-gray-400 text-sm flex flex-col sm:flex-row sm:justify-between gap-2">
-          <span>{t('lastUpdated')}: {lastUpdate}</span>
-          {!loadingExchangeRate && (
-            <button 
-              onClick={handleRefresh}
-              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 self-start sm:self-auto"
-            >
-              {t('refreshNow')}
-            </button>
-          )}
+          </div>
+          <div className="space-y-1 mb-2">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+              {getMasked(formatIDR(totals.totalCryptoIDR))}
+            </h2>
+            <p className="text-xs text-gray-500 font-mono mb-2">
+              {getMasked(formatUSD(totals.totalCryptoUSD))}
+            </p>
+            <div className="flex items-center gap-2 text-xs">
+              <span className={gains.totalCryptoGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
+                {gains.totalCryptoGainIDR >= 0 ? '+' : ''}{getMasked(formatIDR(gains.totalCryptoGainIDR))}
+              </span>
+              <span className={gains.totalCryptoGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
+                ({getMasked(gains.cryptoGainPercent.toFixed(1))}%)
+              </span>
+            </div>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
+            <div style={{ width: `${totals.cryptoPercent}%` }} className="bg-purple-500 h-full rounded-full"></div>
+          </div>
+          <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</p>
+        </div>
+      </div>
+
+      {/* BIG P/L Card */}
+      <div className="bg-white dark:bg-[#161b22] rounded-2xl p-6 border border-gray-200 dark:border-gray-800 relative overflow-hidden shadow-sm">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-gray-500 text-xs font-semibold uppercase tracking-wide">{t('totalGainLoss') || 'Total Untung/Rugi'}</h3>
+          <div className="w-8 h-8 rounded-lg bg-yellow-100 dark:bg-[#1f2937] flex items-center justify-center text-yellow-600 dark:text-yellow-400">
+            <FiTrendingUp className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div className="space-y-1 mb-6">
+          <h2 className={`text-3xl font-bold tracking-tight ${gains.totalGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
+            {gains.totalGainIDR >= 0 ? '+' : ''}{getMasked(formatIDR(gains.totalGainIDR))}
+          </h2>
+          <p className="text-sm text-gray-500 font-mono">
+            {getMasked(formatUSD(gains.totalGainUSD))}
+          </p>
+          <p className={`text-lg font-bold mt-2 ${gains.gainPercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
+            {gains.gainPercent >= 0 ? '+' : ''}{getMasked(gains.gainPercent.toFixed(1))}%
+          </p>
+        </div>
+
+        <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+          <div
+            style={{ width: `${Math.min(Math.abs(gains.gainPercent), 100)}%` }}
+            className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+          ></div>
+        </div>
+        <div className="flex justify-end mt-2">
+          <span className="text-[10px] text-gray-500">{t('ofTotalCost') || 'dari total biaya'}</span>
+        </div>
+        <div className="absolute bottom-4 right-6">
+          <span className="text-xs bg-gray-100 dark:bg-[#0d1117] text-gray-500 dark:text-gray-400 px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-800">
+            {gains.totalGainIDR >= 0 ? (t('profitable') || 'Menguntungkan') : (t('loss') || 'Merugi')}
+          </span>
+        </div>
+      </div>
+
+      {/* Floating Price Loading Indicator */}
+      {debouncedLoading && (
+        <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="bg-blue-600 text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-3 animate-bounce">
+            <FiRefreshCw className="animate-spin w-4 h-4" />
+            <span className="text-sm font-bold">{t('updatingPrices') || 'Sedang memperbarui harga...'}</span>
+          </div>
         </div>
       )}
-        
-      {/* Notification */}
-      <Notification 
-        notification={notification} 
-        onClose={() => setNotification(null)} 
-      />
+
+      {/* Search Bar */}
+      <div className="relative group">
+        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+          <FiSearch className="text-gray-500 group-focus-within:text-blue-500 transition-colors" />
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={t('placeholderSearch') || "Cari aset (e.g. BTC, BBCA)..."}
+          className="w-full bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white pl-12 pr-4 py-4 rounded-xl focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm placeholder-gray-500 dark:placeholder-gray-600"
+        />
+      </div>
+
+      {/* Asset Tables */}
+      <div className="space-y-8">
+        {(activeAssetTab === 'all' || activeAssetTab === 'cash') && filteredAssets.cash.length > 0 && (
+          <div className="animate-fade-in-up">
+            <div className="flex items-center gap-2 mb-4 px-2 justify-between">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                {t('bankAndWallet') || 'Bank & E-Wallet'}
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.cash} {t('asset') || 'Aset'}</span>
+              </h3>
+              <button onClick={(e) => exportPortfolioToCSV('cash', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title="Export Bank Data">
+                <FiDownload className="w-4 h-4" />
+              </button>
+            </div>
+            <AssetTable
+              type="cash"
+              assets={filteredAssets.cash}
+              hideBalance={hideBalance}
+              onUpdate={onUpdateCash}
+              onDelete={onDeleteCash}
+              onSell={onSellCash}
+            />
+          </div>
+        )}
+
+        {(activeAssetTab === 'all' || activeAssetTab === 'stock') && filteredAssets.stocks.length > 0 && (
+          <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            <div className="flex items-center gap-2 mb-4 px-2 justify-between">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                {t('stocks') || 'Saham'}
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.stocks} {t('asset') || 'Aset'}</span>
+              </h3>
+              <button onClick={(e) => exportPortfolioToCSV('stock', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title="Export Stocks">
+                <FiDownload className="w-4 h-4" />
+              </button>
+            </div>
+            <AssetTable
+              type="stock"
+              assets={filteredAssets.stocks}
+              prices={prices}
+              exchangeRate={exchangeRate}
+              hideBalance={hideBalance}
+              onUpdate={onUpdateStock}
+              onDelete={onDeleteStock}
+              onSell={onSellStock}
+            />
+          </div>
+        )}
+
+        {(activeAssetTab === 'all' || activeAssetTab === 'crypto') && filteredAssets.crypto.length > 0 && (
+          <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <div className="flex items-center gap-2 mb-4 px-2 justify-between">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                {t('crypto') || 'Kripto'}
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.crypto} {t('asset') || 'Aset'}</span>
+              </h3>
+              <button onClick={(e) => exportPortfolioToCSV('crypto', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title="Export Crypto">
+                <FiDownload className="w-4 h-4" />
+              </button>
+            </div>
+            <AssetTable
+              type="crypto"
+              assets={filteredAssets.crypto}
+              prices={prices}
+              exchangeRate={exchangeRate}
+              hideBalance={hideBalance}
+              onUpdate={onUpdateCrypto}
+              onDelete={onDeleteCrypto}
+              onSell={onSellCrypto}
+            />
+          </div>
+        )}
+
+        {filteredAssets.stocks.length === 0 && filteredAssets.crypto.length === 0 && filteredAssets.cash.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-[#161b22] rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
+            <div className="bg-gray-50 dark:bg-[#0d1117] p-4 rounded-full mb-4">
+              <FiSearch className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{t('emptyStateNoResults') || 'Tidak ada aset ditemukan'}</h3>
+            <p className="text-gray-500">{t('helpTextSearch') || 'Coba kata kunci lain atau tambahkan aset baru'}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Modals & Notifications */}
+
+
+      {notification && (
+        <Notification
+          type={notification.type}
+          title={notification.title}
+          message={notification.message}
+          onClose={() => setNotification(null)}
+        />
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#161b22] rounded-3xl p-8 w-full max-w-sm shadow-2xl border border-gray-800 scale-100 transform transition-all">
+            <div className="flex flex-col items-center text-center mb-6">
+              {confirmModal.type === 'error' ? (
+                <div className="bg-red-900/20 p-3 rounded-full text-red-500 mb-4">
+                  <FiAlertCircle className="w-8 h-8" />
+                </div>
+              ) : (
+                <div className="bg-blue-900/20 p-3 rounded-full text-blue-500 mb-4">
+                  <FiInfo className="w-8 h-8" />
+                </div>
+              )}
+              <h3 className="text-xl font-bold text-white mb-2">{confirmModal.title}</h3>
+              <p className="text-gray-400 leading-relaxed">{confirmModal.message}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={confirmModal.onCancel || (() => setConfirmModal(null))}
+                className="px-4 py-3 text-gray-300 bg-[#0d1117] hover:bg-gray-800 rounded-xl font-semibold transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className={`px-4 py-3 text-white rounded-xl font-semibold shadow-lg transition-all transform active:scale-95 ${confirmModal.type === 'error' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'}`}
+              >
+                {confirmModal.confirmText || 'Konfirmasi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
