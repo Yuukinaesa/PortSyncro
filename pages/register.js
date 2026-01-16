@@ -130,9 +130,9 @@ export default function Register() {
             </div>
 
             {error && (
-              <div className="mb-6 bg-red-900/20 border border-red-800 text-red-200 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-shake">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                {error}
+              <div className="mb-6 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-shake">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                <span>{error || 'An error occurred'}</span>
               </div>
             )}
 
