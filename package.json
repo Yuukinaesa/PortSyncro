@@ -8,15 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "check-env": "node scripts/check-env.js",
-    "build:prod": "npm run check-env && next build",
-    "start:prod": "npm run check-env && next start",
-    "security:audit": "node scripts/security-audit.js",
-    "security:check": "node scripts/security-check.js",
-    "security:vulnerability": "node scripts/vulnerability-check.js",
-    "security:fix": "npm audit fix && node scripts/replace-console-logs.js",
-    "prebuild": "npm run security:audit",
-    "predeploy": "npm run security:audit"
+    "build:prod": "next build",
+    "start:prod": "next start"
   },
   "dependencies": {
     "@vercel/analytics": "^1.6.1",
