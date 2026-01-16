@@ -40,7 +40,7 @@ export default function Register() {
 
     // Strict Password Validation
     if (!validateInput.password(password)) {
-      setError('Password must contain at least 8 chars, 1 uppercase, 1 lowercase, 1 number, and 1 special char (@$!%*?&).');
+      setError(t('strictPasswordRequirements'));
       setLoading(false);
       return;
     }
