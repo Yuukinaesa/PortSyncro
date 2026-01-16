@@ -41,12 +41,24 @@ export default function Login() {
       router.push('/');
     } catch (error) {
       secureLogger.error('Login error:', error);
+      // Security: Use generic error messages to prevent information leakage
       switch (error.code) {
-        case 'auth/user-not-found': setError(t('userNotFound')); break;
-        case 'auth/wrong-password': setError(t('wrongPassword')); break;
-        case 'auth/invalid-email': setError(t('invalidEmail')); break;
-        case 'auth/too-many-requests': setError(t('tooManyRequests')); break;
-        default: setError(t('loginFailed', { error: error.message }));
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+        case 'auth/invalid-email':
+          // Don't reveal if email exists or not - use generic message
+          setError(t('invalidCredentials'));
+          break;
+        case 'auth/too-many-requests':
+          setError(t('tooManyRequests'));
+          break;
+        case 'auth/user-disabled':
+          setError(t('accountDisabled'));
+          break;
+        default:
+          // Generic error - never expose Firebase error details
+          setError(t('loginFailedGeneric'));
       }
     } finally {
       setLoading(false);
