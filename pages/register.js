@@ -182,7 +182,7 @@ export default function Register() {
                   </button>
                 </div>
                 <p className="mt-1.5 text-[10px] text-gray-500 ml-1">
-                  {t('minPasswordLength') || 'Minimum 6 characters'}
+                  {t('minPasswordLength') || 'Min 8 chars, 1 upper, 1 lower, 1 number, 1 special'}
                 </p>
               </div>
 

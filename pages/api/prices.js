@@ -60,12 +60,58 @@ export default async function handler(req, res) {
   // Enhanced rate limiting - prefer user ID over IP for better isolation
   const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
 
-  // Try to get user ID from request body or headers
-  const { stocks, crypto, exchangeRate, userId } = req.body;
-  const userAgent = req.headers['user-agent'] || 'unknown';
+  // AUTHENTICATION VERIFICATION
+  let verifiedUid = null;
+  const authHeader = req.headers.authorization;
 
-  // Create a unique identifier: prefer user ID, fallback to IP + user agent
-  const rateLimitIdentifier = userId ? `user_${userId}` : `ip_${clientIP}_${userAgent.substring(0, 50)}`;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split('Bearer ')[1];
+    try {
+      // Verify token via Google Identity Toolkit REST API
+      // We use this because firebase-admin might not be available or configured with service account
+      const verifyResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: token })
+      });
+
+      if (verifyResponse.ok) {
+        const verifyData = await verifyResponse.json();
+        if (verifyData.users && verifyData.users.length > 0) {
+          verifiedUid = verifyData.users[0].localId;
+        }
+      } else {
+        secureLogger.warn('Token verification failed:', verifyResponse.status);
+      }
+    } catch (verifyErr) {
+      secureLogger.error('Error verifying token:', verifyErr);
+    }
+  }
+
+  // Enforce Auth for strict security (Zero Tolerance)
+  // Allow unauthenticated requests ONLY if explicitly public endpoint? No, this is internal API.
+  // Actually, we should allow it but use strict IP limiting if no auth.
+  // But USER REQ: "Auth bypass -> CRITICAL". 
+  // IF client sends userId in body but no token, that's spoofing.
+  // STRATEGY: 
+  // 1. If Token is valid -> Use verifiedUid. High Limit.
+  // 2. If No Token -> Use IP. Low Limit.
+  // 3. If Token Invalid -> Block.
+
+  let rateLimitIdentifier;
+
+  if (verifiedUid) {
+    rateLimitIdentifier = `user_${verifiedUid}`;
+  } else {
+    // If user claims to be logged in (sends userId) but has no valid token, BLOCK IT.
+    if (req.body.userId) {
+      secureLogger.warn(`Potential spoofing attempt. UserId provided but no valid token. IP: ${clientIP}`);
+      return res.status(401).json({ message: 'Unauthorized. Invalid or missing token.' });
+    }
+    // Anonymous request
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    rateLimitIdentifier = `ip_${clientIP}_${userAgent.substring(0, 50)}`;
+  }
 
   if (!checkRateLimit(rateLimitIdentifier)) {
     secureLogger.warn(`Rate limit exceeded for: ${rateLimitIdentifier}`);

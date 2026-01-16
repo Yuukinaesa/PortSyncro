@@ -191,7 +191,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
       gain: 0, // No gain/loss on cash holdings usually (unless currency diff, but here simplified)
       porto: pos.amount,
       portoIDR: pos.amount, // Assume IDR for now
-      portoUSD: 0, // TODO: Conversion if needed
+      portoUSD: exchangeRate && exchangeRate > 0 ? Math.round((pos.amount / exchangeRate) * 100) / 100 : 0,
       gainPercentage: 0,
       currency: 'IDR',
       type: 'cash',
@@ -347,14 +347,18 @@ export default function Home() {
 
       secureLogger.log('Fetching prices for:', requestData);
 
+      const token = user ? await user.getIdToken() : null;
+
       const response = await fetch('/api/prices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
           ...requestData,
           exchangeRate: typeof exchangeRate === 'number' ? exchangeRate : null,
+          // userId is now redundant if token is verified, but keeping for backward compat if needed temporarily
           userId: user?.uid || null
         }),
       });
@@ -676,10 +680,12 @@ export default function Home() {
       // Smart refresh - only fetch prices for the newly added asset
       setTimeout(async () => {
         try {
+          const token = user ? await user.getIdToken() : null;
           const response = await fetch('/api/prices', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` })
             },
             body: JSON.stringify({
               stocks: [priceKey],
@@ -740,10 +746,12 @@ export default function Home() {
       } else {
         // Fetch current crypto price
         try {
+          const token = user ? await user.getIdToken() : null;
           const response = await fetch('/api/prices', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` })
             },
             body: JSON.stringify({
               stocks: [],
