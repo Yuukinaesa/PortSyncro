@@ -12,7 +12,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { isDemoAccountAvailable } from '../lib/utils';
-import { secureLogger } from './../lib/security';
+import { secureLogger, validateInput } from './../lib/security';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUserPlus, FiActivity } from 'react-icons/fi';
 
 export default function Register() {
@@ -34,6 +34,13 @@ export default function Register() {
 
     if (password !== confirmPassword) {
       setError(t('passwordsDoNotMatch'));
+      setLoading(false);
+      return;
+    }
+
+    // Strict Password Validation
+    if (!validateInput.password(password)) {
+      setError('Password must contain at least 8 chars, 1 uppercase, 1 lowercase, 1 number, and 1 special char (@$!%*?&).');
       setLoading(false);
       return;
     }
