@@ -164,7 +164,14 @@ export default function Portfolio({
       const tickerKey = stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`;
       // Prioritize real-time price, fallback to stored currentPrice, then 0. NEVER use dummy.
       const realtimePrice = prices[tickerKey];
-      const priceVal = realtimePrice ? realtimePrice.price : (stock.currentPrice || 0);
+
+      // For manual assets, use manualPrice/price/avgPrice as current price
+      let priceVal;
+      if ((stock.useManualPrice || stock.isManual) && (stock.manualPrice || stock.price || stock.avgPrice)) {
+        priceVal = stock.manualPrice || stock.price || stock.avgPrice;
+      } else {
+        priceVal = realtimePrice ? realtimePrice.price : (stock.currentPrice || 0);
+      }
 
       const shareCount = stock.market === 'US' ? parseFloat(stock.lots) : parseFloat(stock.lots) * 100;
 
@@ -193,8 +200,15 @@ export default function Portfolio({
 
     // Crypto
     (assets?.crypto || []).forEach(crypto => {
-      // Prioritize real-time price, fallback to stored.
-      const price = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
+      // For manual assets, use manualPrice/price/avgPrice as current price
+      let price;
+      if ((crypto.useManualPrice || crypto.isManual) && (crypto.manualPrice || crypto.price || crypto.avgPrice)) {
+        price = crypto.manualPrice || crypto.price || crypto.avgPrice;
+      } else {
+        // Prioritize real-time price, fallback to stored.
+        price = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
+      }
+
       const amount = parseFloat(crypto.amount) || 0;
 
       const valUSD = price * amount;
@@ -243,7 +257,14 @@ export default function Portfolio({
     // Stocks
     (assets?.stocks || []).forEach(stock => {
       const tickerKey = stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`;
-      const currentPrice = prices[tickerKey]?.price || stock.currentPrice || 0;
+
+      // For manual assets, use manualPrice/price/avgPrice as current price
+      let currentPrice;
+      if ((stock.useManualPrice || stock.isManual) && (stock.manualPrice || stock.price || stock.avgPrice)) {
+        currentPrice = stock.manualPrice || stock.price || stock.avgPrice;
+      } else {
+        currentPrice = prices[tickerKey]?.price || stock.currentPrice || 0;
+      }
 
       const shareCount = stock.market === 'US' ? parseFloat(stock.lots) : parseFloat(stock.lots) * 100;
       let currentValue = 0;
@@ -274,7 +295,14 @@ export default function Portfolio({
 
     // Crypto
     (assets?.crypto || []).forEach(crypto => {
-      const currentPrice = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
+      // For manual assets, use manualPrice/price/avgPrice as current price
+      let currentPrice;
+      if ((crypto.useManualPrice || crypto.isManual) && (crypto.manualPrice || crypto.price || crypto.avgPrice)) {
+        currentPrice = crypto.manualPrice || crypto.price || crypto.avgPrice;
+      } else {
+        currentPrice = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
+      }
+
       const amount = parseFloat(crypto.amount) || 0;
       const currentValue = currentPrice * amount;
       const costBasis = (parseFloat(crypto.avgPrice) || 0) * amount;

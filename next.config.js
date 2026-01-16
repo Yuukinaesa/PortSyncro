@@ -2,7 +2,7 @@
 const nextConfig = {
     reactStrictMode: true,
     // swcMinify dihapus karena sudah tidak didukung
-    
+
     // Security Headers Configuration
     async headers() {
         return [
@@ -33,7 +33,7 @@ const nextConfig = {
                             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
                             "font-src 'self' https://fonts.gstatic.com",
                             "img-src 'self' data: https:",
-                            "connect-src 'self' https://api.coingecko.com https://query1.finance.yahoo.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebase.googleapis.com https://api.exchangerate-api.com https://api.fixer.io https://api.currencylayer.com https://*.firebaseio.com https://*.firebase.com wss://*.firebaseio.com wss://*.firebase.com",
+                            "connect-src 'self' https://api.coingecko.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://min-api.cryptocompare.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebase.googleapis.com https://api.exchangerate-api.com https://api.fixer.io https://api.currencylayer.com https://*.firebaseio.com https://*.firebase.com wss://*.firebaseio.com wss://*.firebase.com",
                             "frame-src 'none'",
                             "object-src 'none'",
                             "base-uri 'self'",
@@ -68,11 +68,11 @@ const nextConfig = {
             }
         ];
     },
-    
+
     // Environment Variables Documentation
     // Required: NEXT_PUBLIC_FIREBASE_* (Firebase configuration)
     // Optional: NEXT_PUBLIC_DEMO_EMAIL, NEXT_PUBLIC_DEMO_PASSWORD (Demo account)
     // Demo account enables "Login Demo Account" button on login/register pages
 }
-  
+
 module.exports = nextConfig

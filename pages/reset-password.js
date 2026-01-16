@@ -28,14 +28,21 @@ export default function ResetPassword() {
 
     try {
       await sendPasswordResetEmail(auth, email);
+      // Always show success message to prevent user enumeration
       setMessage(t('resetPasswordEmailSent'));
     } catch (error) {
       secureLogger.error("Error sending password reset email:", error);
 
+      // SECURITY: Do NOT reveal if email exists or not (prevents user enumeration)
+      // Always show a generic success-like message for user-not-found errors
       if (error.code === 'auth/user-not-found') {
-        setError(t('emailNotRegistered'));
+        // Show success message even if email not found - security best practice
+        setMessage(t('resetPasswordEmailSent'));
       } else if (error.code === 'auth/invalid-email') {
+        // Only show error for clearly invalid email format
         setError(t('invalidEmailFormat'));
+      } else if (error.code === 'auth/too-many-requests') {
+        setError(t('tooManyRequests'));
       } else {
         setError(t('resetPasswordFailed'));
       }
