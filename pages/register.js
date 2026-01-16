@@ -97,11 +97,11 @@ export default function Register() {
         <title>Register | PortSyncro</title>
       </Head>
 
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] flex items-center justify-center px-4 relative overflow-hidden">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] flex flex-col justify-center py-16 px-4 animate-fade-in relative overflow-hidden">
         {/* Background Decoration */}
         <div className="absolute top-0 right-0 w-full h-96 bg-purple-100 dark:bg-purple-900/10 blur-[100px] rounded-b-full pointer-events-none" />
 
-        <div className="absolute top-6 right-6 flex gap-3 z-10">
+        <div className="absolute top-8 right-6 flex gap-3 z-50">
           <LanguageToggle />
           <ThemeToggle />
         </div>

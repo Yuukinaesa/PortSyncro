@@ -113,20 +113,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     return {
       ticker: ticker,
       lots: market === 'US' ? pos.amount : pos.amount / 100, // Display lots for IDX, raw shares for US (if considered 'lots' in UI, keep as is or adjust)
-      // Actually, if UI expects .lots to be the unit displayed, for US it should be shares.
-      // pos.amount is SHARES. 
-      // For IDX, we typically display lots (shares/100).
-      // For US, we display shares.
-      // So logic: if US, lots = pos.amount. If IDX, lots = pos.amount (wait, does UI divide by 100?)
-      // Let's check AssetTable again.
-      // AssetTable: {type === 'stock' ? asset.lots : asset.amount}
-      // logic in AssetTable for value calculation: const amount = isStock ? asset.lots * 100 : asset.amount;
-      // This implies asset.lots is expected to be 1/100 of shares.
-      // If I set lots = pos.amount (shares) for US, then AssetTable will calc value = shares * 100 * price. WRONG.
-      // So for US, I must trick AssetTable or update AssetTable.
-      // Easiest is to keep lots = pos.amount / 100 even for US, but that makes display wrong (0.01 lot for 1 share).
-      // So I MUST update AssetTable to handle market.
-      // Here I will store market.
+      // Display lots for IDX, raw shares for US
       avgPrice: useManualAvgPrice ? existingAsset.avgPrice : pos.avgPrice,
       totalCost: pos.totalCost,
       currentPrice: currentPrice,
