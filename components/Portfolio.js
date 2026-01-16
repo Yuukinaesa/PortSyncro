@@ -686,7 +686,7 @@ export default function Portfolio({
           {/* WA */}
           <button onClick={copyToWhatsApp} className="bg-emerald-500 hover:bg-emerald-600 text-white w-10 sm:w-auto sm:px-4 h-10 rounded-xl flex items-center justify-center gap-2 font-bold transition-colors shadow-lg shadow-emerald-500/20">
             <FaWhatsapp className="w-4 h-4" />
-            <span className="hidden sm:inline">WA</span>
+            <span className="hidden sm:inline">Copy</span>
           </button>
 
           {/* Settings */}
