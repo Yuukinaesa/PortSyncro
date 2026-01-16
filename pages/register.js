@@ -106,7 +106,7 @@ export default function Register() {
           <ThemeToggle />
         </div>
 
-        <div className="w-full max-w-md space-y-8 relative z-10">
+        <div className="w-full max-w-md space-y-8 relative z-10 mx-auto">
           <div className="text-center space-y-2">
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-purple-900/20">
               <FiActivity className="w-8 h-8 text-white" />
