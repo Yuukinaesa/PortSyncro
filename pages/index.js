@@ -1841,6 +1841,31 @@ export default function Home() {
       setResetStatus('Preparing backup data...');
       setResetProgress(10);
 
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Fetch ALL transactions directly from Firestore to ensure completeness
+      // This solves the issue of incomplete backups due to partial local state
+      const transactionsRef = collection(db, 'users', user.uid, 'transactions');
+      const q = query(transactionsRef, orderBy('timestamp', 'desc'));
+      const snapshot = await getDocs(q);
+
+      setResetStatus('Processing transactions...');
+      setResetProgress(30);
+
+      const allTransactions = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const timestamp = data.timestamp;
+        const timestampISO = timestamp ? (timestamp.toDate ? timestamp.toDate().toISOString() : timestamp) : new Date().toISOString();
+
+        return {
+          id: doc.id,
+          ...data,
+          timestamp: timestampISO
+        };
+      });
+
       // Simulate async preparation if dataset is large, or just for UX smoothness
       await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -1848,7 +1873,7 @@ export default function Home() {
         version: '2.0',
         exportedAt: new Date().toISOString(),
         portfolio: assets,
-        transactions: transactions
+        transactions: allTransactions
       };
 
       setResetProgress(50);
@@ -1910,6 +1935,56 @@ export default function Home() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
+
+      // FIX: Pre-seed prices from backup to support "Manual" assets or offline assets
+      // This ensures that assets with prices that cannot be fetched from API 
+      // (like manual inputs) still display their value after restore
+      if (data.portfolio && (data.portfolio.stocks || data.portfolio.crypto)) {
+        secureLogger.log('Restore: Seeding prices from backup portfolio...');
+        const seedPrices = { ...prices }; // Start with current or empty
+        let seededCount = 0;
+
+        // Seed stocks
+        (data.portfolio.stocks || []).forEach(stock => {
+          if (stock.currentPrice && stock.currentPrice > 0) {
+            const ticker = stock.ticker;
+            // Handle both IDX and US formats in key
+            const cleanTicker = ticker.trim().toUpperCase();
+            // Try to match default key logic
+            const key = stock.market === 'US' ? cleanTicker : (cleanTicker.endsWith('.JK') ? cleanTicker : `${cleanTicker}.JK`);
+
+            seedPrices[key] = {
+              price: stock.currentPrice,
+              change: 0,
+              changeTime: '24h',
+              currency: stock.currency || (stock.market === 'US' ? 'USD' : 'IDR'),
+              lastUpdate: new Date().toISOString(),
+              fromBackup: true // Flag to indicate source
+            };
+            seededCount++;
+          }
+        });
+
+        // Seed crypto
+        (data.portfolio.crypto || []).forEach(crypto => {
+          if (crypto.currentPrice && crypto.currentPrice > 0) {
+            seedPrices[crypto.symbol] = {
+              price: crypto.currentPrice,
+              change: 0,
+              changeTime: '24h',
+              currency: 'USD',
+              lastUpdate: new Date().toISOString(),
+              fromBackup: true
+            };
+            seededCount++;
+          }
+        });
+
+        if (seededCount > 0) {
+          updatePrices(seedPrices);
+          secureLogger.log(`Restore: Prices seeded from backup (${seededCount} assets).`);
+        }
+      }
 
       // Ensure we have a valid exchange rate before processing
       let currentExchangeRate = exchangeRate;
