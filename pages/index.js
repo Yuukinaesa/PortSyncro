@@ -9,7 +9,7 @@ import SettingsModal from '../components/SettingsModal';
 import { useAuth } from '../lib/authContext';
 import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
-import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { FiLogOut, FiUser, FiCreditCard, FiSettings } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
@@ -1705,9 +1705,22 @@ export default function Home() {
     try {
       if (!user) return;
 
+      // 1. Delete all transactions from Firestore
+      const transactionsRef = collection(db, 'users', user.uid, 'transactions');
+      const transactionsSnapshot = await getDocs(transactionsRef);
+
+      const deletePromises = transactionsSnapshot.docs.map(docSnap =>
+        deleteDoc(doc(db, 'users', user.uid, 'transactions', docSnap.id))
+      );
+      await Promise.all(deletePromises);
+
+      // 2. Clear portfolio state and save empty portfolio
       const emptyPortfolio = { stocks: [], crypto: [], cash: [] };
       initializePortfolio(emptyPortfolio);
       await saveUserPortfolio(emptyPortfolio);
+
+      // 3. Clear local transactions state
+      updateTransactions([]);
 
       setIsSettingsOpen(false);
       setConfirmModal({
