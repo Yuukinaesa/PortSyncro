@@ -6,7 +6,9 @@ import { useLanguage } from '../lib/languageContext';
 import { usePWA } from '../lib/pwaContext';
 import { useState } from 'react';
 
-export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onResetPortfolio, onBackup, onRestore }) {
+// Add progress prop
+export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onResetPortfolio, onBackup, onRestore, progress = 0, processingStatus = '' }) {
+    // ... existing hooks ...
     const { isDarkMode, toggleTheme } = useTheme();
     const { t, language, toggleLanguage } = useLanguage();
     const { installPWA, isSupported, isIOS, isMacOS } = usePWA();
@@ -15,6 +17,7 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
     const [showManualPrompt, setShowManualPrompt] = useState(false);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [resetInput, setResetInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleInstallClick = async () => {
         const result = await installPWA();
@@ -27,17 +30,46 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
         }
     };
 
-    // Show install button if supported or iOS or MacOS, or if in Dev mode
-    // We assume Android handles itself via deferredPrompt (isSupported=true) or similar fallback if we wanted
-    // Show install button if supported or iOS or MacOS, or if in Dev mode
-    // We assume Android handles itself via deferredPrompt (isSupported=true) or similar fallback if we wanted, or fallback to manual
-    const showInstallButton = isSupported || isIOS || isMacOS; // Only show if we can natively install or provide valid instructions
+    // Processing Overlay
+    if (isLoading) {
+        return (
+            <div className="fixed inset-0 z-[10001] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
+                <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl text-center space-y-6 border border-gray-100 dark:border-gray-700">
+                    <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                            {processingStatus || 'Processing...'}
+                        </h3>
+                        <p className="text-gray-500 dark:text-gray-400">
+                            {t('pleaseWait') || 'Please wait, do not close this window.'}
+                        </p>
+                    </div>
+
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden">
+                        <div
+                            className="bg-blue-600 h-full rounded-full transition-all duration-300 ease-out flex items-center justify-end px-2"
+                            style={{ width: `${Math.max(5, progress)}%` }} // Min 5% so text fits or bar is visible
+                        >
+                        </div>
+                    </div>
+                    <p className="text-sm font-bold text-blue-600 dark:text-blue-400">{Math.round(progress)}%</p>
+                </div>
+            </div>
+        );
+    }
+
+    // ... existing generic showInstallButton check ...
+    const showInstallButton = isSupported || isIOS || isMacOS;
 
     if (!isOpen) return null;
 
     return (
         <Modal type="default" isOpen={isOpen} onClose={onClose} title={t('settings')}>
             <div className="space-y-4 font-sans">
+                {/* ... existing buttons ... */}
                 {/* Install App Button */}
                 {showInstallButton && (
                     <button
@@ -278,18 +310,32 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={() => {
+                                    onClick={async () => {
                                         if (resetInput.toLowerCase() === 'yes') {
-                                            if (onResetPortfolio) onResetPortfolio();
-                                            setShowResetConfirm(false);
-                                            setResetInput('');
-                                            onClose();
+                                            setIsLoading(true);
+                                            try {
+                                                if (onResetPortfolio) await onResetPortfolio();
+                                                setShowResetConfirm(false);
+                                                setResetInput('');
+                                                onClose();
+                                            } catch (error) {
+                                                console.error("Reset failed:", error);
+                                            } finally {
+                                                setIsLoading(false);
+                                            }
                                         }
                                     }}
-                                    disabled={resetInput.toLowerCase() !== 'yes'}
-                                    className="flex-1 px-4 py-2.5 bg-red-600 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-900/20"
+                                    disabled={resetInput.toLowerCase() !== 'yes' || isLoading}
+                                    className="flex-1 px-4 py-2.5 bg-red-600 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-900/20 flex justify-center items-center gap-2"
                                 >
-                                    Reset
+                                    {isLoading ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <span>Processing...</span>
+                                        </>
+                                    ) : (
+                                        'Reset'
+                                    )}
                                 </button>
                             </div>
                         </div>

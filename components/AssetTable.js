@@ -4,7 +4,7 @@ import { FiEdit2, FiTrash2, FiDollarSign } from 'react-icons/fi';
 import Modal from './Modal';
 import EditAssetModal from './EditAssetModal';
 import ErrorBoundary from './ErrorBoundary';
-import { formatNumber, formatIDR, formatUSD, normalizeNumberInput } from '../lib/utils';
+import { formatNumber, formatQuantity, formatIDR, formatUSD, normalizeNumberInput } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
 import { secureLogger } from './../lib/security';
 
@@ -578,7 +578,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                               autoFocus
                             />
                           ) : (
-                            getMasked(formatNumber(type === 'stock' ? asset.lots : asset.amount))
+                            getMasked(formatQuantity(type === 'stock' ? asset.lots : asset.amount))
                           )}
                         </td>
                       )}
@@ -796,7 +796,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           </div>
                         </div>
                       ) : (
-                        <p className="font-bold text-gray-700 dark:text-gray-200 font-mono text-sm">{getMasked(formatNumber(type === 'stock' ? asset.lots : asset.amount))}</p>
+                        <p className="font-bold text-gray-700 dark:text-gray-200 font-mono text-sm">{getMasked(formatQuantity(type === 'stock' ? asset.lots : asset.amount))}</p>
                       )}
                     </div>
 

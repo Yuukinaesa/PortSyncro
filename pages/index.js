@@ -9,7 +9,7 @@ import SettingsModal from '../components/SettingsModal';
 import { useAuth } from '../lib/authContext';
 import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
-import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { FiLogOut, FiUser, FiCreditCard, FiSettings } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
@@ -218,6 +218,12 @@ export default function Home() {
   const [showAverageCalculator, setShowAverageCalculator] = useState(false);
   const [rateLimitNotification, setRateLimitNotification] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [resetProgress, setResetProgress] = useState(0);
+  const [resetStatus, setResetStatus] = useState('');
+  const [restoreComplete, setRestoreComplete] = useState(false);
+  const restoreInProgressRef = useRef(false); // Flag to prevent race condition during restore
+
+
 
   // Hide Balance State (Lifted from Portfolio)
   const [hideBalance, setHideBalance] = useState(() => {
@@ -231,6 +237,19 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem('hideBalance', hideBalance);
   }, [hideBalance]);
+
+  // Prevent accidental close during operations
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (resetProgress > 0 && resetProgress < 100) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [resetProgress]);
 
   // Use Portfolio State Manager
   const {
@@ -249,7 +268,8 @@ export default function Home() {
     deleteAsset,
     getAsset,
     getPortfolioSummary,
-    rebuildPortfolio
+    rebuildPortfolio,
+    reset
   } = usePortfolioState();
 
   // Add refs for intervals
@@ -484,6 +504,18 @@ export default function Home() {
     }
   }, [assets?.stocks?.length, assets?.crypto?.length, performPriceFetch]); // Add back the dependencies
 
+  // Auto-refresh prices after restore when assets are populated
+  useEffect(() => {
+    if (restoreComplete) {
+      const hasAssets = (assets?.stocks?.length > 0 || assets?.crypto?.length > 0);
+      if (hasAssets) {
+        secureLogger.log('Assets updated after restore, fetching prices...');
+        performPriceFetch(true); // Immediate fetch
+        setRestoreComplete(false);
+      }
+    }
+  }, [assets, restoreComplete, performPriceFetch]);
+
   // Set up intervals for exchange rate and price updates - OPTIMIZED
   useEffect(() => {
     // Only set up intervals after initialization
@@ -560,6 +592,17 @@ export default function Home() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      // Skip processing if restore is in progress to prevent race condition
+      if (restoreInProgressRef.current) {
+        secureLogger.log('Restore in progress, skipping snapshot processing');
+        return;
+      }
+
+      // Safeguard log for empty snapshot
+      if (snapshot.docs.length === 0) {
+        secureLogger.log('Warning: Snapshot received 0 documents. User ID:', user.uid);
+      }
+
       secureLogger.log('Received transaction snapshot:', snapshot.size, 'documents');
       const newTransactions = snapshot.docs.map(doc => {
         const data = doc.data();
@@ -1705,24 +1748,67 @@ export default function Home() {
     try {
       if (!user) return;
 
-      // 1. Delete all transactions from Firestore
+      setResetStatus(t('initializingReset') || 'Initializing reset...');
+      setResetProgress(5);
+
+      // 1. Delete all transactions from Firestore using Batch (FAST)
       const transactionsRef = collection(db, 'users', user.uid, 'transactions');
       const transactionsSnapshot = await getDocs(transactionsRef);
+      const totalDocs = transactionsSnapshot.docs.length;
 
-      const deletePromises = transactionsSnapshot.docs.map(docSnap =>
-        deleteDoc(doc(db, 'users', user.uid, 'transactions', docSnap.id))
-      );
-      await Promise.all(deletePromises);
+      setResetStatus(`Deleting ${totalDocs} transactions...`);
+      setResetProgress(10);
+
+      if (totalDocs > 0) {
+        const batchSize = 500;
+        const chunks = [];
+
+        // Chunk docs into 500s
+        for (let i = 0; i < totalDocs; i += batchSize) {
+          chunks.push(transactionsSnapshot.docs.slice(i, i + batchSize));
+        }
+
+        // Process batches
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          const batch = writeBatch(db);
+
+          chunk.forEach(docSnap => {
+            batch.delete(docSnap.ref);
+          });
+
+          await batch.commit();
+
+          // Update progress
+          const processed = Math.min((i + 1) * batchSize, totalDocs);
+          const progress = 10 + (processed / totalDocs * 80); // 10% to 90%
+          setResetProgress(progress);
+          setResetStatus(`Deleted ${processed} of ${totalDocs} items...`);
+        }
+      }
+
+      setResetProgress(95);
+      setResetStatus('Clearing portfolio data...');
 
       // 2. Clear portfolio state and save empty portfolio
       const emptyPortfolio = { stocks: [], crypto: [], cash: [] };
+      reset(); // Reset local state first
       initializePortfolio(emptyPortfolio);
       await saveUserPortfolio(emptyPortfolio);
 
       // 3. Clear local transactions state
       updateTransactions([]);
 
-      setIsSettingsOpen(false);
+      setResetProgress(100);
+      setResetStatus('Complete!');
+
+      // Small delay to show 100%
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setResetProgress(0);
+      setResetStatus('');
+      setIsSettingsOpen(false); // Close settings manually since modal handles its own open state usually
+
       setConfirmModal({
         isOpen: true,
         title: t('success') || 'Success',
@@ -1746,8 +1832,15 @@ export default function Home() {
   };
 
   // Backup Portfolio to JSON
-  const handleBackup = () => {
+  // Backup Portfolio to JSON
+  const handleBackup = async () => {
     try {
+      setResetStatus('Preparing backup data...');
+      setResetProgress(10);
+
+      // Simulate async preparation if dataset is large, or just for UX smoothness
+      await new Promise(resolve => setTimeout(resolve, 200));
+
       const backupData = {
         version: '2.0',
         exportedAt: new Date().toISOString(),
@@ -1755,15 +1848,32 @@ export default function Home() {
         transactions: transactions
       };
 
+      setResetProgress(50);
+      setResetStatus('Generating file...');
+
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `portsyncro_backup_${new Date().toISOString().split('T')[0]}.json`;
+
+      setResetProgress(80);
+      setResetStatus('Downloading...');
+
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      setResetProgress(100);
+      setResetStatus('Complete!');
+
+      // Delay before closing
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setResetProgress(0);
+      setResetStatus('');
 
       setConfirmModal({
         isOpen: true,
@@ -1775,6 +1885,9 @@ export default function Home() {
       });
     } catch (error) {
       console.error('Backup error:', error);
+      setResetProgress(0);
+      setResetStatus('');
+
       setConfirmModal({
         isOpen: true,
         title: t('error') || 'Error',
@@ -1788,6 +1901,9 @@ export default function Home() {
 
   // Restore Portfolio from JSON (supports legacy format)
   const handleRestore = async (file) => {
+    // Set flag to prevent race condition with Firestore listener
+    restoreInProgressRef.current = true;
+
     try {
       const text = await file.text();
       const data = JSON.parse(text);
@@ -1813,23 +1929,41 @@ export default function Home() {
         data.forEach(item => {
           if (item.category === 'stock') {
             // Convert legacy stock to transaction
-            const isUS = item.market === 'us';
-            const avgPrice = item.avgPrice || 0;
+            const isUS = item.market === 'us' || item.market === 'US';
+            const avgPrice = item.avgPrice ? parseFloat(item.avgPrice) : 0;
             let shareCount = 0;
 
-            if (item.qty && item.qty > 0) {
-              // Legacy format handling:
-              // IDX market uses 'lots' in the qty field -> convert to shares (x100)
-              // US/Others use 'shares' -> keep as is
-              if (isUS) {
-                shareCount = item.qty;
-              } else {
-                shareCount = item.qty * 100;
+            // Robustly parse quantity/amount fields
+            const rawQty = item.qty ? parseFloat(item.qty) : 0;
+            const rawLots = item.lots ? parseFloat(item.lots) : 0;
+            const rawAmount = item.amount ? parseFloat(item.amount) : 0;
+            const currentPrice = item.currentPrice ? parseFloat(item.currentPrice) : avgPrice;
+
+            // IMPORTANT: Legacy format interpretation
+            // For IDX stocks: qty is in LOTS (not shares!)
+            // Proof: qty: 303, avgPrice: 199, amount: 6120600
+            //        303 lots × 100 shares × Rp202 = Rp6,120,600 ✓
+            // For US stocks: qty is fractional shares
+
+            if (isUS) {
+              // US stocks: qty is in fractional shares directly
+              if (rawQty > 0) {
+                shareCount = rawQty;
+              } else if (rawAmount > 0 && avgPrice > 0) {
+                // Fallback: calculate from total value
+                shareCount = rawAmount / avgPrice;
               }
-            } else if (item.amount && avgPrice > 0) {
-              // Fallback: Calculate shareCount from amount (Total Value) if qty is missing
-              // Amount (Value) / Price = Shares
-              shareCount = item.amount / avgPrice;
+            } else {
+              // IDX stocks: qty is in LOTS, need to multiply by 100 to get shares
+              if (rawQty > 0) {
+                shareCount = rawQty * 100; // Convert lots to shares
+              } else if (rawLots > 0) {
+                shareCount = rawLots * 100;
+              } else if (rawAmount > 0 && currentPrice > 0) {
+                // Fallback: Calculate shareCount from current market value
+                // amount = currentPrice × shares → shares = amount / currentPrice
+                shareCount = rawAmount / currentPrice;
+              }
             }
 
             // Calculate values and correct price logic
@@ -1838,27 +1972,30 @@ export default function Home() {
             if (isUS) {
               // US stock - price logic
               // Check if avgPrice is likely IDR (e.g. > 1000 and avgPriceUsd exists or logic dictates)
-              const legacyPriceIsIDR = item.avgPrice > 1000; // Heuristic: US stocks rarely > $1000/share unless BRK.A, but common in IDR
+              const legacyPriceIsIDR = avgPrice > 1000; // Heuristic: US stocks rarely > $1000/share unless BRK.A, but common in IDR
+              const avgPriceUsd = item.avgPriceUsd ? parseFloat(item.avgPriceUsd) : 0;
 
-              if (item.avgPriceUsd && item.avgPriceUsd > 0) {
+              if (avgPriceUsd > 0) {
                 // Use explicit USD price if available
-                txPrice = item.avgPriceUsd;
+                txPrice = avgPriceUsd;
               } else if (legacyPriceIsIDR && exchangeRate && exchangeRate > 0) {
                 // Convert IDR price to USD
-                txPrice = item.avgPrice / exchangeRate;
+                txPrice = avgPrice / exchangeRate;
               } else {
                 // Assume it's already USD
                 txPrice = avgPrice;
               }
 
               valueUSD = txPrice * shareCount;
-              valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : (item.amount || 0);
+              valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : rawAmount;
             } else {
-              // IDX stock - price is in IDR
+              // IDX stock - price is in IDR (per share)
               txPrice = avgPrice;
               valueIDR = avgPrice * shareCount;
               valueUSD = exchangeRate && exchangeRate > 0 ? valueIDR / exchangeRate : 0;
             }
+
+            secureLogger.log(`Legacy restore stock: ${item.name}, isUS: ${isUS}, rawQty: ${rawQty}, shareCount: ${shareCount}, avgPrice: ${avgPrice}, txPrice: ${txPrice}`);
 
             if (shareCount > 0) {
               transactionsData.push({
@@ -1887,38 +2024,53 @@ export default function Home() {
               symbol = match[1];
             }
 
-            const avgPrice = item.avgPrice || 0;
-            let amount = item.qty || 0;
+            // For crypto, qty is the actual amount of crypto units
+            const rawQty = item.qty ? parseFloat(item.qty) : 0;
+            let avgPrice = item.avgPrice ? parseFloat(item.avgPrice) : 0;
+            const rawTotalValue = item.amount ? parseFloat(item.amount) : 0;
+            const currentPrice = item.currentPrice ? parseFloat(item.currentPrice) : 0;
 
-            // Fallback: Calculate amount from total value (item.amount) if qty is missing
-            if ((!amount || amount === 0) && item.amount && avgPrice > 0) {
-              amount = item.amount / avgPrice;
+            let amount = rawQty;
+
+            // Fallback: Calculate amount from current market value if qty is missing/zero
+            if ((!amount || amount === 0) && rawTotalValue > 0 && currentPrice > 0) {
+              amount = rawTotalValue / currentPrice;
             }
 
-            // Crypto price logic - Legacy avgPrice is often IDR
+            // Crypto price logic - Legacy avgPrice is almost always in IDR for Indonesian users
             let txPrice, totalValueUSD, totalValueIDR;
 
-            // Check if avgPrice is in IDR (heuristic: > 10000 usually IDR for major coins, or check if avgPriceUsd exists)
-            // But some coins are cheap. Better check avgPriceUsd or assume IDR if avgPrice matches amount calculation
-            // If item.amount (total IDR) / amount (qty) ~= avgPrice, then avgPrice is IDR.
-
-            let legacyPriceIsIDR = true; // Default assumption for Indonesian users using Pintu/local exchanges
-            if (avgPrice < 1000 && item.amount && amount > 0) {
-              // Verification: if Total / Qty is small, maybe it IS USD?
-              const calculatedPrice = item.amount / amount;
-              if (calculatedPrice < 1000) legacyPriceIsIDR = false; // Unlikely for IDR to be < 1000 unless shitcoin
+            // IMPORTANT: Handle avgPrice = 0 case (like BNB in legacy format)
+            // If avgPrice is 0 but we have the total value (amount field) and qty,
+            // we can estimate the avgPrice (in IDR) as: totalValue / qty
+            // This treats the "amount" field as the cost basis in IDR
+            if (avgPrice === 0 && rawTotalValue > 0 && amount > 0) {
+              // Estimate avgPrice from total value and quantity
+              avgPrice = rawTotalValue / amount; // This gives IDR price per unit
+              secureLogger.log(`Estimated avgPrice for ${symbol}: ${avgPrice} IDR (from amount ${rawTotalValue} / qty ${amount})`);
             }
 
-            if (item.avgPriceUsd && item.avgPriceUsd > 0) {
-              txPrice = item.avgPriceUsd;
-            } else if (legacyPriceIsIDR && exchangeRate && exchangeRate > 0) {
+            // Determine if avgPrice is in IDR or USD
+            // Legacy format from Indonesian apps (Pintu, Tokocrypto, etc.) uses IDR
+            // avgPrice > 100 is likely IDR (even cheap coins like PTU at Rp2644)
+            const avgPriceUsd = item.avgPriceUsd ? parseFloat(item.avgPriceUsd) : 0;
+
+            if (avgPriceUsd > 0) {
+              // Explicit USD price available
+              txPrice = avgPriceUsd;
+            } else if (avgPrice > 0 && exchangeRate && exchangeRate > 0) {
+              // Convert IDR avgPrice to USD
+              // Legacy avgPrice is in IDR (e.g., BTC at 1,020,037,000 IDR, PTU at 2,644 IDR)
               txPrice = avgPrice / exchangeRate;
             } else {
-              txPrice = avgPrice;
+              // Fallback: No cost basis available - set to 0 (P/L will show as N/A)
+              txPrice = 0;
             }
 
             totalValueUSD = txPrice * amount;
-            totalValueIDR = exchangeRate && exchangeRate > 0 ? totalValueUSD * exchangeRate : (item.amount || 0);
+            totalValueIDR = exchangeRate && exchangeRate > 0 ? totalValueUSD * exchangeRate : rawTotalValue;
+
+            secureLogger.log(`Legacy restore crypto: ${symbol}, amount: ${amount}, avgPrice (IDR): ${avgPrice}, txPrice (USD): ${txPrice}`);
 
             if (amount > 0) {
               transactionsData.push({
@@ -1939,51 +2091,134 @@ export default function Home() {
             }
           } else if (item.category === 'cash') {
             // Convert legacy cash to transaction
-            const amount = item.amount || 0;
+            const amount = item.amount ? parseFloat(item.amount) : 0;
 
-            transactionsData.push({
-              type: 'buy',
-              assetType: 'cash',
-              ticker: item.name,
-              amount: amount,
-              price: 1,
-              valueIDR: amount,
-              valueUSD: exchangeRate && exchangeRate > 0 ? amount / exchangeRate : 0,
-              date: formattedDate,
-              currency: 'IDR',
-              status: 'completed',
-              userId: user?.uid
-            });
+            if (amount > 0) {
+              transactionsData.push({
+                type: 'buy',
+                assetType: 'cash',
+                ticker: item.name.toUpperCase(),
+                amount: amount,
+                price: 1,
+                valueIDR: amount,
+                valueUSD: exchangeRate && exchangeRate > 0 ? amount / exchangeRate : 0,
+                date: formattedDate,
+                currency: 'IDR',
+                status: 'completed',
+                userId: user?.uid
+              });
+            }
           }
         });
       } else {
         throw new Error('Invalid backup format');
       }
 
-      // Clear existing data first
+      // 2. Clear existing data first using Batch (FAST)
       if (user) {
+        setResetStatus('Cleaning old data...');
+        setResetProgress(10);
+
         const transactionsRef = collection(db, 'users', user.uid, 'transactions');
         const existingTransactions = await getDocs(transactionsRef);
-        const deletePromises = existingTransactions.docs.map(docSnap =>
-          deleteDoc(doc(db, 'users', user.uid, 'transactions', docSnap.id))
-        );
-        await Promise.all(deletePromises);
+
+        if (!existingTransactions.empty) {
+          const batchSize = 500;
+          const deleteChunks = [];
+          const totalDelete = existingTransactions.docs.length;
+
+          for (let i = 0; i < totalDelete; i += batchSize) {
+            deleteChunks.push(existingTransactions.docs.slice(i, i + batchSize));
+          }
+
+          for (let i = 0; i < deleteChunks.length; i++) {
+            const batch = writeBatch(db);
+            deleteChunks[i].forEach(docSnap => batch.delete(docSnap.ref));
+            await batch.commit();
+
+            // Progress 10 -> 30%
+            const processed = Math.min((i + 1) * batchSize, totalDelete);
+            const progress = 10 + (processed / totalDelete * 20);
+            setResetProgress(progress);
+          }
+        }
 
         // Also clear portfolio document
         const emptyPortfolio = { stocks: [], crypto: [], cash: [] };
+        // reset(); // Clear local - Removed to prevent de-initialization issues
         await saveUserPortfolio(emptyPortfolio);
       }
 
-      // Save transactions to Firestore
+      setResetProgress(30);
+      setResetStatus(`Restoring ${transactionsData.length} transactions...`);
+
+      // 3. Save transactions to Firestore using Batch (FAST)
+      const importedTransactions = [];
       if (user && transactionsData.length > 0) {
-        for (const tx of transactionsData) {
-          await addDoc(collection(db, 'users', user.uid, 'transactions'), {
-            ...tx,
-            timestamp: serverTimestamp()
+        const batchSize = 500;
+        const totalRestore = transactionsData.length;
+        const chunks = [];
+
+        for (let i = 0; i < totalRestore; i += batchSize) {
+          chunks.push(transactionsData.slice(i, i + batchSize));
+        }
+
+        for (let i = 0; i < chunks.length; i++) {
+          const batch = writeBatch(db);
+          const chunk = chunks[i];
+
+          chunk.forEach(tx => {
+            const newDocRef = doc(collection(db, 'users', user.uid, 'transactions'));
+            batch.set(newDocRef, {
+              ...tx,
+              timestamp: serverTimestamp()
+            });
+
+            // Capture for local update
+            importedTransactions.push({
+              ...tx,
+              id: newDocRef.id,
+              timestamp: new Date().toISOString()
+            });
           });
+
+          await batch.commit();
+
+          // Progress 30 -> 90%
+          const processed = Math.min((i + 1) * batchSize, totalRestore);
+          const progress = 30 + (processed / totalRestore * 60);
+          setResetProgress(progress);
+          setResetStatus(`Restored ${processed} of ${totalRestore} items...`);
         }
       }
 
+      setResetStatus('Finalizing...');
+      setResetProgress(95);
+
+      // No need to manually updateTransactions(importedTransactions) here
+      // The onSnapshot listener (line 578) will automatically pick up the new batches 
+      // and call updateTransactions(newTransactions) which triggers rebuildPortfolio()
+
+      // Manually update local state for immediate feedback
+      // This ensures the UI updates even if the Firestore listener is slow
+      updateTransactions(importedTransactions);
+
+      // Force a rebuild just in case
+      setTimeout(() => {
+        rebuildPortfolio();
+
+        // Signal that restore is done so we can fetch prices once assets update
+        setRestoreComplete(true);
+      }, 500);
+
+      setResetProgress(100);
+      setResetStatus('Complete!');
+
+      // Small delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setResetProgress(0);
+      setResetStatus('');
       setIsSettingsOpen(false);
 
       // Count items for message
@@ -2006,9 +2241,14 @@ export default function Home() {
       // But also trigger manual rebuild after a delay
       setTimeout(() => {
         rebuildPortfolio();
+        // Re-enable Firestore listener after restore is fully complete
+        restoreInProgressRef.current = false;
       }, 2000);
 
     } catch (error) {
+      // Reset flag on error
+      restoreInProgressRef.current = false;
+
       console.error('Restore error:', error);
       setConfirmModal({
         isOpen: true,
@@ -2211,6 +2451,8 @@ export default function Home() {
             onResetPortfolio={handleResetPortfolio}
             onBackup={handleBackup}
             onRestore={handleRestore}
+            progress={resetProgress}
+            processingStatus={resetStatus}
           />
         </main>
 
