@@ -210,7 +210,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('portfolio');
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading, logout, getUserPortfolio, saveUserPortfolio } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const [confirmModal, setConfirmModal] = useState(null);
   const [sellingLoading, setSellingLoading] = useState(false);
@@ -1745,6 +1745,282 @@ export default function Home() {
     }
   };
 
+  // Backup Portfolio to JSON
+  const handleBackup = () => {
+    try {
+      const backupData = {
+        version: '2.0',
+        exportedAt: new Date().toISOString(),
+        portfolio: assets,
+        transactions: transactions
+      };
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `portsyncro_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setConfirmModal({
+        isOpen: true,
+        title: t('success') || 'Success',
+        message: language === 'en' ? 'Portfolio backed up successfully' : 'Portfolio berhasil di-backup',
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+    } catch (error) {
+      console.error('Backup error:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: t('error') || 'Error',
+        message: language === 'en' ? 'Failed to backup portfolio' : 'Gagal backup portfolio',
+        type: 'error',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+    }
+  };
+
+  // Restore Portfolio from JSON (supports legacy format)
+  const handleRestore = async (file) => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      let transactionsData = [];
+
+      // Check if it's new format (v2.0) or legacy format
+      if (data.version === '2.0' && data.portfolio) {
+        // New format - use transactions directly
+        transactionsData = data.transactions || [];
+      } else if (Array.isArray(data)) {
+        // Legacy format - convert to transaction format
+        const now = new Date();
+        const formattedDate = now.toLocaleString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+
+        data.forEach(item => {
+          if (item.category === 'stock') {
+            // Convert legacy stock to transaction
+            const isUS = item.market === 'us';
+            const avgPrice = item.avgPrice || 0;
+            let shareCount = 0;
+
+            if (item.qty && item.qty > 0) {
+              // Legacy format handling:
+              // IDX market uses 'lots' in the qty field -> convert to shares (x100)
+              // US/Others use 'shares' -> keep as is
+              if (isUS) {
+                shareCount = item.qty;
+              } else {
+                shareCount = item.qty * 100;
+              }
+            } else if (item.amount && avgPrice > 0) {
+              // Fallback: Calculate shareCount from amount (Total Value) if qty is missing
+              // Amount (Value) / Price = Shares
+              shareCount = item.amount / avgPrice;
+            }
+
+            // Calculate values and correct price logic
+            let valueIDR, valueUSD, txPrice;
+
+            if (isUS) {
+              // US stock - price logic
+              // Check if avgPrice is likely IDR (e.g. > 1000 and avgPriceUsd exists or logic dictates)
+              const legacyPriceIsIDR = item.avgPrice > 1000; // Heuristic: US stocks rarely > $1000/share unless BRK.A, but common in IDR
+
+              if (item.avgPriceUsd && item.avgPriceUsd > 0) {
+                // Use explicit USD price if available
+                txPrice = item.avgPriceUsd;
+              } else if (legacyPriceIsIDR && exchangeRate && exchangeRate > 0) {
+                // Convert IDR price to USD
+                txPrice = item.avgPrice / exchangeRate;
+              } else {
+                // Assume it's already USD
+                txPrice = avgPrice;
+              }
+
+              valueUSD = txPrice * shareCount;
+              valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : (item.amount || 0);
+            } else {
+              // IDX stock - price is in IDR
+              txPrice = avgPrice;
+              valueIDR = avgPrice * shareCount;
+              valueUSD = exchangeRate && exchangeRate > 0 ? valueIDR / exchangeRate : 0;
+            }
+
+            if (shareCount > 0) {
+              transactionsData.push({
+                type: 'buy',
+                assetType: 'stock',
+                ticker: item.name.toUpperCase(),
+                amount: shareCount, // Amount in shares
+                price: txPrice, // Store correctly converted price
+                valueIDR: valueIDR,
+                valueUSD: valueUSD,
+                date: formattedDate,
+                currency: isUS ? 'USD' : 'IDR',
+                market: isUS ? 'US' : 'IDX',
+                status: 'completed',
+                userId: user?.uid,
+                broker: item.source || null,
+                legacy_imported: true
+              });
+            }
+          } else if (item.category === 'crypto') {
+            // Convert legacy crypto to transaction
+            // Extract symbol from name (e.g., "Koin Pintu (PTU)" -> "PTU", "BTC" -> "BTC")
+            let symbol = item.name;
+            const match = item.name.match(/\(([^)]+)\)/);
+            if (match) {
+              symbol = match[1];
+            }
+
+            const avgPrice = item.avgPrice || 0;
+            let amount = item.qty || 0;
+
+            // Fallback: Calculate amount from total value (item.amount) if qty is missing
+            if ((!amount || amount === 0) && item.amount && avgPrice > 0) {
+              amount = item.amount / avgPrice;
+            }
+
+            // Crypto price logic - Legacy avgPrice is often IDR
+            let txPrice, totalValueUSD, totalValueIDR;
+
+            // Check if avgPrice is in IDR (heuristic: > 10000 usually IDR for major coins, or check if avgPriceUsd exists)
+            // But some coins are cheap. Better check avgPriceUsd or assume IDR if avgPrice matches amount calculation
+            // If item.amount (total IDR) / amount (qty) ~= avgPrice, then avgPrice is IDR.
+
+            let legacyPriceIsIDR = true; // Default assumption for Indonesian users using Pintu/local exchanges
+            if (avgPrice < 1000 && item.amount && amount > 0) {
+              // Verification: if Total / Qty is small, maybe it IS USD?
+              const calculatedPrice = item.amount / amount;
+              if (calculatedPrice < 1000) legacyPriceIsIDR = false; // Unlikely for IDR to be < 1000 unless shitcoin
+            }
+
+            if (item.avgPriceUsd && item.avgPriceUsd > 0) {
+              txPrice = item.avgPriceUsd;
+            } else if (legacyPriceIsIDR && exchangeRate && exchangeRate > 0) {
+              txPrice = avgPrice / exchangeRate;
+            } else {
+              txPrice = avgPrice;
+            }
+
+            totalValueUSD = txPrice * amount;
+            totalValueIDR = exchangeRate && exchangeRate > 0 ? totalValueUSD * exchangeRate : (item.amount || 0);
+
+            if (amount > 0) {
+              transactionsData.push({
+                type: 'buy',
+                assetType: 'crypto',
+                symbol: symbol.toUpperCase(),
+                amount: amount,
+                price: txPrice, // Store USD price
+                valueIDR: totalValueIDR,
+                valueUSD: totalValueUSD,
+                date: formattedDate,
+                currency: 'USD',
+                status: 'completed',
+                userId: user?.uid,
+                exchange: item.source || null,
+                legacy_imported: true
+              });
+            }
+          } else if (item.category === 'cash') {
+            // Convert legacy cash to transaction
+            const amount = item.amount || 0;
+
+            transactionsData.push({
+              type: 'buy',
+              assetType: 'cash',
+              ticker: item.name,
+              amount: amount,
+              price: 1,
+              valueIDR: amount,
+              valueUSD: exchangeRate && exchangeRate > 0 ? amount / exchangeRate : 0,
+              date: formattedDate,
+              currency: 'IDR',
+              status: 'completed',
+              userId: user?.uid
+            });
+          }
+        });
+      } else {
+        throw new Error('Invalid backup format');
+      }
+
+      // Clear existing data first
+      if (user) {
+        const transactionsRef = collection(db, 'users', user.uid, 'transactions');
+        const existingTransactions = await getDocs(transactionsRef);
+        const deletePromises = existingTransactions.docs.map(docSnap =>
+          deleteDoc(doc(db, 'users', user.uid, 'transactions', docSnap.id))
+        );
+        await Promise.all(deletePromises);
+
+        // Also clear portfolio document
+        const emptyPortfolio = { stocks: [], crypto: [], cash: [] };
+        await saveUserPortfolio(emptyPortfolio);
+      }
+
+      // Save transactions to Firestore
+      if (user && transactionsData.length > 0) {
+        for (const tx of transactionsData) {
+          await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+            ...tx,
+            timestamp: serverTimestamp()
+          });
+        }
+      }
+
+      setIsSettingsOpen(false);
+
+      // Count items for message
+      const stockCount = transactionsData.filter(tx => tx.assetType === 'stock').length;
+      const cryptoCount = transactionsData.filter(tx => tx.assetType === 'crypto').length;
+      const cashCount = transactionsData.filter(tx => tx.assetType === 'cash').length;
+
+      setConfirmModal({
+        isOpen: true,
+        title: t('success') || 'Success',
+        message: language === 'en'
+          ? `Portfolio restored successfully! ${stockCount} stocks, ${cryptoCount} crypto, ${cashCount} cash accounts imported.`
+          : `Portfolio berhasil di-restore! ${stockCount} saham, ${cryptoCount} kripto, ${cashCount} akun kas diimport.`,
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+
+      // Portfolio will rebuild automatically from Firebase listener
+      // But also trigger manual rebuild after a delay
+      setTimeout(() => {
+        rebuildPortfolio();
+      }, 2000);
+
+    } catch (error) {
+      console.error('Restore error:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: t('error') || 'Error',
+        message: language === 'en' ? `Failed to restore portfolio: ${error.message}` : `Gagal restore portfolio: ${error.message}`,
+        type: 'error',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+    }
+  };
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white font-sans selection:bg-blue-500/30">
@@ -1933,6 +2209,8 @@ export default function Home() {
             onToggleHideBalance={() => setHideBalance(!hideBalance)}
             onOpenCalculator={() => setShowAverageCalculator(true)}
             onResetPortfolio={handleResetPortfolio}
+            onBackup={handleBackup}
+            onRestore={handleRestore}
           />
         </main>
 

@@ -13,7 +13,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import { isDemoAccountAvailable } from '../lib/utils';
 import { secureLogger } from './../lib/security';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiLogIn, FiActivity } from 'react-icons/fi';
-import InstallPWA from '../components/InstallPWA';
+
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -225,7 +225,7 @@ export default function Login() {
                   {t('register')}
                 </Link>
               </p>
-              <InstallPWA type="block" />
+
             </div>
           </div>
         </div>

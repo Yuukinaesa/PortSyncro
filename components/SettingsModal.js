@@ -1,12 +1,12 @@
 import Modal from './Modal';
 import { useTheme } from '../lib/themeContext';
-import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
+import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity, FiTrash2, FiAlertTriangle, FiDownload, FiUpload } from 'react-icons/fi';
 import { FaDownload, FaApple, FaTimes } from 'react-icons/fa';
 import { useLanguage } from '../lib/languageContext';
 import { usePWA } from '../lib/pwaContext';
 import { useState } from 'react';
 
-export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onResetPortfolio }) {
+export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onResetPortfolio, onBackup, onRestore }) {
     const { isDarkMode, toggleTheme } = useTheme();
     const { t, language, toggleLanguage } = useLanguage();
     const { installPWA, isSupported, isIOS, isMacOS } = usePWA();
@@ -142,6 +142,60 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                         </div>
                     </div>
                 </button>
+
+                {/* Backup & Restore Section */}
+                <div className="pt-4 mt-2 border-t border-gray-200 dark:border-gray-800">
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{language === 'en' ? 'Backup & Restore' : 'Backup & Restore'}</p>
+
+                    {/* Backup Button */}
+                    <button
+                        onClick={onBackup}
+                        className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-gray-100 dark:hover:bg-[#1f2937] hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 group mb-2"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 rounded-xl bg-white dark:bg-[#161b22] text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-500 dark:group-hover:text-emerald-300 transition-colors shadow-sm">
+                                <FiDownload className="w-5 h-5" />
+                            </div>
+                            <div className="text-left">
+                                <span className="block font-bold text-gray-900 dark:text-gray-200 group-hover:text-black dark:group-hover:text-white transition-colors">
+                                    {language === 'en' ? 'Backup Portfolio' : 'Backup Portfolio'}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                    {language === 'en' ? 'Export portfolio to JSON file' : 'Export portfolio ke file JSON'}
+                                </span>
+                            </div>
+                        </div>
+                    </button>
+
+                    {/* Restore Button */}
+                    <label className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-gray-100 dark:hover:bg-[#1f2937] hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 group cursor-pointer">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 rounded-xl bg-white dark:bg-[#161b22] text-blue-600 dark:text-blue-400 group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors shadow-sm">
+                                <FiUpload className="w-5 h-5" />
+                            </div>
+                            <div className="text-left">
+                                <span className="block font-bold text-gray-900 dark:text-gray-200 group-hover:text-black dark:group-hover:text-white transition-colors">
+                                    {language === 'en' ? 'Restore Portfolio' : 'Restore Portfolio'}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                    {language === 'en' ? 'Import from JSON file (supports legacy format)' : 'Import dari file JSON (support format lama)'}
+                                </span>
+                            </div>
+                        </div>
+                        <input
+                            type="file"
+                            accept=".json"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file && onRestore) {
+                                    onRestore(file);
+                                    e.target.value = '';
+                                }
+                            }}
+                            className="hidden"
+                        />
+                    </label>
+                </div>
 
                 {/* Danger Zone */}
                 <div className="pt-4 mt-2 border-t border-gray-200 dark:border-gray-800">
