@@ -1,17 +1,63 @@
 import Modal from './Modal';
 import { useTheme } from '../lib/themeContext';
 import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity } from 'react-icons/fi';
+import { FaDownload, FaApple, FaTimes } from 'react-icons/fa';
 import { useLanguage } from '../lib/languageContext';
+import { usePWA } from '../lib/pwaContext';
+import { useState } from 'react';
 
 export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator }) {
     const { isDarkMode, toggleTheme } = useTheme();
     const { t, language, toggleLanguage } = useLanguage();
+    const { installPWA, isSupported, isIOS, isMacOS } = usePWA();
+    const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+    const [showMacOSPrompt, setShowMacOSPrompt] = useState(false);
+    const [showManualPrompt, setShowManualPrompt] = useState(false);
+
+    const handleInstallClick = async () => {
+        const result = await installPWA();
+        if (result === 'ios') {
+            setShowIOSPrompt(true);
+        } else if (result === 'macos') {
+            setShowMacOSPrompt(true);
+        } else if (result === 'manual') {
+            setShowManualPrompt(true);
+        }
+    };
+
+    // Show install button if supported or iOS or MacOS, or if in Dev mode
+    // We assume Android handles itself via deferredPrompt (isSupported=true) or similar fallback if we wanted
+    // Show install button if supported or iOS or MacOS, or if in Dev mode
+    // We assume Android handles itself via deferredPrompt (isSupported=true) or similar fallback if we wanted, or fallback to manual
+    const showInstallButton = isSupported || isIOS || isMacOS; // Only show if we can natively install or provide valid instructions
 
     if (!isOpen) return null;
 
     return (
         <Modal type="default" isOpen={isOpen} onClose={onClose} title={t('settings')}>
             <div className="space-y-4 font-sans">
+                {/* Install App Button */}
+                {showInstallButton && (
+                    <button
+                        onClick={handleInstallClick}
+                        className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-gray-100 dark:hover:bg-[#1f2937] hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 group"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 rounded-xl bg-white dark:bg-[#161b22] text-sky-600 dark:text-sky-400 group-hover:text-sky-500 dark:group-hover:text-sky-300 transition-colors shadow-sm">
+                                {isIOS ? <FaApple className="w-5 h-5" /> : <FaDownload className="w-5 h-5" />}
+                            </div>
+                            <div className="text-left">
+                                <span className="block font-bold text-gray-900 dark:text-gray-200 group-hover:text-black dark:group-hover:text-white transition-colors">
+                                    Install App
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                    {isIOS || isMacOS ? 'Tambahkan ke Home Screen/Dock' : 'Install ke Perangkat Anda'}
+                                </span>
+                            </div>
+                        </div>
+                    </button>
+                )}
+
                 {/* Hide Balance Toggle */}
                 <button
                     onClick={onToggleHideBalance}
@@ -99,6 +145,145 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                     <p className="text-[10px] text-gray-600 font-mono">PortSyncro v1.0.0 • by Arfan</p>
                 </div>
             </div>
+
+
+            {/* iOS Prompt Modal */}
+            {showIOSPrompt && (
+                <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full relative animate-slideUp">
+                        <button
+                            onClick={() => setShowIOSPrompt(false)}
+                            className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                            <FaTimes />
+                        </button>
+
+                        <div className="text-center space-y-4">
+                            <div className="bg-gray-100 dark:bg-gray-700 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner">
+                                <img src="/img/mainlogo.png" alt="PortSyncro" className="w-12 h-12" />
+                            </div>
+
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                Install PortSyncro
+                            </h3>
+
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                                Install aplikasi ini di iPhone/iPad Anda untuk pengalaman yang lebih baik.
+                            </p>
+
+                            <ol className="text-left text-sm text-gray-600 dark:text-gray-300 space-y-3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                                <li className="flex items-center gap-3">
+                                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">1</span>
+                                    <span>Tap tombol <strong className="text-blue-500">Share</strong> <span className="text-xl leading-none">⎋</span> di browser.</span>
+                                </li>
+                                <li className="flex items-center gap-3">
+                                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">2</span>
+                                    <span>Pilih <strong className="text-gray-800 dark:text-gray-200">Add to Home Screen</strong>.</span>
+                                </li>
+                            </ol>
+
+                            <button
+                                onClick={() => setShowIOSPrompt(false)}
+                                className="w-full bg-[#0ea5e9] text-white font-semibold py-2.5 rounded-xl hover:bg-[#0284c7] transition-colors"
+                            >
+                                Mengerti
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MacOS Prompt Modal */}
+            {showMacOSPrompt && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full relative animate-slideUp">
+                        <button
+                            onClick={() => setShowMacOSPrompt(false)}
+                            className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                            <FaTimes />
+                        </button>
+
+                        <div className="text-center space-y-4">
+                            <div className="bg-gray-100 dark:bg-gray-700 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner">
+                                <img src="/img/mainlogo.png" alt="PortSyncro" className="w-12 h-12" />
+                            </div>
+
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                Install di Mac
+                            </h3>
+
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                                Tambahkan aplikasi ke Dock atau Desktop untuk akses cepat.
+                            </p>
+
+                            <ol className="text-left text-sm text-gray-600 dark:text-gray-300 space-y-3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                                <li className="flex items-center gap-3">
+                                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">1</span>
+                                    <span>Buka menu <strong className="text-blue-500">Share</strong> (atau File).</span>
+                                </li>
+                                <li className="flex items-center gap-3">
+                                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">2</span>
+                                    <span>Pilih <strong className="text-gray-800 dark:text-gray-200">Add to Dock</strong> atau <strong className="text-gray-800 dark:text-gray-200">Add to Home Screen</strong>.</span>
+                                </li>
+                            </ol>
+
+                            <button
+                                onClick={() => setShowMacOSPrompt(false)}
+                                className="w-full bg-[#0ea5e9] text-white font-semibold py-2.5 rounded-xl hover:bg-[#0284c7] transition-colors"
+                            >
+                                Mengerti
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual Install Prompt Modal (Windows/Linux/Android fallback) */}
+            {showManualPrompt && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full relative animate-slideUp">
+                        <button
+                            onClick={() => setShowManualPrompt(false)}
+                            className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                            <FaTimes />
+                        </button>
+
+                        <div className="text-center space-y-4">
+                            <div className="bg-gray-100 dark:bg-gray-700 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner">
+                                <img src="/img/mainlogo.png" alt="PortSyncro" className="w-12 h-12" />
+                            </div>
+
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                Install PortSyncro
+                            </h3>
+
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                                Untuk pengalaman terbaik, install aplikasi ini di perangkat Anda.
+                            </p>
+
+                            <ol className="text-left text-sm text-gray-600 dark:text-gray-300 space-y-3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                                <li className="flex items-center gap-3">
+                                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">1</span>
+                                    <span>Buka menu browser (ikon titik tiga &#8942; atau garis tiga &#9776;).</span>
+                                </li>
+                                <li className="flex items-center gap-3">
+                                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">2</span>
+                                    <span>Pilih <strong className="text-gray-800 dark:text-gray-200">Install App</strong> atau <strong className="text-gray-800 dark:text-gray-200">Add to Home Screen</strong>.</span>
+                                </li>
+                            </ol>
+
+                            <button
+                                onClick={() => setShowManualPrompt(false)}
+                                className="w-full bg-[#0ea5e9] text-white font-semibold py-2.5 rounded-xl hover:bg-[#0284c7] transition-colors"
+                            >
+                                Mengerti
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Modal>
     );
 }

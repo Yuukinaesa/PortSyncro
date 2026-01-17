@@ -12,6 +12,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { secureLogger } from './../lib/security';
 import { FiLock, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import InstallPWA from '../components/InstallPWA';
 
 export default function ConfirmResetPassword() {
   const [newPassword, setNewPassword] = useState('');
@@ -202,6 +203,7 @@ export default function ConfirmResetPassword() {
               )}
             </div>
           )}
+          <InstallPWA type="block" />
         </div>
       </div>
     </ProtectedRoute>

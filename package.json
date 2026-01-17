@@ -4,11 +4,11 @@
   "private": true,
   "description": "Portfolio management app with demo account support. Set NEXT_PUBLIC_DEMO_EMAIL and NEXT_PUBLIC_DEMO_PASSWORD for demo login feature.",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",
-    "build:prod": "next build",
+    "build:prod": "next build --webpack",
     "start:prod": "next start"
   },
   "dependencies": {
@@ -20,6 +20,7 @@
     "helmet": "^8.1.0",
     "helmet-csp": "^3.1.0",
     "next": "^16.1.1",
+    "next-pwa": "^5.6.0",
     "node-fetch": "^2.7.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

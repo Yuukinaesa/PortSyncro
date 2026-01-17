@@ -1,0 +1,22 @@
+{
+    "name": "PortSyncro",
+    "short_name": "PortSyncro",
+    "description": "Portfolio management app with demo account support.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#111827",
+    "theme_color": "#0ea5e9",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/img/mainlogo.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/img/mainlogo.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

@@ -11,6 +11,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { secureLogger } from './../lib/security';
 import { FiMail, FiActivity, FiArrowRight } from 'react-icons/fi';
+import InstallPWA from '../components/InstallPWA';
 
 export default function ResetPassword() {
   const [email, setEmail] = useState('');
@@ -143,6 +144,7 @@ export default function ResetPassword() {
               <Link href="/login" className="text-sm font-bold text-gray-500 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white transition-colors">
                 {t('backToLogin')}
               </Link>
+              <InstallPWA type="block" />
             </div>
           </div>
         </div>

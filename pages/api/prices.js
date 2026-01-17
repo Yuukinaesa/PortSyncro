@@ -123,6 +123,7 @@ export default async function handler(req, res) {
     });
   }
 
+  const { stocks, crypto, exchangeRate } = req.body;
   secureLogger.log('Processing request with:', { stocks, crypto, exchangeRate });
 
   try {
