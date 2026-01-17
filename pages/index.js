@@ -1701,6 +1701,37 @@ export default function Home() {
     }
   };
 
+  const handleResetPortfolio = async () => {
+    try {
+      if (!user) return;
+
+      const emptyPortfolio = { stocks: [], crypto: [], cash: [] };
+      initializePortfolio(emptyPortfolio);
+      await saveUserPortfolio(emptyPortfolio);
+
+      setIsSettingsOpen(false);
+      setConfirmModal({
+        isOpen: true,
+        title: t('success') || 'Success',
+        message: t('portfolioResetSuccess') || 'Portfolio reset successfully',
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+
+    } catch (error) {
+      console.error('Error resetting portfolio:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: t('error') || 'Error',
+        message: t('portfolioResetFailed') || 'Failed to reset portfolio',
+        type: 'error',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+    }
+  };
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white font-sans selection:bg-blue-500/30">
@@ -1888,6 +1919,7 @@ export default function Home() {
             hideBalance={hideBalance}
             onToggleHideBalance={() => setHideBalance(!hideBalance)}
             onOpenCalculator={() => setShowAverageCalculator(true)}
+            onResetPortfolio={handleResetPortfolio}
           />
         </main>
 

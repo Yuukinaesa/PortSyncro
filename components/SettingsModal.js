@@ -1,18 +1,20 @@
 import Modal from './Modal';
 import { useTheme } from '../lib/themeContext';
-import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity } from 'react-icons/fi';
+import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 import { FaDownload, FaApple, FaTimes } from 'react-icons/fa';
 import { useLanguage } from '../lib/languageContext';
 import { usePWA } from '../lib/pwaContext';
 import { useState } from 'react';
 
-export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator }) {
+export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onResetPortfolio }) {
     const { isDarkMode, toggleTheme } = useTheme();
     const { t, language, toggleLanguage } = useLanguage();
     const { installPWA, isSupported, isIOS, isMacOS } = usePWA();
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
     const [showMacOSPrompt, setShowMacOSPrompt] = useState(false);
     const [showManualPrompt, setShowManualPrompt] = useState(false);
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [resetInput, setResetInput] = useState('');
 
     const handleInstallClick = async () => {
         const result = await installPWA();
@@ -141,11 +143,105 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                     </div>
                 </button>
 
+                {/* Danger Zone */}
+                <div className="pt-4 mt-2 border-t border-gray-200 dark:border-gray-800">
+                    <p className="text-xs font-bold text-red-500 uppercase mb-2 ml-1">{language === 'en' ? 'Danger Zone' : 'Zona Berbahaya'}</p>
+                    <button
+                        onClick={() => setShowResetConfirm(true)}
+                        className="w-full flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-2xl hover:bg-red-100 dark:hover:bg-red-900/20 transition-all duration-200 group"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 rounded-xl bg-white dark:bg-[#161b22] text-red-600 dark:text-red-400 group-hover:text-red-500 dark:group-hover:text-red-300 transition-colors shadow-sm">
+                                <FiTrash2 className="w-5 h-5" />
+                            </div>
+                            <div className="text-left">
+                                <span className="block font-bold text-red-600 dark:text-red-400 group-hover:text-red-700 dark:group-hover:text-red-300 transition-colors">
+                                    {language === 'en' ? 'Reset Portfolio' : 'Reset Portfolio'}
+                                </span>
+                                <span className="text-xs text-red-400 dark:text-red-500/70">
+                                    {language === 'en' ? 'Delete all assets and start over' : 'Hapus semua aset dan mulai dari awal'}
+                                </span>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
                 <div className="text-center pt-4">
                     <p className="text-[10px] text-gray-600 font-mono">PortSyncro v1.0.0 • by Arfan</p>
                 </div>
             </div>
 
+
+            {/* Reset Confirmation Modal */}
+            {showResetConfirm && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full relative animate-slideUp border border-red-100 dark:border-red-900/30">
+                        <button
+                            onClick={() => {
+                                setShowResetConfirm(false);
+                                setResetInput('');
+                            }}
+                            className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                            <FaTimes />
+                        </button>
+
+                        <div className="text-center space-y-4">
+                            <div className="bg-red-100 dark:bg-red-900/30 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner text-red-600 dark:text-red-400">
+                                <FiAlertTriangle className="w-8 h-8" />
+                            </div>
+
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                {t('resetPortfolio') || 'Reset Portfolio'}?
+                            </h3>
+
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                                {t('resetWarning') || 'This action cannot be undone. All your portfolio data will be permanently deleted.'}
+                            </p>
+
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-left">
+                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">
+                                    {t('typeYesToConfirm') || 'Type "yes" to confirm'}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={resetInput}
+                                    onChange={(e) => setResetInput(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
+                                    placeholder="yes"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowResetConfirm(false);
+                                        setResetInput('');
+                                    }}
+                                    className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (resetInput.toLowerCase() === 'yes') {
+                                            if (onResetPortfolio) onResetPortfolio();
+                                            setShowResetConfirm(false);
+                                            setResetInput('');
+                                            onClose();
+                                        }
+                                    }}
+                                    disabled={resetInput.toLowerCase() !== 'yes'}
+                                    className="flex-1 px-4 py-2.5 bg-red-600 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-900/20"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* iOS Prompt Modal */}
             {showIOSPrompt && (
