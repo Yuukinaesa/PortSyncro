@@ -40,7 +40,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
   const memoizedPrices = useMemo(() => prices || {}, [prices]);
   const memoizedExchangeRate = useMemo(() => exchangeRate, [exchangeRate]);
 
-  const calculateAssetValue = useCallback((asset, currency, exchangeRate) => {
+  const calculateAssetValue = useCallback((asset, currency, exchangeRateArg) => {
     if (!asset) {
       return {
         valueIDR: 0,
@@ -49,6 +49,11 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         error: t('unknownAssetType')
       };
     }
+
+    // Use passed argument if available, otherwise fallback to memoized state
+    // This resolves potential shadowing/closure staleness issues
+    const rateToUse = exchangeRateArg !== undefined ? exchangeRateArg : memoizedExchangeRate;
+    const numRate = Number(rateToUse);
 
     const isStock = type === 'stock';
     const isCash = type === 'cash';
@@ -74,28 +79,29 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     } else {
       currentPrice = priceData ? priceData.price : 0;
     }
-    // Value Calculation: Use shares (lots * 100 for IDX, lots for US) because price is per share
+    // Value Calculation
     const amount = isStock ? (market === 'US' ? asset.lots : asset.lots * 100) : asset.amount;
 
-    let valueIDR, valueUSD;
+    let valueIDR = 0, valueUSD = 0;
 
     if (isStock) {
       if (market === 'US') {
         // US Stocks: Price is in USD
         valueUSD = currentPrice * amount;
-        valueIDR = memoizedExchangeRate && memoizedExchangeRate > 0 ? valueUSD * memoizedExchangeRate : 0;
+        valueIDR = numRate && numRate > 0 ? valueUSD * numRate : 0;
       } else {
         // IDX Stocks: Price is in IDR
         valueIDR = Math.round(currentPrice * amount);
-        valueUSD = memoizedExchangeRate && memoizedExchangeRate > 0 ? Math.round((valueIDR / memoizedExchangeRate) * 100) / 100 : 0;
+        valueUSD = numRate && numRate > 0 ? valueIDR / numRate : 0;
       }
     } else if (type === 'cash') {
-      valueIDR = amount;
-      valueUSD = memoizedExchangeRate && memoizedExchangeRate > 0 ? Math.round((valueIDR / memoizedExchangeRate) * 100) / 100 : 0;
+      // Robust cash calculation
+      valueIDR = Number(amount) || 0;
+      valueUSD = numRate && numRate > 0 ? valueIDR / numRate : 0;
     } else {
       // Crypto: Price is in USD
-      valueUSD = Math.round((currentPrice * amount) * 100) / 100;
-      valueIDR = memoizedExchangeRate && memoizedExchangeRate > 0 ? Math.round(valueUSD * memoizedExchangeRate) : 0;
+      valueUSD = currentPrice * amount;
+      valueIDR = numRate && numRate > 0 ? valueUSD * numRate : 0;
     }
 
     return {
@@ -591,11 +597,16 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             <span className="font-bold text-gray-900 dark:text-white">{getMasked(formatIDR(currentIDR))}</span>
                             {(asset.useManualPrice || asset.isManual) && <span className="text-[10px] text-yellow-600 dark:text-yellow-500 font-bold bg-yellow-100 dark:bg-yellow-900/20 px-1.5 py-0.5 rounded">MANUAL</span>}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                          <div className="text-xs text-gray-500 dark:text-gray-400" title={price.lastUpdate ? `Last update: ${price.lastUpdate}` : ''}>
                             {getMasked(formatUSD(currentUSD, currentUSD < 1 && currentUSD > 0 ? 4 : 2))}
                           </div>
                           <div className={`text-xs ${price.change >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
-                            {(!asset.useManualPrice && !asset.isManual) && getMasked(`${price.change >= 0 ? '+' : ''}${price.change}%`)}
+                            {(!asset.useManualPrice && !asset.isManual) && (
+                              <>
+                                {getMasked(`${price.change >= 0 ? '+' : ''}${price.change}%`)}
+                                <span className="text-[10px] opacity-70 ml-1">({price.changeTime || '24h'})</span>
+                              </>
+                            )}
                           </div>
                         </td>
                       )}

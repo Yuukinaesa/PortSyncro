@@ -330,7 +330,7 @@ export default function TransactionHistory({
         }
 
         const values = calculateValue(tx);
-        const displayAmount = (tx.assetType === 'stock' && tx.market !== 'US') ? Math.round(tx.amount / 100) : tx.amount;
+        const displayAmount = tx.assetType === 'cash' ? '' : ((tx.assetType === 'stock' && tx.market !== 'US') ? Math.round(tx.amount / 100) : tx.amount);
 
         const row = [
           formatDate(tx.timestamp),
@@ -338,7 +338,7 @@ export default function TransactionHistory({
           assetTypeText,
           tx.ticker || tx.symbol,
           displayAmount,
-          formatNumberForCSV(tx.price, tx.currency === 'IDR' ? 'IDR' : 'USD'),
+          tx.assetType === 'cash' ? '' : formatNumberForCSV(tx.price, tx.currency === 'IDR' ? 'IDR' : 'USD'),
           formatNumberForCSV(values.valueIDR, 'IDR'),
           formatNumberForCSV(values.valueUSD, 'USD')
         ];
@@ -575,10 +575,10 @@ export default function TransactionHistory({
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300 font-mono">
-                        {tx.assetType === 'stock' && tx.market !== 'US' ? Math.round(tx.amount / 100) : tx.amount}
+                        {tx.assetType === 'cash' ? '-' : (tx.assetType === 'stock' && tx.market !== 'US' ? Math.round(tx.amount / 100) : tx.amount)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300 font-mono">
-                        {formatCurrency(tx.price, tx.currency === 'IDR' ? 'IDR' : 'USD')}
+                        {tx.assetType === 'cash' ? '-' : formatCurrency(tx.price, tx.currency === 'IDR' ? 'IDR' : 'USD')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white font-bold font-mono">
                         {formatCurrency(values.valueIDR, 'IDR')}

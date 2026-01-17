@@ -912,6 +912,8 @@ export default function Portfolio({
             <AssetTable
               type="cash"
               assets={filteredAssets.cash}
+              prices={prices}
+              exchangeRate={exchangeRate}
               hideBalance={hideBalance}
               onUpdate={onUpdateCash}
               onDelete={onDeleteCash}
