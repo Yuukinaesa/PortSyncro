@@ -2266,17 +2266,34 @@ export default function Home() {
           const chunk = chunks[i];
 
           chunk.forEach(tx => {
-            const newDocRef = doc(collection(db, 'users', user.uid, 'transactions'));
+            // Use original ID if available, otherwise generate new
+            const docId = tx.id || doc(collection(db, 'users', user.uid, 'transactions')).id;
+            const newDocRef = doc(db, 'users', user.uid, 'transactions', docId);
+
+            // Restore original timestamp
+            // For v2.0: tx.timestamp is ISO string -> convert to Date
+            // For Legacy: tx.timestamp might be missing or sentinel -> use new Date() if missing
+            // We avoid serverTimestamp() here to ensure the restored data has concrete time values
+            // compatible with our sorting logic immediately
+            let timestamp;
+            if (tx.timestamp && typeof tx.timestamp === 'string') {
+              timestamp = new Date(tx.timestamp);
+            } else if (tx.timestamp && typeof tx.timestamp.toDate === 'function') {
+              timestamp = tx.timestamp.toDate();
+            } else {
+              timestamp = new Date(); // Fallback for legacy import creation time
+            }
+
             batch.set(newDocRef, {
               ...tx,
-              timestamp: serverTimestamp()
+              timestamp: timestamp
             });
 
             // Capture for local update
             importedTransactions.push({
               ...tx,
-              id: newDocRef.id,
-              timestamp: new Date().toISOString()
+              id: docId,
+              timestamp: timestamp.toISOString()
             });
           });
 
