@@ -1799,8 +1799,8 @@ export default function Home() {
 
         <main className="container mx-auto px-4 py-8 pb-20">
 
-          {/* Navigation Controls (Floating ish) */}
-          <div className="flex justify-center mb-8">
+          {/* Navigation Controls (Sticky) */}
+          <div className="sticky top-16 z-30 flex justify-center mb-8 -mx-4 px-4 py-3 bg-gray-50/80 dark:bg-[#0d1117]/80 backdrop-blur-xl">
             <div className="flex items-center p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20">
               {[
                 { id: 'portfolio', label: t('portfolio'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
