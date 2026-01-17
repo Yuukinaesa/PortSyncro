@@ -791,7 +791,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   {/* Row 1: Amount & Market Price */}
                   <div className="grid grid-cols-2 gap-3">
                     {/* Amount */}
-                    <div className="p-3 bg-gray-50 dark:bg-[#0d1117] rounded-xl border border-gray-200 dark:border-gray-800/50">
+                    <div className={`p-3 bg-gray-50 dark:bg-[#0d1117] rounded-xl border border-gray-200 dark:border-gray-800/50 ${type === 'cash' ? 'col-span-2' : ''}`}>
                       <p className="text-gray-500 text-[10px] mb-1 font-semibold uppercase tracking-wider">{t('amount')?.toUpperCase() || 'JUMLAH'}</p>
                       {isEditing ? (
                         <div className="flex flex-col gap-2">
@@ -807,24 +807,34 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           </div>
                         </div>
                       ) : (
-                        <p className="font-bold text-gray-700 dark:text-gray-200 font-mono text-sm">{getMasked(formatQuantity(type === 'stock' ? asset.lots : asset.amount))}</p>
+                        <div>
+                          <p className="font-bold text-gray-700 dark:text-gray-200 font-mono text-sm">{getMasked(formatQuantity(type === 'stock' ? asset.lots : asset.amount))}</p>
+                          {type === 'cash' && (
+                            <p className="text-gray-500 dark:text-gray-400 font-mono text-[10px] mt-0.5">
+                              {getMasked(formatUSD(valueUSD))}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
 
                     {/* Market Price */}
-                    <div className="text-right p-3 bg-gray-50 dark:bg-[#0d1117] rounded-xl border border-gray-200 dark:border-gray-800/50">
-                      <p className="text-gray-500 text-[10px] mb-1 font-semibold uppercase tracking-wider flex justify-end items-center gap-1">
-                        {t('currentPrice')?.toUpperCase() || 'HARGA MARKET'}
-                        {(asset.useManualPrice || asset.isManual) && <span className="text-[9px] text-yellow-600 dark:text-yellow-500 font-bold bg-yellow-100 dark:bg-yellow-900/20 px-1.5 py-0.5 rounded">MANUAL</span>}
-                      </p>
-                      <div className="flex flex-col items-end">
-                        <p className="font-bold text-gray-700 dark:text-gray-200 font-mono text-sm">{getMasked(formatIDR(currentIDR))}</p>
-                        <p className="text-gray-500 dark:text-gray-400 font-mono text-[10px]">{getMasked(formatUSD(currentUSD, currentUSD < 1 && currentUSD > 0 ? 4 : 2))}</p>
-                        <span className={`text-[10px] font-bold ${isChangePos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
-                          {getMasked(`${isChangePos ? '+' : ''}${change.toFixed(2)}%`, false)}
-                        </span>
+                    {/* Market Price - Hide for Cash */}
+                    {type !== 'cash' && (
+                      <div className="text-right p-3 bg-gray-50 dark:bg-[#0d1117] rounded-xl border border-gray-200 dark:border-gray-800/50">
+                        <p className="text-gray-500 text-[10px] mb-1 font-semibold uppercase tracking-wider flex justify-end items-center gap-1">
+                          {t('currentPrice')?.toUpperCase() || 'HARGA MARKET'}
+                          {(asset.useManualPrice || asset.isManual) && <span className="text-[9px] text-yellow-600 dark:text-yellow-500 font-bold bg-yellow-100 dark:bg-yellow-900/20 px-1.5 py-0.5 rounded">MANUAL</span>}
+                        </p>
+                        <div className="flex flex-col items-end">
+                          <p className="font-bold text-gray-700 dark:text-gray-200 font-mono text-sm">{getMasked(formatIDR(currentIDR))}</p>
+                          <p className="text-gray-500 dark:text-gray-400 font-mono text-[10px]">{getMasked(formatUSD(currentUSD, currentUSD < 1 && currentUSD > 0 ? 4 : 2))}</p>
+                          <span className={`text-[10px] font-bold ${isChangePos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
+                            {getMasked(`${isChangePos ? '+' : ''}${change.toFixed(2)}%`, false)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Row 2: Avg Price & Modal (Cost Basis) */}
