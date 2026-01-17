@@ -5,7 +5,7 @@ import Notification from './Notification';
 import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { fetchExchangeRate } from '../lib/fetchPrices';
-import { formatNumber, formatIDR, formatUSD, formatNumberUSD } from '../lib/utils';
+import { formatNumber, formatIDR, formatUSD, formatNumberUSD, formatQuantity } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
 import { useTheme } from '../lib/themeContext';
 import { secureLogger } from './../lib/security';
@@ -362,132 +362,154 @@ export default function Portfolio({
   const copyToWhatsApp = () => {
     try {
       const now = new Date();
-      const options = { day: 'numeric', month: 'short', year: 'numeric' };
-      // Format manual date string: "16 Jan 2026"
-      const dateString = now.toLocaleDateString('id-ID', options);
+      // Format: "17 Jan 2026"
+      const dateString = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
       let text = `Rekap Keuangan — ${dateString}\n\n`;
       text += `💰 Total: ${formatIDR(totals.totalIDR)}\n\n`;
 
-      // BANK & E-WALLET
+      // Helper for sorting assets by value descending
+      const sortByValue = (a, b) => (b.valueIDR || 0) - (a.valueIDR || 0);
+
+      // 1. BANK
       if (assets?.cash?.length) {
         text += "🏦 BANK\n\n";
-        assets.cash.forEach(b => {
-          text += `• ${b.ticker}: ${formatIDR(b.amount)}\n`;
+        const cashList = assets.cash.map(c => ({
+          ...c,
+          valueIDR: parseFloat(c.amount)
+        })).sort(sortByValue);
+
+        cashList.forEach(b => {
+          text += `• ${b.ticker.toUpperCase()}: ${formatIDR(b.valueIDR)}\n`;
         });
         text += "\n";
       }
 
-      // SAHAM
+      // 2. SAHAM
       if (assets?.stocks?.length) {
         text += "📈 SAHAM\n\n";
 
-        // Group stocks by ticker
+        // Group by Ticker
         const stocksByTicker = {};
         assets.stocks.forEach(stock => {
-          if (!stocksByTicker[stock.ticker]) {
-            stocksByTicker[stock.ticker] = [];
+          const key = stock.ticker.toUpperCase();
+          if (!stocksByTicker[key]) {
+            stocksByTicker[key] = {
+              ticker: key,
+              holdings: [],
+              totalValueIDR: 0
+            };
           }
-          stocksByTicker[stock.ticker].push(stock);
+
+          let valIDR = stock.portoIDR || stock.porto;
+          if (stock.currency === 'USD' && (!stock.portoIDR)) {
+            valIDR = (stock.porto || 0) * (exchangeRate || 1);
+          }
+          if (!valIDR) {
+            const price = prices[stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`]?.price || stock.currentPrice || 0;
+            const shareCount = stock.market === 'US' ? parseFloat(stock.lots) : parseFloat(stock.lots) * 100;
+            valIDR = price * shareCount;
+            if (stock.market === 'US' && exchangeRate) valIDR *= exchangeRate;
+          }
+
+          stocksByTicker[key].holdings.push({
+            ...stock,
+            valueIDR: valIDR
+          });
+          stocksByTicker[key].totalValueIDR += valIDR;
         });
 
-        // Loop through tickers
-        Object.entries(stocksByTicker).forEach(([ticker, stocks]) => {
-          if (stocks.length > 1) {
-            // Multi-broker: Header then list
-            text += `${ticker}\n`;
-            stocks.forEach(stock => {
-              // Calculate value on fly if portoIDR not ready, though usually it is. 
-              // Portfolio caluclates it. Let's rely on standard calc if missing.
-              let valIDR = stock.portoIDR;
-              if (!valIDR) {
-                const price = prices[stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`]?.price || stock.currentPrice || 0;
-                const shareCount = stock.market === 'US' ? parseFloat(stock.lots) : parseFloat(stock.lots) * 100;
-                valIDR = price * shareCount;
-                if (stock.market === 'US' && exchangeRate) valIDR *= exchangeRate;
-              }
+        // Sort Tickers by Total Value Descending
+        const sortedTickers = Object.values(stocksByTicker).sort((a, b) => b.totalValueIDR - a.totalValueIDR);
 
-              text += `• ${stock.broker || 'Manual'}: ${formatIDR(valIDR)} (${stock.lots} Lot)\n`;
+        sortedTickers.forEach(group => {
+          // Sort holdings within ticker by value descending
+          const sortedHoldings = group.holdings.sort((a, b) => b.valueIDR - a.valueIDR);
+
+          if (sortedHoldings.length > 1) {
+            // Multi-broker format
+            text += `${group.ticker}\n`;
+            sortedHoldings.forEach(stock => {
+              const lotDisplay = stock.market === 'US' ? formatQuantity(stock.lots) : `${stock.lots} Lot`;
+              const lotStr = stock.market === 'US' ? ` (${lotDisplay} Share)` : ` (${lotDisplay})`;
+              text += `• ${stock.broker || 'Manual'}: ${formatIDR(stock.valueIDR)}${lotStr}\n`;
             });
-            text += "\n";
           } else {
-            // Single broker: Single line
-            const stock = stocks[0];
-            let valIDR = stock.portoIDR;
-            if (!valIDR) {
-              const price = prices[stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`]?.price || stock.currentPrice || 0;
-              const shareCount = stock.market === 'US' ? parseFloat(stock.lots) : parseFloat(stock.lots) * 100;
-              valIDR = price * shareCount;
-              if (stock.market === 'US' && exchangeRate) valIDR *= exchangeRate;
-            }
-
-            text += `${ticker} — ${stock.broker || 'Manual'}: ${formatIDR(valIDR)} (${stock.lots} Lot)\n`;
+            // Single format
+            const stock = sortedHoldings[0];
+            const lotDisplay = stock.market === 'US' ? formatQuantity(stock.lots) : `${stock.lots} Lot`;
+            const lotStr = stock.market === 'US' ? ` (${lotDisplay} Share)` : ` (${lotDisplay})`;
+            text += `${group.ticker} — ${stock.broker || 'Manual'}: ${formatIDR(stock.valueIDR)}${lotStr}\n`;
           }
         });
         text += "\n";
       }
 
-      // CRYPTO
+      // 3. CRYPTO
       if (assets?.crypto?.length) {
         text += "🪙 CRYPTO\n\n";
 
-        // Group crypto by symbol (in case of multiple exchanges, similar handling)
+        // Group by Symbol
         const cryptoBySymbol = {};
         assets.crypto.forEach(crypto => {
-          if (!cryptoBySymbol[crypto.symbol]) {
-            cryptoBySymbol[crypto.symbol] = [];
+          const key = crypto.symbol.toUpperCase();
+          if (!cryptoBySymbol[key]) {
+            cryptoBySymbol[key] = {
+              symbol: key,
+              holdings: [],
+              totalValueIDR: 0
+            };
           }
-          cryptoBySymbol[crypto.symbol].push(crypto);
+
+          let valIDR = crypto.portoIDR;
+          if (!valIDR) {
+            const price = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
+            const valUSD = price * crypto.amount;
+            valIDR = valUSD * (exchangeRate || 1);
+          }
+
+          cryptoBySymbol[key].holdings.push({
+            ...crypto,
+            valueIDR: valIDR
+          });
+          cryptoBySymbol[key].totalValueIDR += valIDR;
         });
 
-        Object.entries(cryptoBySymbol).forEach(([symbol, cryptos]) => {
-          if (cryptos.length > 1) {
-            text += `${symbol}\n`;
-            cryptos.forEach(crypto => {
-              let valIDR = crypto.portoIDR;
-              if (!valIDR) {
-                const price = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
-                const valUSD = price * crypto.amount;
-                valIDR = valUSD * (exchangeRate || 1);
-              }
-              text += `• ${crypto.exchange || 'Manual'}: ${formatIDR(valIDR)} (${crypto.amount} Unit)\n`;
+        // Sort Symbols by Total Value Descending
+        const sortedCrypto = Object.values(cryptoBySymbol).sort((a, b) => b.totalValueIDR - a.totalValueIDR);
+
+        sortedCrypto.forEach(group => {
+          const sortedHoldings = group.holdings.sort((a, b) => b.valueIDR - a.valueIDR);
+
+          if (sortedHoldings.length > 1) {
+            text += `${group.symbol}\n`;
+            sortedHoldings.forEach(crypto => {
+              const unitDisplay = formatQuantity(crypto.amount);
+              text += `• ${crypto.exchange || 'Manual'}: ${formatIDR(crypto.valueIDR)} (${unitDisplay} Unit)\n`;
             });
-            text += "\n";
           } else {
-            const crypto = cryptos[0];
-            let valIDR = crypto.portoIDR;
-            if (!valIDR) {
-              const price = prices[crypto.symbol]?.price || crypto.currentPrice || 0;
-              const valUSD = price * crypto.amount;
-              valIDR = valUSD * (exchangeRate || 1);
-            }
-            text += `${symbol} — ${crypto.exchange || 'Manual'}: ${formatIDR(valIDR)} (${crypto.amount} Unit)\n`;
+            const crypto = sortedHoldings[0];
+            const unitDisplay = formatQuantity(crypto.amount);
+            text += `${group.symbol} — ${crypto.exchange || 'Manual'}: ${formatIDR(crypto.valueIDR)} (${unitDisplay} Unit)\n`;
           }
         });
-        text += "\n";
       }
 
-      // Clean up: Remove trailing newlines
       text = text.trim();
 
       navigator.clipboard.writeText(text);
-      setNotification({ type: 'success', title: 'Tersalin', message: 'Rekap berhasil disalin ke clipboard' });
+      setNotification({ type: 'success', title: t('copied') || 'Tersalin', message: 'Rekap berhasil disalin ke clipboard' });
 
-      // Open WhatsApp? Or just copy. Usually copy is better. 
-      // Existing code might have link.
-      // But user requested "format copy WA".
-      // I'll keep just copy to clipboard for now as it's safer/generic.
-      // Or adding window.open if it was there.
-      // Previous code didn't show window.open in the viewed snippet (it ended early). 
-      // I will assume clipboard copy is sufficient, or add share intent if mobile.
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      // Check for Mobile
+      const isMobile = window.innerWidth <= 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
       if (isMobile) {
         window.location.href = `whatsapp://send?text=${encodeURIComponent(text)}`;
       }
 
     } catch (error) {
       secureLogger.error('Copy WhatsApp Failed:', error);
-      setNotification({ type: 'error', title: 'Gagal', message: 'Gagal menyalin rekap.' });
+      setNotification({ type: 'error', title: t('failed') || 'Gagal', message: 'Gagal menyalin rekap.' });
     }
   };
 

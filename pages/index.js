@@ -422,10 +422,13 @@ export default function Home() {
 
       updatePrices(data.prices);
 
-      // Force portfolio value update after price update
-      setTimeout(() => {
-        rebuildPortfolio();
-      }, 100);
+
+
+      // Force portfolio value update after price update - Removed to prevent wiping state if transactions not ready
+      // updatePrices already calls updatePortfolioValues() internally which is safe
+      // setTimeout(() => {
+      //   rebuildPortfolio();
+      // }, 100);
 
     } catch (error) {
       secureLogger.error('Error fetching prices:', error);
@@ -1908,6 +1911,26 @@ export default function Home() {
       const text = await file.text();
       const data = JSON.parse(text);
 
+      // Ensure we have a valid exchange rate before processing
+      let currentExchangeRate = exchangeRate;
+      if (!currentExchangeRate || currentExchangeRate <= 0) {
+        secureLogger.log('Restore: Exchange rate missing, fetching...');
+        try {
+          const rateData = await fetchExchangeRate();
+          if (rateData && rateData.rate) {
+            currentExchangeRate = rateData.rate;
+            updateExchangeRate(currentExchangeRate); // Update state too
+          } else {
+            secureLogger.warn('Restore: Failed to fetch exchange rate, using fallback 16000');
+            currentExchangeRate = 16000; // Fallback to reasonable default for IDR/USD
+          }
+        } catch (e) {
+          secureLogger.error('Restore: Error fetching exchange rate', e);
+          currentExchangeRate = 16000;
+        }
+      }
+      secureLogger.log('Restore: Using exchange rate:', currentExchangeRate);
+
       let transactionsData = [];
 
       // Check if it's new format (v2.0) or legacy format
@@ -1980,19 +2003,19 @@ export default function Home() {
                 txPrice = avgPriceUsd;
               } else if (legacyPriceIsIDR && exchangeRate && exchangeRate > 0) {
                 // Convert IDR price to USD
-                txPrice = avgPrice / exchangeRate;
+                txPrice = avgPrice / currentExchangeRate;
               } else {
                 // Assume it's already USD
                 txPrice = avgPrice;
               }
 
               valueUSD = txPrice * shareCount;
-              valueIDR = exchangeRate && exchangeRate > 0 ? valueUSD * exchangeRate : rawAmount;
+              valueIDR = currentExchangeRate && currentExchangeRate > 0 ? valueUSD * currentExchangeRate : rawAmount;
             } else {
               // IDX stock - price is in IDR (per share)
               txPrice = avgPrice;
               valueIDR = avgPrice * shareCount;
-              valueUSD = exchangeRate && exchangeRate > 0 ? valueIDR / exchangeRate : 0;
+              valueUSD = currentExchangeRate && currentExchangeRate > 0 ? valueIDR / currentExchangeRate : 0;
             }
 
             secureLogger.log(`Legacy restore stock: ${item.name}, isUS: ${isUS}, rawQty: ${rawQty}, shareCount: ${shareCount}, avgPrice: ${avgPrice}, txPrice: ${txPrice}`);
@@ -2058,17 +2081,17 @@ export default function Home() {
             if (avgPriceUsd > 0) {
               // Explicit USD price available
               txPrice = avgPriceUsd;
-            } else if (avgPrice > 0 && exchangeRate && exchangeRate > 0) {
+            } else if (avgPrice > 0 && currentExchangeRate && currentExchangeRate > 0) {
               // Convert IDR avgPrice to USD
               // Legacy avgPrice is in IDR (e.g., BTC at 1,020,037,000 IDR, PTU at 2,644 IDR)
-              txPrice = avgPrice / exchangeRate;
+              txPrice = avgPrice / currentExchangeRate;
             } else {
               // Fallback: No cost basis available - set to 0 (P/L will show as N/A)
               txPrice = 0;
             }
 
             totalValueUSD = txPrice * amount;
-            totalValueIDR = exchangeRate && exchangeRate > 0 ? totalValueUSD * exchangeRate : rawTotalValue;
+            totalValueIDR = currentExchangeRate && currentExchangeRate > 0 ? totalValueUSD * currentExchangeRate : rawTotalValue;
 
             secureLogger.log(`Legacy restore crypto: ${symbol}, amount: ${amount}, avgPrice (IDR): ${avgPrice}, txPrice (USD): ${txPrice}`);
 
@@ -2101,7 +2124,7 @@ export default function Home() {
                 amount: amount,
                 price: 1,
                 valueIDR: amount,
-                valueUSD: exchangeRate && exchangeRate > 0 ? amount / exchangeRate : 0,
+                valueUSD: currentExchangeRate && currentExchangeRate > 0 ? amount / currentExchangeRate : 0,
                 date: formattedDate,
                 currency: 'IDR',
                 status: 'completed',
@@ -2230,11 +2253,14 @@ export default function Home() {
         isOpen: true,
         title: t('success') || 'Success',
         message: language === 'en'
-          ? `Portfolio restored successfully! ${stockCount} stocks, ${cryptoCount} crypto, ${cashCount} cash accounts imported.`
-          : `Portfolio berhasil di-restore! ${stockCount} saham, ${cryptoCount} kripto, ${cashCount} akun kas diimport.`,
+          ? `Portfolio restored successfully! ${stockCount} stocks, ${cryptoCount} crypto, ${cashCount} cash accounts imported. The page will now reload.`
+          : `Portfolio berhasil di-restore! ${stockCount} saham, ${cryptoCount} kripto, ${cashCount} akun kas diimport. Halaman akan dimuat ulang.`,
         type: 'success',
         confirmText: t('ok'),
-        onConfirm: () => setConfirmModal(null)
+        onConfirm: () => {
+          window.onbeforeunload = null;
+          window.location.reload();
+        }
       });
 
       // Portfolio will rebuild automatically from Firebase listener
