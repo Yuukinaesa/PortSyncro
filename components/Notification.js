@@ -22,7 +22,7 @@ export default function Notification({ notification, onClose }) {
       title={notification.title}
       type={notification.type}
     >
-      <p className="mb-6 text-gray-300 leading-relaxed font-sans">
+      <p className="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed font-sans">
         {notification.message}
       </p>
       <div className="flex justify-end">

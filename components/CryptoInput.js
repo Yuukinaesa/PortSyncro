@@ -108,12 +108,23 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
       }
 
       // Logic for Manual Asset fallback
-      if ((!price || price === 0) && manualAvgPrice > 0) {
-        price = manualAvgPrice; // Use manual price as current price
-        isManualAsset = true;
-      } else if (!price && !manualAvgPrice) {
-        // No API price and no manual price -> Error
-        throw new Error(t('coinNotFoundManualRequired'));
+      if (!price || price === 0) {
+        const manualCurr = useManualCurrentPrice && manualCurrentPrice
+          ? parseFloat(normalizeNumberInput(manualCurrentPrice))
+          : 0;
+
+        if (manualCurr > 0) {
+          price = manualCurr;
+          isManualAsset = true;
+          secureLogger.log('Using manual CURRENT price for crypto:', price);
+        } else if (manualAvgPrice > 0) {
+          price = manualAvgPrice; // Use manual price as current price
+          isManualAsset = true;
+          secureLogger.log('Using manual AVG price for crypto:', price);
+        } else {
+          // No API price and no manual price -> Error
+          throw new Error(t('coinNotFoundManualRequired'));
+        }
       }
 
       // Create crypto object with current price

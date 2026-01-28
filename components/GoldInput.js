@@ -90,13 +90,17 @@ export default function GoldInput({ onAdd, onComplete }) {
                 throw new Error('Harga beli tidak valid. Masukkan harga manual jika data tidak tersedia.');
             }
 
+            // If Manual Current Price is used, use it for 'price' (Current Price)
+            const manualCurr = useManualCurrentPrice && manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : 0;
+            const currentPriceToSave = manualCurr > 0 ? manualCurr : finalPrice;
+
             const goldAsset = {
                 ticker: subtype === 'digital' ? 'GOLD-DIGITAL' : `GOLD-${brand.toUpperCase()}`,
                 name: subtype === 'digital' ? 'Tabungan Emas' : `Emas ${brand.toUpperCase()}`,
                 weight: weightNum,
                 subtype: subtype,
                 brand: subtype === 'physical' ? brand : 'pegadaian', // Default digital to Pegadaian
-                price: finalPrice,
+                price: currentPriceToSave,
                 avgPrice: finalPrice,
                 currency: 'IDR',
                 market: 'Gold',

@@ -124,8 +124,21 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       }
 
       if (!stockPrice) {
-        // Fallback object if API fails - Manual Entry Check
-        if (manualAvgPrice > 0) {
+        // Fallback: Check Manual Current Price first, then Manual Avg Price
+        const manualCurr = useManualCurrentPrice && manualCurrentPrice
+          ? parseFloat(normalizeNumberInput(manualCurrentPrice))
+          : 0;
+
+        if (manualCurr > 0) {
+          stockPrice = {
+            price: manualCurr,
+            change: 0,
+            changePercent: 0,
+            currency: market === 'IDX' ? 'IDR' : 'USD'
+          };
+          isManualAsset = true;
+          secureLogger.log('Using manual CURRENT price for stock:', stockPrice);
+        } else if (manualAvgPrice > 0) {
           stockPrice = {
             price: manualAvgPrice,
             change: 0,
@@ -133,7 +146,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
             currency: market === 'IDX' ? 'IDR' : 'USD'
           };
           isManualAsset = true;
-          secureLogger.log('Using manual price for stock:', stockPrice);
+          secureLogger.log('Using manual AVG price for stock:', stockPrice);
         } else {
           throw new Error(t('stockNotFoundManualRequired'));
         }

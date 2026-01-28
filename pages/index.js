@@ -278,7 +278,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
 export default function Home() {
   const [activeTab, setActiveTab] = useState('portfolio');
   const [loading, setLoading] = useState(true);
-  const { user, loading: authLoading, logout, getUserPortfolio, saveUserPortfolio } = useAuth();
+  const { user, loading: authLoading, logout, logoutAllSessions, getUserPortfolio, saveUserPortfolio } = useAuth();
   const { t, language } = useLanguage();
   const router = useRouter();
   const [confirmModal, setConfirmModal] = useState(null);
@@ -2690,13 +2690,14 @@ export default function Home() {
       const stockCount = transactionsData.filter(tx => tx.assetType === 'stock').length;
       const cryptoCount = transactionsData.filter(tx => tx.assetType === 'crypto').length;
       const cashCount = transactionsData.filter(tx => tx.assetType === 'cash').length;
+      const goldCount = transactionsData.filter(tx => tx.assetType === 'gold').length;
 
       setConfirmModal({
         isOpen: true,
         title: t('success') || 'Success',
         message: language === 'en'
-          ? `Portfolio restored successfully! ${stockCount} stocks, ${cryptoCount} crypto, ${cashCount} cash accounts imported. The page will now reload.`
-          : `Portfolio berhasil di-restore! ${stockCount} saham, ${cryptoCount} kripto, ${cashCount} akun kas diimport. Halaman akan dimuat ulang.`,
+          ? `Portfolio restored successfully! ${stockCount} stocks, ${cryptoCount} crypto, ${goldCount} gold, ${cashCount} cash accounts imported. The page will now reload.`
+          : `Portfolio berhasil di-restore! ${stockCount} saham, ${cryptoCount} kripto, ${goldCount} emas, ${cashCount} akun kas diimport. Halaman akan dimuat ulang.`,
         type: 'success',
         confirmText: t('ok'),
         onConfirm: () => {
@@ -2934,6 +2935,7 @@ export default function Home() {
             onResetPortfolio={handleResetPortfolio}
             onBackup={handleBackup}
             onRestore={handleRestore}
+            onLogoutAllSessions={logoutAllSessions}
             progress={resetProgress}
             processingStatus={resetStatus}
           />
@@ -2985,9 +2987,30 @@ export default function Home() {
           title={confirmModal?.title || ''}
           type={confirmModal?.type || 'info'}
           onClose={() => setConfirmModal(null)}
-          onConfirm={confirmModal?.onConfirm}
         >
-          {confirmModal?.message && <p className="text-gray-700 dark:text-gray-300">{confirmModal.message}</p>}
+          <div className="space-y-6">
+            {confirmModal?.message && (
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{confirmModal.message}</p>
+            )}
+            <div className="flex justify-end gap-3">
+              {confirmModal?.onConfirm && (
+                <button
+                  onClick={() => {
+                    if (confirmModal?.onConfirm) confirmModal.onConfirm();
+                    setConfirmModal(null);
+                  }}
+                  className={`px-6 py-2.5 font-bold rounded-xl transition-all duration-200 shadow-lg ${confirmModal?.type === 'error'
+                      ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/20'
+                      : confirmModal?.type === 'success'
+                        ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20'
+                        : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20'
+                    }`}
+                >
+                  {confirmModal?.confirmText || t('ok')}
+                </button>
+              )}
+            </div>
+          </div>
         </Modal>
 
         {showAverageCalculator && (

@@ -115,7 +115,6 @@ export default function Portfolio({
   }, [propExchangeRateError, propExchangeRateSource, propLastExchangeRateUpdate, exchangeRateError, exchangeRateSource, lastExchangeRateUpdate]);
 
   const [activeAssetTab, setActiveAssetTab] = useState('all');
-  const [confirmModal, setConfirmModal] = useState(null);
   const [notification, setNotification] = useState(null);
   const { t, language } = useLanguage();
   const { isDarkMode, toggleTheme } = useTheme();
@@ -543,6 +542,59 @@ export default function Portfolio({
             text += `${group.symbol} — ${crypto.exchange || 'Manual'}: ${formatIDR(crypto.valueIDR)} (${unitDisplay} Unit)\n`;
           }
         });
+        text += "\n";
+      }
+
+      // 4. GOLD
+      if (assets?.gold?.length) {
+        text += "🏅 EMAS\n\n";
+
+        // Group by Ticker/Brand
+        const goldByTicker = {};
+        assets.gold.forEach(gold => {
+          const key = gold.ticker?.toUpperCase() || 'GOLD';
+          if (!goldByTicker[key]) {
+            goldByTicker[key] = {
+              ticker: key,
+              holdings: [],
+              totalValueIDR: 0
+            };
+          }
+
+          let valIDR = gold.portoIDR || gold.porto;
+          if (!valIDR) {
+            const price = gold.currentPrice || 0;
+            valIDR = price * gold.amount;
+          }
+
+          goldByTicker[key].holdings.push({
+            ...gold,
+            valueIDR: valIDR
+          });
+          goldByTicker[key].totalValueIDR += valIDR;
+        });
+
+        // Sort Tickers by Total Value Descending
+        const sortedGold = Object.values(goldByTicker).sort((a, b) => b.totalValueIDR - a.totalValueIDR);
+
+        sortedGold.forEach(group => {
+          const sortedHoldings = group.holdings.sort((a, b) => b.valueIDR - a.valueIDR);
+
+          if (sortedHoldings.length > 1) {
+            text += `${group.ticker}\n`;
+            sortedHoldings.forEach(gold => {
+              const gramDisplay = formatQuantity(gold.amount);
+              // For digital, show Broker (e.g. Pegadaian). For physical, show Brand (e.g. Antam).
+              const label = gold.subtype === 'digital' ? (gold.broker || 'Digital') : (gold.brand || gold.broker || 'Fisik');
+              text += `• ${label}: ${formatIDR(gold.valueIDR)} (${gramDisplay} gram)\n`;
+            });
+          } else {
+            const gold = sortedHoldings[0];
+            const gramDisplay = formatQuantity(gold.amount);
+            const label = gold.subtype === 'digital' ? (gold.broker || 'Digital') : (gold.brand || gold.broker || 'Fisik');
+            text += `${group.ticker} — ${label}: ${formatIDR(gold.valueIDR)} (${gramDisplay} gram)\n`;
+          }
+        });
       }
 
       text = text.trim();
@@ -698,6 +750,33 @@ export default function Portfolio({
             formatUSD(valUSD),
             '0',
             '0%'
+          ]);
+        });
+      }
+
+      // Process Gold
+      if ((category === 'all' || category === 'gold') && assets?.gold) {
+        assets.gold.forEach(gold => {
+          const valueIDR = gold.portoIDR || (gold.currentPrice * gold.amount);
+          const valueUSD = valueIDR / (exchangeRate || 1);
+          const costIDR = gold.totalCostIDR || (gold.avgPrice * gold.amount);
+          const gainIDR = valueIDR - costIDR;
+
+          // Refined label logic for CSV
+          const label = gold.subtype === 'digital' ? (gold.broker || 'Digital') : (gold.brand || 'Physical');
+
+          csvRows.push([
+            `Gold (${label})`,
+            gold.ticker || 'GOLD', // Name/Ticker
+            gold.broker || '-',
+            `${gold.amount} gram`, // Quantity
+            formatIDR(gold.avgPrice), // Avg Price
+            formatIDR(gold.currentPrice), // Curr Price
+            formatIDR(costIDR), // Cost
+            formatIDR(valueIDR),
+            formatUSD(valueUSD),
+            formatIDR(gainIDR),
+            (gold.gainPercentage || 0).toFixed(2) + '%'
           ]);
         });
       }
@@ -1117,41 +1196,6 @@ export default function Portfolio({
           message={notification.message}
           onClose={() => setNotification(null)}
         />
-      )}
-
-      {/* Confirm Modal */}
-      {confirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#161b22] rounded-3xl p-8 w-full max-w-sm shadow-2xl border border-gray-800 scale-100 transform transition-all">
-            <div className="flex flex-col items-center text-center mb-6">
-              {confirmModal.type === 'error' ? (
-                <div className="bg-red-900/20 p-3 rounded-full text-red-500 mb-4">
-                  <FiAlertCircle className="w-8 h-8" />
-                </div>
-              ) : (
-                <div className="bg-blue-900/20 p-3 rounded-full text-blue-500 mb-4">
-                  <FiInfo className="w-8 h-8" />
-                </div>
-              )}
-              <h3 className="text-xl font-bold text-white mb-2">{confirmModal.title}</h3>
-              <p className="text-gray-400 leading-relaxed">{confirmModal.message}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={confirmModal.onCancel || (() => setConfirmModal(null))}
-                className="px-4 py-3 text-gray-300 bg-[#0d1117] hover:bg-gray-800 rounded-xl font-semibold transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmModal.onConfirm}
-                className={`px-4 py-3 text-white rounded-xl font-semibold shadow-lg transition-all transform active:scale-95 ${confirmModal.type === 'error' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'}`}
-              >
-                {confirmModal.confirmText || 'Konfirmasi'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

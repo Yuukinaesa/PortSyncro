@@ -1,13 +1,13 @@
 import Modal from './Modal';
 import { useTheme } from '../lib/themeContext';
-import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity, FiTrash2, FiAlertTriangle, FiDownload, FiUpload } from 'react-icons/fi';
+import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity, FiTrash2, FiAlertTriangle, FiDownload, FiUpload, FiLogOut } from 'react-icons/fi';
 import { FaDownload, FaApple, FaTimes } from 'react-icons/fa';
 import { useLanguage } from '../lib/languageContext';
 import { usePWA } from '../lib/pwaContext';
 import { useState } from 'react';
 
 // Add progress prop
-export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onResetPortfolio, onBackup, onRestore, progress = 0, processingStatus = '' }) {
+export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onResetPortfolio, onBackup, onRestore, onLogoutAllSessions, progress = 0, processingStatus = '' }) {
     // ... existing hooks ...
     const { isDarkMode, toggleTheme } = useTheme();
     const { t, language, toggleLanguage } = useLanguage();
@@ -33,7 +33,7 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
     // Processing Overlay
     if (isLoading) {
         return (
-            <div className="fixed inset-0 z-[10001] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="fixed inset-0 z-[10001] flex flex-col items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
                 <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl text-center space-y-6 border border-gray-100 dark:border-gray-700">
                     <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -230,9 +230,31 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                     </label>
                 </div>
 
-                {/* Danger Zone */}
+                {/* Security & Danger Zone */}
                 <div className="pt-4 mt-2 border-t border-gray-200 dark:border-gray-800">
-                    <p className="text-xs font-bold text-red-500 uppercase mb-2 ml-1">{language === 'en' ? 'Danger Zone' : 'Zona Berbahaya'}</p>
+                    <p className="text-xs font-bold text-red-500 uppercase mb-2 ml-1">{language === 'en' ? 'Security & Danger Zone' : 'Keamanan & Zona Berbahaya'}</p>
+
+                    {/* Logout All Sessions */}
+                    <button
+                        onClick={onLogoutAllSessions}
+                        className="w-full flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-2xl hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-all duration-200 group mb-2"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 rounded-xl bg-white dark:bg-[#161b22] text-amber-600 dark:text-amber-400 group-hover:text-amber-500 dark:group-hover:text-amber-300 transition-colors shadow-sm">
+                                <FiLogOut className="w-5 h-5" />
+                            </div>
+                            <div className="text-left">
+                                <span className="block font-bold text-amber-600 dark:text-amber-400 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
+                                    {language === 'en' ? 'Logout All Devices' : 'Logout Semua Perangkat'}
+                                </span>
+                                <span className="text-xs text-amber-500 dark:text-amber-500/70">
+                                    {language === 'en' ? 'Sign out from all active sessions' : 'Keluar dari semua sesi aktif'}
+                                </span>
+                            </div>
+                        </div>
+                    </button>
+
+                    {/* Reset Portfolio */}
                     <button
                         onClick={() => setShowResetConfirm(true)}
                         className="w-full flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-2xl hover:bg-red-100 dark:hover:bg-red-900/20 transition-all duration-200 group"

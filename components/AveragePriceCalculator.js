@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiX, FiPlus } from 'react-icons/fi';
 import { useLanguage } from '../lib/languageContext';
 import { formatIDR, formatUSD, formatNumber, normalizeNumberInput } from '../lib/utils';
@@ -11,6 +11,49 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
 
   // Helper function to get default currency based on asset type
   const getDefaultCurrency = (type) => type === 'crypto' ? 'USD' : 'IDR';
+
+  // Focus Trap Logic
+  const modalRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen && modalRef.current) {
+      const focusableElements = modalRef.current.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+
+      if (focusableElements.length > 0) {
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        // Focus first element
+        setTimeout(() => firstElement.focus(), 50);
+
+        const handleTab = (e) => {
+          if (e.key === 'Tab') {
+            if (e.shiftKey) { // Shift + Tab
+              if (document.activeElement === firstElement) {
+                e.preventDefault();
+                lastElement.focus();
+              }
+            } else { // Tab
+              if (document.activeElement === lastElement) {
+                e.preventDefault();
+                firstElement.focus();
+              }
+            }
+          }
+          if (e.key === 'Escape') {
+            onClose();
+          }
+        };
+
+        modalRef.current.addEventListener('keydown', handleTab);
+        return () => {
+          if (modalRef.current) modalRef.current.removeEventListener('keydown', handleTab);
+        };
+      }
+    }
+  }, [isOpen, onClose]);
 
   const [purchases, setPurchases] = useState([
     { source: '', amount: '', price: '', currency: getDefaultCurrency('stock'), amountNormalized: '', priceNormalized: '' }
@@ -116,16 +159,20 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
   return (
     <div className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={onClose}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
 
       {/* Modal Container */}
       <div
+        ref={modalRef}
         className="relative w-full max-w-2xl bg-white dark:bg-[#161b22] rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calc-title"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800 shrink-0">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+          <h3 id="calc-title" className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
             {t('averagePriceCalculator')}
           </h3>
           <button
