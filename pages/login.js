@@ -130,7 +130,7 @@ export default function Login() {
 
             <form onSubmit={handleLogin} className="space-y-5">
               <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                <label htmlFor="login-email" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                   {t('email')}
                 </label>
                 <div className="relative group">
@@ -139,18 +139,23 @@ export default function Login() {
                   </div>
                   <input
                     type="email"
+                    id="login-email"
+                    name="email"
                     className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 transition-all"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('emailPlaceholder')}
+                    aria-label={t('email') || 'Email'}
+                    aria-required="true"
+                    autoComplete="email"
                   />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between mb-2 ml-1">
-                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <label htmlFor="login-password" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {t('password')}
                   </label>
                   <Link href="/reset-password" className="text-xs font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
@@ -163,11 +168,16 @@ export default function Login() {
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
+                    id="login-password"
+                    name="password"
                     className="w-full pl-11 pr-12 py-3.5 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 transition-all"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t('passwordPlaceholder')}
+                    aria-label={t('password') || 'Password'}
+                    aria-required="true"
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"

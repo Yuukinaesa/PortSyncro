@@ -2,7 +2,7 @@
 // Security middleware for PortSyncro
 
 import { NextResponse } from 'next/server';
-import { secureLogger } from './security';
+import { secureLogger } from './lib/security';
 
 // Security middleware function
 export function middleware(request) {

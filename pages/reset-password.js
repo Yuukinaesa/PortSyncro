@@ -106,7 +106,7 @@ export default function ResetPassword() {
 
             <form onSubmit={handleResetPassword} className="space-y-5">
               <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                <label htmlFor="reset-email" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                   {t('email')}
                 </label>
                 <div className="relative group">
@@ -115,6 +115,8 @@ export default function ResetPassword() {
                   </div>
                   <input
                     type="email"
+                    id="reset-email"
+                    name="email"
                     className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 transition-all"
                     required
                     value={email}

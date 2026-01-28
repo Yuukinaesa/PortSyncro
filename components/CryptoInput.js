@@ -9,6 +9,8 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
   const [avgPrice, setAvgPrice] = useState(''); // New Average Price field (USD)
   const [avgPriceIDR, setAvgPriceIDR] = useState(''); // New Average Price field (IDR)
   const [exchangeName, setExchangeName] = useState('');
+  const [useManualCurrentPrice, setUseManualCurrentPrice] = useState(false);
+  const [manualCurrentPrice, setManualCurrentPrice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const { t } = useLanguage();
@@ -125,7 +127,9 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
         type: 'crypto',
         exchange: exchangeName.trim(), // Include Exchange
         isManual: isManualAsset, // Flag for manual assets
-        addedAt: new Date().toISOString()
+        addedAt: new Date().toISOString(),
+        useManualPrice: useManualCurrentPrice,
+        manualPrice: useManualCurrentPrice && manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : null,
       };
 
       secureLogger.log('Adding crypto with current price:', crypto);
@@ -165,6 +169,9 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
             placeholder={t('cryptoSymbolPlaceholder')}
             className="w-full px-4 py-3.5 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-600/50 focus:border-purple-600 transition-all font-medium"
             required
+            aria-label={t('cryptoSymbol') || 'Crypto Symbol'}
+            aria-required="true"
+            aria-describedby="symbol-help"
           />
         </div>
         <p className="text-xs text-gray-500 mt-2 ml-1">
@@ -186,6 +193,9 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
             placeholder={t('amountPlaceholder')}
             className="w-full px-4 py-3.5 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-600/50 focus:border-purple-600 transition-all font-medium"
             required
+            aria-label={t('amount') || 'Amount'}
+            aria-required="true"
+            aria-describedby="amount-help"
           />
         </div>
         <p className="text-xs text-gray-500 mt-2 ml-1">
@@ -278,6 +288,48 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
             className="w-full px-4 py-3.5 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-600/50 focus:border-purple-600 transition-all font-medium"
           />
         </div>
+      </div>
+
+
+      {/* Manual Current Price Option */}
+      <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
+        <div className="flex items-center mb-4">
+          <input
+            type="checkbox"
+            id="useManualPriceCrypto"
+            checked={useManualCurrentPrice}
+            onChange={(e) => {
+              setUseManualCurrentPrice(e.target.checked);
+              if (!e.target.checked) setManualCurrentPrice('');
+            }}
+            className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+          />
+          <label htmlFor="useManualPriceCrypto" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+            {t('useManualCurrentPrice') || 'Input Harga Saat Ini Manual'}
+          </label>
+        </div>
+
+        {useManualCurrentPrice && (
+          <div className="animate-fade-in-down">
+            <label htmlFor="manualCurrentPriceCrypto" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+              {t('manualCurrentPrice') || 'Harga Saat Ini'} (USD)
+            </label>
+            <div className="relative group">
+              <input
+                type="text"
+                id="manualCurrentPriceCrypto"
+                value={manualCurrentPrice}
+                onChange={(e) => setManualCurrentPrice(e.target.value)}
+                placeholder="Contoh: 60000"
+                className="w-full px-4 py-3.5 bg-white dark:bg-[#0d1117] border border-purple-300 dark:border-purple-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-600/50 focus:border-purple-600 transition-all font-medium"
+                required={useManualCurrentPrice}
+              />
+            </div>
+            <p className="text-xs text-purple-500 mt-2 ml-1">
+              {t('manualPriceWarning') || 'Harga ini akan digunakan sebagai harga saat ini dan tidak akan update otomatis.'}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Error Display */}

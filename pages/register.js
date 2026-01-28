@@ -139,7 +139,7 @@ export default function Register() {
 
             <form onSubmit={handleRegister} className="space-y-5">
               <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                <label htmlFor="register-email" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                   {t('email')}
                 </label>
                 <div className="relative group">
@@ -148,18 +148,23 @@ export default function Register() {
                   </div>
                   <input
                     type="email"
+                    id="register-email"
+                    name="email"
                     className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600/50 focus:border-purple-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 transition-all"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('emailPlaceholder')}
+                    aria-label={t('email') || 'Email'}
+                    aria-required="true"
+                    autoComplete="email"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                <label htmlFor="register-password" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                   {t('password')}
                 </label>
                 <div className="relative group">
@@ -168,11 +173,16 @@ export default function Register() {
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
+                    id="register-password"
+                    name="password"
                     className="w-full pl-11 pr-12 py-3.5 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600/50 focus:border-purple-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 transition-all"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t('passwordPlaceholder')}
+                    aria-label={t('password') || 'Password'}
+                    aria-required="true"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
@@ -189,7 +199,7 @@ export default function Register() {
 
               {/* Confirm Password */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                <label htmlFor="register-confirm-password" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                   {t('confirmPassword')}
                 </label>
                 <div className="relative group">
@@ -198,11 +208,16 @@ export default function Register() {
                   </div>
                   <input
                     type={showConfirmPassword ? "text" : "password"}
+                    id="register-confirm-password"
+                    name="confirmPassword"
                     className="w-full pl-11 pr-12 py-3.5 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600/50 focus:border-purple-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 transition-all"
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder={t('confirmPasswordPlaceholder')}
+                    aria-label={t('confirmPassword') || 'Confirm Password'}
+                    aria-required="true"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"

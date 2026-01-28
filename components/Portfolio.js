@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AssetTable from './AssetTable';
 import Notification from './Notification';
 
-import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp } from 'react-icons/fi';
+import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp, FiDisc } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { fetchExchangeRate } from '../lib/fetchPrices';
 import { formatNumber, formatIDR, formatUSD, formatNumberUSD, formatQuantity } from '../lib/utils';
@@ -15,12 +15,15 @@ export default function Portfolio({
   onUpdateStock,
   onUpdateCrypto,
   onUpdateCash,
+  onUpdateGold,
   onAddAsset,
   onSellStock,
   onSellCrypto,
+  onSellGold,
   onSellCash,
   onDeleteStock,
   onDeleteCrypto,
+  onDeleteGold,
   onDeleteCash,
   onRefreshPrices,
   onRefreshExchangeRate,
@@ -41,6 +44,7 @@ export default function Portfolio({
   const assetCount = useMemo(() => ({
     stocks: new Set((assets?.stocks || []).map(s => (s.ticker || '').toUpperCase())).size,
     crypto: new Set((assets?.crypto || []).map(c => (c.symbol || '').toUpperCase())).size,
+    gold: new Set((assets?.gold || []).map(g => (g.ticker || '').toUpperCase())).size,
     cash: new Set((assets?.cash || []).map(c => (c.ticker || '').toUpperCase())).size
   }), [assets]);
 
@@ -143,6 +147,8 @@ export default function Portfolio({
     let totalStocksUSD = 0;
     let totalCryptoUSD = 0;
     let totalCryptoIDR = 0;
+    let totalGoldIDR = 0;
+    let totalGoldUSD = 0;
     let totalCashIDR = 0;
     let totalCashUSD = 0;
     let totalAssetsWithChange = 0;
@@ -221,8 +227,25 @@ export default function Portfolio({
       }
     });
 
-    const totalIDR = totalStocksIDR + totalCryptoIDR + totalCashIDR;
-    const totalUSD = totalStocksUSD + totalCryptoUSD + totalCashUSD;
+    // Gold
+    (assets?.gold || []).forEach(gold => {
+      // Gold Price (usually IDR per gram from our fetcher)
+      let price = gold.currentPrice || 0;
+      // Handle manual override if we added that capability, but for now standard logic
+
+      const amount = parseFloat(gold.weight) || 0;
+      const valIDR = price * amount;
+
+      totalGoldIDR += valIDR;
+      if (safeExchangeRate > 0) {
+        totalGoldUSD += valIDR / safeExchangeRate;
+      }
+
+      // TODO: Gold daily change tracking if available
+    });
+
+    const totalIDR = totalStocksIDR + totalCryptoIDR + totalGoldIDR + totalCashIDR;
+    const totalUSD = totalStocksUSD + totalCryptoUSD + totalGoldUSD + totalCashUSD;
 
     avgDayChange = totalAssetsWithChange > 0 ? avgDayChange / totalAssetsWithChange : 0;
 
@@ -233,10 +256,13 @@ export default function Portfolio({
       totalStocksUSD,
       totalCryptoIDR,
       totalCryptoUSD,
+      totalGoldIDR,
+      totalGoldUSD,
       totalCashIDR,
       totalCashUSD,
       stocksPercent: totalIDR > 0 ? (totalStocksIDR / totalIDR) * 100 : 0,
       cryptoPercent: totalIDR > 0 ? (totalCryptoIDR / totalIDR) * 100 : 0,
+      goldPercent: totalIDR > 0 ? (totalGoldIDR / totalIDR) * 100 : 0,
       cashPercent: totalIDR > 0 ? (totalCashIDR / totalIDR) * 100 : 0,
       totalAssetsWithChange,
       avgDayChange
@@ -249,6 +275,8 @@ export default function Portfolio({
     let stocksGainUSD = 0;
     let cryptoGainUSD = 0;
     let cryptoGainIDR = 0;
+    let goldGainIDR = 0;
+    let goldGainUSD = 0;
     let totalCostIDR = 0;
     let totalCostUSD = 0;
 
@@ -313,23 +341,43 @@ export default function Portfolio({
       totalCostUSD += costBasis;
     });
 
-    const totalGainIDR = stocksGainIDR + cryptoGainIDR;
-    const totalGainUSD = stocksGainUSD + cryptoGainUSD;
+    // Gold
+    (assets?.gold || []).forEach(gold => {
+      const price = gold.currentPrice || 0;
+      const amount = parseFloat(gold.weight) || 0;
+
+      const currentValue = price * amount;
+      const costBasis = (parseFloat(gold.avgPrice) || 0) * amount;
+
+      const gain = currentValue - costBasis;
+      goldGainIDR += gain;
+      totalCostIDR += costBasis;
+
+      if (safeExchangeRate > 0) {
+        goldGainUSD += gain / safeExchangeRate;
+      }
+    });
+
+    const totalGainIDR = stocksGainIDR + cryptoGainIDR + goldGainIDR;
+    const totalGainUSD = stocksGainUSD + cryptoGainUSD + goldGainUSD;
 
     // Total Cost normalized to IDR for % calc
     const totalCostNormalizedIDR = totalCostIDR + (totalCostUSD * safeExchangeRate);
 
     return {
-      totalStockGainIDR: stocksGainIDR, // Renamed to match JSX expectation
+      totalStockGainIDR: stocksGainIDR,
       totalStockGainUSD: stocksGainUSD,
       totalCryptoGainIDR: cryptoGainIDR,
       totalCryptoGainUSD: cryptoGainUSD,
+      goldGainIDR: goldGainIDR,
+      goldGainUSD: goldGainUSD,
       totalGainIDR,
       totalGainUSD,
       totalCost: totalCostNormalizedIDR,
-      gainPercent: totalCostNormalizedIDR > 0 ? (totalGainIDR / totalCostNormalizedIDR) * 100 : 0, // Better approach for percent: (Total Gain / Total Cost)
+      gainPercent: totalCostNormalizedIDR > 0 ? (totalGainIDR / totalCostNormalizedIDR) * 100 : 0,
       stocksGainPercent: totalCostIDR > 0 ? (stocksGainIDR / totalCostIDR) * 100 : 0,
-      cryptoGainPercent: totalCostUSD > 0 ? (cryptoGainUSD / totalCostUSD) * 100 : 0
+      cryptoGainPercent: totalCostUSD > 0 ? (cryptoGainUSD / totalCostUSD) * 100 : 0,
+      goldGainPercent: totalCostIDR > 0 ? (goldGainIDR / totalCostIDR) * 100 : 0
     };
   }, [assets, prices, exchangeRate]);
 
@@ -349,6 +397,7 @@ export default function Portfolio({
     return {
       stocks: (assets?.stocks || []).filter(filterItem),
       crypto: (assets?.crypto || []).filter(filterItem),
+      gold: (assets?.gold || []).filter(filterItem),
       cash: (assets?.cash || []).filter(filterItem)
     };
   }, [assets, searchQuery]);
@@ -356,6 +405,7 @@ export default function Portfolio({
   const uniqueFilteredCounts = useMemo(() => ({
     stocks: new Set((filteredAssets.stocks || []).map(s => (s.ticker || '').toUpperCase())).size,
     crypto: new Set((filteredAssets.crypto || []).map(c => (c.symbol || '').toUpperCase())).size,
+    gold: new Set((filteredAssets.gold || []).map(g => (g.ticker || '').toUpperCase())).size,
     cash: new Set((filteredAssets.cash || []).map(c => (c.ticker || '').toUpperCase())).size
   }), [filteredAssets]);
 
@@ -692,15 +742,16 @@ export default function Portfolio({
           <span className="text-gray-900 dark:text-white font-bold px-2 hidden md:block">Portfolio</span>
 
           <div className="grid grid-cols-4 gap-1 w-full min-w-[300px] md:min-w-0 md:flex md:space-x-1">
-            {['all', 'cash', 'stock', 'crypto'].map(tab => {
+            {['all', 'cash', 'stock', 'crypto', 'gold'].map(tab => {
               const count = tab === 'all'
-                ? assetCount.stocks + assetCount.crypto + assetCount.cash
-                : (tab === 'cash' ? assetCount.cash : (tab === 'stock' ? assetCount.stocks : assetCount.crypto));
+                ? assetCount.stocks + assetCount.crypto + assetCount.gold + assetCount.cash
+                : (tab === 'cash' ? assetCount.cash : (tab === 'stock' ? assetCount.stocks : (tab === 'gold' ? assetCount.gold : assetCount.crypto)));
               const labels = {
                 all: t('all') || 'Semua',
                 cash: t('bank') || 'Bank',
                 stock: t('stocks') || 'Saham',
-                crypto: t('crypto') || 'Kripto'
+                crypto: t('crypto') || 'Kripto',
+                gold: t('gold') || 'Emas'
               };
               const isActive = activeAssetTab === tab;
 
@@ -754,7 +805,7 @@ export default function Portfolio({
       </div>
 
       {/* Summary Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
 
         {/* 1. Total Portfolio */}
         <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative overflow-hidden group shadow-sm">
@@ -855,6 +906,33 @@ export default function Portfolio({
           </div>
           <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</p>
         </div>
+
+        {/* 5. Emas */}
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('gold') || 'Emas'}</span>
+            <div className="w-8 h-8 rounded-lg bg-yellow-100 dark:bg-[#1f2937] flex items-center justify-center text-yellow-600 dark:text-yellow-400">
+              <FiDisc className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="space-y-1 mb-2">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+              {getMasked(formatIDR(totals.totalGoldIDR))}
+            </h2>
+            <p className="text-xs text-gray-500 font-mono mb-2">
+              {getMasked(formatUSD(totals.totalGoldUSD))}
+            </p>
+            <div className="flex items-center gap-2 text-xs">
+              <span className={gains.goldGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
+                {gains.goldGainIDR >= 0 ? '+' : ''}{getMasked(formatIDR(gains.goldGainIDR))}
+              </span>
+            </div>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
+            <div style={{ width: `${totals.goldPercent}%` }} className="bg-yellow-500 h-full rounded-full"></div>
+          </div>
+          <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.goldPercent.toFixed(1)}% {t('fromPortfolio')}</p>
+        </div>
       </div>
 
       {/* BIG P/L Card */}
@@ -884,10 +962,8 @@ export default function Portfolio({
             className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
           ></div>
         </div>
-        <div className="flex justify-end mt-2">
+        <div className="flex justify-between items-end mt-4">
           <span className="text-[10px] text-gray-500">{t('ofTotalCost') || 'dari total biaya'}</span>
-        </div>
-        <div className="absolute bottom-4 right-6">
           <span className="text-xs bg-gray-100 dark:bg-[#0d1117] text-gray-500 dark:text-gray-400 px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-800">
             {gains.totalGainIDR >= 0 ? (t('profitable') || 'Menguntungkan') : (t('loss') || 'Merugi')}
           </span>
@@ -910,6 +986,8 @@ export default function Portfolio({
           <FiSearch className="text-gray-500 group-focus-within:text-blue-500 transition-colors" />
         </div>
         <input
+          id="portfolio-search"
+          name="portfolio-search"
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -992,7 +1070,33 @@ export default function Portfolio({
           </div>
         )}
 
-        {filteredAssets.stocks.length === 0 && filteredAssets.crypto.length === 0 && filteredAssets.cash.length === 0 && (
+        {(activeAssetTab === 'all' || activeAssetTab === 'gold') && filteredAssets.gold.length > 0 && (
+          <div className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+            <div className="flex items-center gap-2 mb-4 px-2 justify-between">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                {t('gold') || 'Emas'}
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.gold} {t('asset') || 'Aset'}</span>
+              </h3>
+              <button onClick={(e) => exportPortfolioToCSV('gold', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title="Export Gold">
+                <FiDownload className="w-4 h-4" />
+              </button>
+            </div>
+            <AssetTable
+              type="gold"
+              assets={filteredAssets.gold}
+              prices={prices}
+              exchangeRate={exchangeRate}
+              hideBalance={hideBalance}
+              onUpdate={onUpdateGold}
+              onDelete={onDeleteGold}
+              onSell={onSellGold}
+            />
+          </div>
+        )}
+
+
+
+        {filteredAssets.stocks.length === 0 && filteredAssets.crypto.length === 0 && filteredAssets.cash.length === 0 && filteredAssets.gold.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-[#161b22] rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
             <div className="bg-gray-50 dark:bg-[#0d1117] p-4 rounded-full mb-4">
               <FiSearch className="w-8 h-8 text-gray-400 dark:text-gray-500" />

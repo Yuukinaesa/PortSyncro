@@ -216,6 +216,7 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                         </div>
                         <input
                             type="file"
+                            id="restore-file-input"
                             accept=".json"
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
@@ -286,11 +287,13 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                             </p>
 
                             <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-left">
-                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">
+                                <label htmlFor="reset-confirm-input" className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">
                                     {t('typeYesToConfirm') || 'Type "yes" to confirm'}
                                 </label>
                                 <input
                                     type="text"
+                                    id="reset-confirm-input"
+                                    name="resetConfirm"
                                     value={resetInput}
                                     onChange={(e) => setResetInput(e.target.value)}
                                     className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all placeholder-gray-400"

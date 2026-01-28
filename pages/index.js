@@ -4,6 +4,7 @@ import Head from 'next/head';
 import Portfolio from '../components/Portfolio';
 import StockInput from '../components/StockInput';
 import CryptoInput from '../components/CryptoInput';
+import GoldInput from '../components/GoldInput';
 import CashInput from '../components/CashInput';
 import SettingsModal from '../components/SettingsModal';
 import { useAuth } from '../lib/authContext';
@@ -42,7 +43,7 @@ const cleanUndefinedValues = (obj) => {
 };
 
 // Simplified function to build assets from transactions
-function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [], cash: [] }) {
+function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [], gold: [], cash: [] }) {
   secureLogger.log('buildAssetsFromTransactions called with:', {
     transactionsLength: transactions?.length || 0,
     pricesKeys: Object.keys(prices || {}),
@@ -60,6 +61,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
   // Use Map for better performance with large datasets
   const stocksMap = new Map();
   const cryptoMap = new Map();
+  const goldMap = new Map(); // New Map for Gold
   const cashMap = new Map();
 
   // Process transactions in batches for better performance
@@ -76,6 +78,10 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
         const key = tx.symbol.toUpperCase();
         if (!cryptoMap.has(key)) cryptoMap.set(key, []);
         cryptoMap.get(key).push(tx);
+      } else if (tx.assetType === 'gold' && tx.ticker) {
+        const key = tx.ticker.toUpperCase();
+        if (!goldMap.has(key)) goldMap.set(key, []);
+        goldMap.get(key).push(tx);
       } else if (tx.assetType === 'cash' && tx.ticker) {
         const key = tx.ticker.toUpperCase();
         if (!cashMap.has(key)) cashMap.set(key, []);
@@ -165,6 +171,68 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
     };
   }).filter(Boolean);
 
+  const gold = Array.from(goldMap.entries()).map(([ticker, txs]) => {
+    // Determine price using fetched 'gold' structure in 'prices'
+    // The prices object structure for gold is slightly complex: prices.gold = { digital: {...}, physical: {...} }
+    // But here 'prices' is likely the specific gold asset price if flattened?
+    // No, updatePrices(data.prices) spreads results.
+    // In api/prices.js, 'gold' is a separate key in the result: prices = { ...stock, ...crypto, gold: ... }
+
+    // We need to access prices.gold structure.
+    // However, the 'prices' argument here is flattened by key usually for stocks/crypto... 
+    // Wait, updatePrices in usePortfolioState spreads the input. 
+    // If api returned { prices: { ...stocks, gold: { ... } } }, then 'prices' state has 'gold' property.
+
+    // So we access prices.gold
+    const goldPrices = prices.gold || {};
+    let currentPrice = 0;
+
+    const sampleTx = txs.find(t => t.type !== 'delete') || txs[0];
+    const subtype = sampleTx.subtype || 'digital';
+    const brand = sampleTx.brand || 'pegadaian';
+
+    if (subtype === 'digital') {
+      currentPrice = goldPrices.digital?.sellPrice || goldPrices.digital?.price || 0; // Use sellPrice (Buyback) for valuation? Standard is usually Sell Price.
+      // Actually valuation usually uses Buyback price (what we can sell it for).
+      // Let's use sellPrice if available, else price.
+    } else {
+      const b = brand.toLowerCase();
+      if (goldPrices.physical && goldPrices.physical[b]) {
+        currentPrice = goldPrices.physical[b].price || 0;
+      } else {
+        currentPrice = goldPrices.digital?.sellPrice || 0;
+      }
+    }
+
+    // Skip delete transactions when building assets
+    const validTransactions = txs.filter(tx => tx.type !== 'delete');
+    if (validTransactions.length === 0) return null;
+
+    const pos = calculatePositionFromTransactions(validTransactions, currentPrice);
+
+    if (pos.amount <= 0) return null;
+
+    return {
+      ticker: ticker,
+      name: sampleTx.name || ticker,
+      weight: pos.amount, // Weight in grams
+      amount: pos.amount, // Required for AssetTable
+      lots: pos.amount, // reuse lots field for generic amount if needed by table
+      avgPrice: pos.avgPrice,
+      totalCost: pos.totalCost,
+      currentPrice: currentPrice,
+      gain: pos.gain,
+      porto: pos.porto,
+      gainPercentage: pos.gainPercentage || 0,
+      currency: 'IDR',
+      market: 'Gold',
+      type: 'gold',
+      subtype: subtype,
+      brand: brand,
+      lastUpdate: new Date().toISOString()
+    };
+  }).filter(Boolean);
+
   const cash = Array.from(cashMap.entries()).map(([ticker, txs]) => {
     // For cash, price is always 1 (as it is the base currency value itself)
     // We treat 'ticker' as the Bank/Wallet name
@@ -202,6 +270,7 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
   return {
     stocks: stocks,
     crypto: crypto,
+    gold: gold,
     cash: cash
   };
 }
@@ -362,7 +431,8 @@ export default function Home() {
 
       const requestData = {
         stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
-        crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim())
+        crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim()),
+        gold: (assets?.gold?.length > 0 || activeTab === 'add') // Fetch gold if assets exist OR if on add tab (simplification)
       };
 
       secureLogger.log('Fetching prices for:', requestData);
@@ -916,12 +986,75 @@ export default function Home() {
       };
       updatePrices(currentPrices);
       rebuildPortfolio();
+
+      setConfirmModal({
+        isOpen: true,
+        title: t('success'),
+        message: t('cryptoSuccessfullyAdded', { symbol: crypto.symbol }),
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+
     } catch (error) {
       secureLogger.error('Error in addCrypto:', error);
       setConfirmModal({
         isOpen: true,
         title: t('error'),
         message: t('failedToAddCrypto', { error: error.message }),
+        type: 'error',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+    }
+  };
+
+  const addGold = async (gold) => {
+    try {
+      secureLogger.log('Adding gold:', gold);
+      if (!user) throw new Error('User not authenticated');
+
+      const transactionData = {
+        type: 'buy',
+        assetType: 'gold',
+        ticker: gold.ticker,
+        name: gold.name,
+        amount: gold.weight, // Grams
+        price: gold.price,
+        valueIDR: gold.price * gold.weight,
+        valueUSD: (gold.price * gold.weight) / (exchangeRate || 16500),
+        date: new Date().toLocaleString('id-ID'),
+        timestamp: serverTimestamp(),
+        currency: 'IDR',
+        market: 'Gold',
+        subtype: gold.subtype,
+        brand: gold.brand,
+        broker: gold.broker,
+        status: 'completed',
+        userId: user.uid
+      };
+
+      const docRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
+      secureLogger.log('Gold transaction saved:', docRef.id);
+
+      // Trigger immediate refresh for gold prices
+      setTimeout(() => performPriceFetch(), 500);
+
+      setConfirmModal({
+        isOpen: true,
+        title: t('success'),
+        message: `Berhasil menambahkan ${gold.name} (${gold.weight}g)`,
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+
+    } catch (error) {
+      secureLogger.error('Error adding gold:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: t('error'),
+        message: 'Gagal menambahkan emas: ' + error.message,
         type: 'error',
         confirmText: t('ok'),
         onConfirm: () => setConfirmModal(null)
@@ -1028,7 +1161,7 @@ export default function Home() {
       status: 'completed',
       userId: user.uid,
       description: 'Average price updated by user',
-      broker: updatedStock.broker, // Save broker info
+      broker: updatedStock.broker || null, // Save broker info
       // Save manual price settings if present
       useManualPrice: updatedStock.useManualPrice || false,
       manualPrice: updatedStock.manualPrice || null
@@ -1118,7 +1251,7 @@ export default function Home() {
       status: 'completed',
       userId: user.uid,
       description: 'Average price updated by user',
-      exchange: updatedCrypto.exchange, // Save exchange info
+      exchange: updatedCrypto.exchange || null, // Save exchange info
       // Save manual price settings if present
       useManualPrice: updatedCrypto.useManualPrice || false,
       manualPrice: updatedCrypto.manualPrice || null
@@ -1188,6 +1321,102 @@ export default function Home() {
     // Execute the save operation
     saveToFirestore();
   };
+
+  const updateGold = (ticker, updatedGold, oldAsset = null) => {
+    secureLogger.log('updateGold called for:', ticker, updatedGold, oldAsset);
+
+    // Create a transaction to update the average price
+    const updateTransaction = {
+      type: 'update',
+      assetType: 'gold',
+      ticker: ticker.toUpperCase(),
+      amount: parseFloat(updatedGold.amount), // Grams
+      price: updatedGold.avgPrice, // Costs per gram
+      valueIDR: parseFloat(updatedGold.amount) * updatedGold.avgPrice,
+      valueUSD: (parseFloat(updatedGold.amount) * updatedGold.avgPrice) / (exchangeRate || 16500),
+      date: new Date().toLocaleString('id-ID'),
+      timestamp: serverTimestamp(),
+      currency: 'IDR',
+      status: 'completed',
+      userId: user.uid,
+      description: 'Average price updated by user',
+      broker: updatedGold.broker || null, // Broker/Location
+      subtype: updatedGold.subtype || null,
+      brand: updatedGold.brand || null,
+      useManualPrice: updatedGold.useManualPrice || false,
+      manualPrice: updatedGold.manualPrice || null
+    };
+
+    secureLogger.log('Update transaction created (Gold):', updateTransaction);
+
+    const saveToFirestore = async () => {
+      try {
+        // If broker/location changed, create a delete record for the old entry (if it had a broker)
+        if (oldAsset && oldAsset.broker && oldAsset.broker !== updatedGold.broker) {
+          secureLogger.log(`Broker changed from ${oldAsset.broker} to ${updatedGold.broker}. Deleting old asset...`);
+          const deleteTransaction = {
+            type: 'delete',
+            assetType: 'gold',
+            ticker: ticker.toUpperCase(),
+            amount: 0,
+            price: 0,
+            total: 0,
+            userId: user.uid,
+            timestamp: serverTimestamp(),
+            description: 'Asset moved to new location',
+            broker: oldAsset.broker
+          };
+          await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
+        }
+
+        const transactionRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), updateTransaction);
+        secureLogger.log('Update transaction saved to Firestore with ID:', transactionRef.id);
+
+        addTransaction({
+          id: transactionRef.id,
+          ...updateTransaction,
+          timestamp: new Date().toISOString()
+        });
+
+        secureLogger.log('Force portfolio rebuild after updating gold');
+
+        // Force portfolio rebuild with multiple attempts (matching updateStock pattern)
+        rebuildPortfolio();
+        setTimeout(() => rebuildPortfolio(), 300);
+        setTimeout(() => rebuildPortfolio(), 800);
+
+        // Force immediate refresh to update UI
+        setTimeout(async () => {
+          await triggerImmediateRefresh();
+        }, 500);
+
+        // Notify success
+        setConfirmModal({
+          isOpen: true,
+          title: t('success') || 'Sukses',
+          message: t('successUpdated') || 'Aset berhasil diperbarui',
+          type: 'success',
+          confirmText: t('ok') || 'OK',
+          onConfirm: () => setConfirmModal(null)
+        });
+
+      } catch (error) {
+        secureLogger.error('Error saving updated gold:', error);
+        setConfirmModal({
+          isOpen: true,
+          title: t('error') || 'Error',
+          message: `Gagal menyimpan: ${error.message}`,
+          type: 'error',
+          confirmText: t('ok') || 'OK',
+          onConfirm: () => setConfirmModal(null)
+        });
+      }
+    };
+
+    // Execute the save operation
+    saveToFirestore();
+  };
+
 
   const deleteStock = async (ticker, asset) => {
     try {
@@ -1288,6 +1517,52 @@ export default function Home() {
         isOpen: true,
         title: t('error'),
         message: t('failedToDeleteCrypto', { error: error.message }),
+        type: 'error',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+    }
+  };
+
+  const deleteGold = async (ticker, asset) => {
+    try {
+      secureLogger.log('DELETE gold:', ticker, asset);
+      const gold = getAsset('gold', ticker);
+      if (!gold) {
+        secureLogger.error('Gold not found:', ticker);
+        return;
+      }
+
+      const deleteTransaction = {
+        assetType: 'gold',
+        ticker: ticker.toUpperCase(),
+        type: 'delete',
+        amount: 0,
+        price: 0,
+        total: 0,
+        userId: user.uid,
+        timestamp: serverTimestamp(),
+        description: 'Asset deleted by user',
+        broker: asset?.broker || null
+      };
+
+      await addDoc(collection(db, 'users', user.uid, 'transactions'), deleteTransaction);
+
+      setConfirmModal({
+        isOpen: true,
+        title: t('success'),
+        message: `Berhasil menghapus emas ${ticker}`,
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+
+    } catch (error) {
+      secureLogger.error('Error deleting gold:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: t('error'),
+        message: 'Gagal menghapus emas: ' + error.message,
         type: 'error',
         confirmText: t('ok'),
         onConfirm: () => setConfirmModal(null)
@@ -1537,26 +1812,22 @@ export default function Home() {
 
       // Save transaction to Firestore
       if (user) {
-        const docRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transaction);
-        secureLogger.log('Crypto sell transaction saved with ID:', docRef.id, 'Data:', transaction);
+        await addDoc(collection(db, 'users', user.uid, 'transactions'), transaction);
       }
 
-      // Show success notification
       setConfirmModal({
         isOpen: true,
         title: t('success'),
-        message: t('cryptoSuccessfullySold', { amount: amountToSell, symbol: crypto.symbol }),
+        message: t('cryptoSuccessfullySold', { amount: amountToSell, symbol: symbol }),
         type: 'success',
         confirmText: t('ok'),
         onConfirm: () => setConfirmModal(null)
       });
 
-
       // Force portfolio rebuild and refresh after selling
       setTimeout(async () => {
-        secureLogger.log('Forcing portfolio rebuild after sell transaction');
-        await fetchPrices(true); // Force immediate refresh
-        rebuildPortfolio(); // Force portfolio rebuild
+        await fetchPrices(true);
+        rebuildPortfolio();
       }, 500);
 
     } catch (error) {
@@ -1570,9 +1841,88 @@ export default function Home() {
       });
     } finally {
       setSellingLoading(false);
-      // Portfolio state manager handles updates automatically
     }
   };
+
+  const handleSellGold = async (ticker, asset, amountToSell) => {
+    try {
+      setSellingLoading(true);
+
+      const gold = getAsset('gold', ticker);
+      if (!gold) return;
+
+      let priceData = prices[ticker] || prices['gold']; // Try specific ticker or general gold
+      if (!priceData && asset.currentPrice) {
+        priceData = { price: asset.currentPrice };
+      }
+
+      if (!priceData) {
+        // Fallback to manual refresh logic if needed, but for Gold usually we have global 'gold' or specific ticker
+        await performPriceFetch();
+        priceData = prices[ticker] || prices['gold'];
+      }
+
+      if (!priceData) throw new Error('Harga emas tidak tersedia');
+
+      const valueIDR = priceData.price * amountToSell;
+      const valueUSD = valueIDR / (exchangeRate || 16500);
+
+      const now = new Date();
+      const formattedDate = now.toLocaleString('id-ID', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+
+      const transaction = {
+        type: 'sell',
+        assetType: 'gold',
+        ticker: ticker.toUpperCase(),
+        amount: amountToSell,
+        price: priceData.price,
+        avgPrice: gold.avgPrice,
+        valueIDR,
+        valueUSD,
+        timestamp: serverTimestamp(),
+        currency: 'IDR',
+        date: formattedDate,
+        userId: user ? user.uid : null,
+        status: 'completed',
+        broker: asset.broker || null
+      };
+
+      if (user) {
+        await addDoc(collection(db, 'users', user.uid, 'transactions'), transaction);
+      }
+
+      setConfirmModal({
+        isOpen: true,
+        title: t('success'),
+        message: `Berhasil menjual ${amountToSell}g emas`,
+        type: 'success',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+
+      setTimeout(async () => {
+        await performPriceFetch();
+        rebuildPortfolio();
+      }, 500);
+
+    } catch (error) {
+      secureLogger.error('Error selling gold:', error);
+      setConfirmModal({
+        isOpen: true,
+        title: t('error'),
+        message: 'Gagal menjual emas: ' + error.message,
+        type: 'error',
+        onConfirm: () => setConfirmModal(null)
+      });
+    } finally {
+      setSellingLoading(false);
+    }
+  };
+
+
 
   // Handle average price calculator result
 
@@ -2472,7 +2822,7 @@ export default function Home() {
                     <p className="text-gray-500 dark:text-gray-400">{t('addAssetDesc') || 'Expand your portfolio by adding new assets'}</p>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
                     {/* Bank/Cash */}
                     <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 hover:border-blue-500/30 transition-all duration-300 group shadow-sm">
                       <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-green-600 group-hover:text-white transition-all text-green-600 dark:text-green-500">
@@ -2508,6 +2858,18 @@ export default function Home() {
                         <CryptoInput onAdd={addCrypto} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
                       </ErrorBoundary>
                     </div>
+
+                    {/* Gold */}
+                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 hover:border-yellow-500/30 transition-all duration-300 group shadow-sm">
+                      <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-yellow-600 group-hover:text-white transition-all text-yellow-600 dark:text-yellow-500">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Emas (Gold)</h3>
+                      <p className="text-sm text-gray-500 mb-6">Tabungan Emas & Batangan</p>
+                      <ErrorBoundary>
+                        <GoldInput onAdd={addGold} onComplete={() => setActiveTab('portfolio')} />
+                      </ErrorBoundary>
+                    </div>
                   </div>
 
                   <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-900/30 flex items-center justify-between">
@@ -2529,13 +2891,16 @@ export default function Home() {
                     assets={assets}
                     onUpdateStock={updateStock}
                     onUpdateCrypto={updateCrypto}
+                    onUpdateGold={updateGold}
                     onUpdateCash={updateCash}
                     onAddAsset={() => setActiveTab('add')}
                     onSellStock={handleSellStock}
                     onSellCrypto={handleSellCrypto}
+                    onSellGold={handleSellGold}
                     onSellCash={handleWithdrawCash}
                     onDeleteStock={deleteStock}
                     onDeleteCrypto={deleteCrypto}
+                    onDeleteGold={deleteGold}
                     onDeleteCash={deleteCash}
                     onRefreshPrices={performPriceFetch}
                     onRefreshExchangeRate={handleRefreshExchangeRate}

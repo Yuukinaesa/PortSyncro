@@ -172,13 +172,14 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
               </div>
             </div>
 
-            {/* Symbol Input */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+              <label htmlFor="calc-symbol" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                 {assetType === 'stock' ? t('stockCode') : t('cryptoSymbol')}
               </label>
               <input
                 type="text"
+                id="calc-symbol"
+                name="symbol"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value.toUpperCase())}
                 placeholder={assetType === 'stock' ? 'BBCA' : 'BTC'}

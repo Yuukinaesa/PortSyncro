@@ -1,5 +1,5 @@
 // pages/api/prices.js
-import { fetchStockPrices, fetchCryptoPrices } from '../../lib/fetchPrices';
+import { fetchStockPrices, fetchCryptoPrices, fetchGoldPrices } from '../../lib/fetchPrices';
 import { secureLogger } from '../../lib/securityMonitoring';
 import { enhancedSecurityMonitor } from '../../lib/enhancedSecurity';
 
@@ -123,14 +123,14 @@ export default async function handler(req, res) {
     });
   }
 
-  const { stocks, crypto, exchangeRate } = req.body;
-  secureLogger.log('Processing request with:', { stocks, crypto, exchangeRate });
+  const { stocks, crypto, gold, exchangeRate } = req.body;
+  secureLogger.log('Processing request with:', { stocks, crypto, gold, exchangeRate });
 
   try {
     // Validate input
-    if (!stocks && !crypto) {
+    if (!stocks && !crypto && !gold) {
       return res.status(400).json({
-        message: 'No stocks or crypto symbols provided',
+        message: 'No stocks, crypto, or gold request provided',
         prices: {},
         timestamp: new Date().toISOString()
       });
@@ -167,24 +167,34 @@ export default async function handler(req, res) {
       })
       : Promise.resolve({});
 
-    secureLogger.log('Starting parallel fetch for stocks:', stocks, 'crypto:', crypto);
+    const goldPromise = gold
+      ? fetchGoldPrices().catch(error => {
+        secureLogger.error('Error fetching gold prices:', error);
+        return {};
+      })
+      : Promise.resolve({});
+
+    secureLogger.log('Starting parallel fetch for stocks:', stocks, 'crypto:', crypto, 'gold:', gold);
 
     // Fetch data secara parallel untuk kecepatan dengan proper error handling
-    const [stockPrices, cryptoPrices] = await Promise.allSettled([
+    const [stockPrices, cryptoPrices, goldPrices] = await Promise.allSettled([
       stockPromise,
-      cryptoPromise
+      cryptoPromise,
+      goldPromise
     ]);
 
     // Extract results from Promise.allSettled
     const stockResult = stockPrices.status === 'fulfilled' ? stockPrices.value : {};
     const cryptoResult = cryptoPrices.status === 'fulfilled' ? cryptoPrices.value : {};
+    const goldResult = goldPrices.status === 'fulfilled' ? goldPrices.value : {};
 
-    secureLogger.log('Fetch completed. Stock prices:', stockResult, 'Crypto prices:', cryptoResult);
+    secureLogger.log('Fetch completed. Stock prices:', stockResult, 'Crypto prices:', cryptoResult, 'Gold prices:', goldResult);
 
     // Gabungkan semua data harga
     const prices = {
       ...stockResult,
-      ...cryptoResult
+      ...cryptoResult,
+      gold: goldResult // Store gold separately or flatten? Better separately as it's a structure
     };
 
     secureLogger.log('Combined prices:', prices);

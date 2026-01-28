@@ -148,7 +148,7 @@ export default function ConfirmResetPassword() {
               {!message ? (
                 <form onSubmit={handleResetPassword} className="space-y-5">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                    <label htmlFor="new-password" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                       {t('newPassword')}
                     </label>
                     <div className="relative group">
@@ -157,6 +157,8 @@ export default function ConfirmResetPassword() {
                       </div>
                       <input
                         type="password"
+                        id="new-password"
+                        name="newPassword"
                         className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 transition-all"
                         required
                         value={newPassword}
@@ -167,7 +169,7 @@ export default function ConfirmResetPassword() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                    <label htmlFor="confirm-new-password" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                       {t('confirmPassword')}
                     </label>
                     <div className="relative group">
@@ -176,6 +178,8 @@ export default function ConfirmResetPassword() {
                       </div>
                       <input
                         type="password"
+                        id="confirm-new-password"
+                        name="confirmPassword"
                         className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 transition-all"
                         required
                         value={confirmPassword}

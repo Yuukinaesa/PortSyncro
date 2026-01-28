@@ -29,10 +29,22 @@ function MyApp({ Component, pageProps }) {
 }
 
 // Register service worker
+// Handle Service Worker
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => { });
-  });
+  if (process.env.NODE_ENV === 'development') {
+    // In development, force unregister any existing service workers to avoid caching issues
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (let registration of registrations) {
+        registration.unregister();
+      }
+    });
+  } else {
+    // In production, let next-pwa handle registration (register: true in next.config.js)
+    // Or if you prefer manual registration:
+    // window.addEventListener('load', () => {
+    //   navigator.serviceWorker.register('/sw.js').catch(() => { });
+    // });
+  }
 }
 
 export default MyApp;

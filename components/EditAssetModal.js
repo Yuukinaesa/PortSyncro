@@ -28,8 +28,8 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
     // Initialize form when asset changes
     useEffect(() => {
         if (asset && isOpen) {
-            setTicker((type === 'stock' || type === 'cash') ? asset.ticker : asset.symbol);
-            setBroker(type === 'stock' ? (asset.broker || '') : (type === 'crypto' ? (asset.exchange || '') : ''));
+            setTicker((type === 'stock' || type === 'cash' || type === 'gold') ? asset.ticker : asset.symbol);
+            setBroker((type === 'stock' || type === 'gold') ? (asset.broker || '') : (type === 'crypto' ? (asset.exchange || '') : ''));
             setMarket(asset.market || 'IDX');
 
             const qty = type === 'stock' ? asset.lots : asset.amount;
@@ -85,7 +85,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
             // Auto-calc USD
             if (exchangeRate) setAvgPriceUSD((num / exchangeRate).toString());
             // If asset is IDR based, set main avgPrice
-            if (market === 'IDX' && type === 'stock') setAvgPrice(val);
+            if ((market === 'IDX' && type === 'stock') || type === 'gold') setAvgPrice(val);
             // If asset is USD based, calculate back
             else if (exchangeRate) setAvgPrice((num / exchangeRate).toString());
         } else {
@@ -111,7 +111,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
             setManualCurrentPriceIDR(val);
             if (exchangeRate) setManualCurrentPriceUSD((num / exchangeRate).toString());
             // Set main state
-            if (market === 'IDX' && type === 'stock') setManualCurrentPrice(val);
+            if ((market === 'IDX' && type === 'stock') || type === 'gold') setManualCurrentPrice(val);
             else if (exchangeRate) setManualCurrentPrice((num / exchangeRate).toString());
         } else {
             setManualCurrentPriceUSD(val);
@@ -142,6 +142,8 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
             }
         } else if (type === 'cash') {
             valIDR = qty; // For cash, amount is value
+        } else if (type === 'gold') {
+            valIDR = qty * activePrice;
         } else { // Crypto
             const valUSD = qty * activePrice;
             valIDR = exchangeRate ? valUSD * exchangeRate : 0;
@@ -156,7 +158,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
         let newAvgPrice = parseFloat(normalizeNumberInput(avgPrice));
 
         // Ensure we save the correct avgPrice based on market
-        if (market === 'IDX' && type === 'stock') {
+        if ((market === 'IDX' && type === 'stock') || type === 'gold') {
             newAvgPrice = parseFloat(normalizeNumberInput(avgPriceIDR));
         } else {
             newAvgPrice = parseFloat(normalizeNumberInput(avgPriceUSD));
@@ -170,7 +172,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
             lots: type === 'stock' ? newAmount : (asset.lots || 0),
             amount: type === 'stock' ? (asset.amount || 0) : newAmount,
             avgPrice: type === 'cash' ? 1 : newAvgPrice,
-            broker: type === 'stock' ? broker : undefined,
+            broker: (type === 'stock' || type === 'gold') ? broker : undefined,
             exchange: type === 'crypto' ? broker : undefined,
             // Save manual price settings
             useManualPrice: manualCurrentPrice ? true : false,
@@ -213,8 +215,8 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
                         </label>
                         <div className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">{ticker}</div>
                     </div>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${type === 'stock' ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : type === 'cash' ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'}`}>
-                        {type === 'stock' ? <FiTrendingUp /> : type === 'cash' ? <FiDollarSign /> : <FiActivity />}
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${type === 'stock' ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : type === 'cash' ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400' : type === 'gold' ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400' : 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'}`}>
+                        {type === 'stock' ? <FiTrendingUp /> : type === 'cash' ? <FiDollarSign /> : type === 'gold' ? <span className="text-lg">🪙</span> : <FiActivity />}
                     </div>
                 </div>
 
@@ -222,8 +224,8 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
                     <>
                         {/* Broker/Exchange */}
                         <div>
-                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 ml-1">
-                                {t('brokerExchange')}
+                            <label htmlFor="asset-broker" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 ml-1">
+                                {type === 'gold' ? (t('broker') || 'Broker') : (t('brokerExchange') || 'Broker')}
                             </label>
                             <input
                                 type="text"
@@ -232,7 +234,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
                                 value={broker}
                                 onChange={(e) => setBroker(e.target.value)}
                                 className="w-full px-4 py-3 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all placeholder-gray-500 dark:placeholder-gray-700 font-medium"
-                                placeholder={type === 'stock' ? t('brokerPlaceholderStock') : t('brokerPlaceholderCrypto')}
+                                placeholder={type === 'stock' ? t('brokerPlaceholderStock') : (type === 'gold' ? 'Toko Emas / Digital App' : t('brokerPlaceholderCrypto'))}
                             />
                         </div>
 
@@ -243,7 +245,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
                 <div className="grid grid-cols-2 gap-4">
                     {/* Quantity / Saldo */}
                     <div className={type === 'cash' ? "col-span-2" : ""}>
-                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 ml-1">
+                        <label htmlFor="asset-amount" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 ml-1">
                             {type === 'cash' ? `${t('balance')} (IDR)` : (type === 'stock' && market === 'IDX' ? t('unitLot') : t('unit'))}
                         </label>
                         <input
@@ -276,7 +278,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
 
                             {/* IDR Input */}
                             <div>
-                                <label className="block text-[10px] text-gray-500 mb-1">{t('priceIDR')}</label>
+                                <label htmlFor="manual-price-idr" className="block text-[10px] text-gray-500 mb-1">{t('priceIDR')}</label>
                                 <input
                                     type="text"
                                     name="manualPriceIDR"
@@ -291,7 +293,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
                             {/* USD Input */}
                             {(market === 'US' || type === 'crypto') && (
                                 <div>
-                                    <label className="block text-[10px] text-gray-500 mb-1">{t('priceUSD')}</label>
+                                    <label htmlFor="manual-price-usd" className="block text-[10px] text-gray-500 mb-1">{t('priceUSD')}</label>
                                     <input
                                         type="text"
                                         name="manualPriceUSD"
@@ -318,7 +320,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
                     <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-[#0d1117] p-4 rounded-xl border border-gray-200 dark:border-gray-800">
                         {/* Avg Price IDR */}
                         <div className={(market === 'US' || type === 'crypto') ? "" : "col-span-2"}>
-                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                            <label htmlFor="avg-price-idr" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
                                 {t('avgPrice')} (IDR)
                             </label>
                             <input
@@ -339,7 +341,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
                         {/* Avg Price USD - Only for US/Crypto */}
                         {(market === 'US' || type === 'crypto') && (
                             <div>
-                                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                                <label htmlFor="avg-price-usd" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
                                     {t('avgPrice')} (USD)
                                 </label>
                                 <input

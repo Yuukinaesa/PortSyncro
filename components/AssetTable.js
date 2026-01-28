@@ -57,11 +57,27 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
     const isStock = type === 'stock';
     const isCash = type === 'cash';
+    const isGold = type === 'gold';
     const market = asset.market || 'IDX';
 
     // Construct symbol based on market
     const symbol = isStock ? (market === 'US' ? asset.ticker : `${asset.ticker}.JK`) : asset.symbol;
-    const priceData = isCash ? { price: 1 } : memoizedPrices[symbol];
+
+    // Gold usually doesn't use the standard map unless we map it to 'gold' or ticker
+    // But passed 'prices' usually has stock/crypto keys.
+    // Gold prices are handled by parent passing 'currentPrice' usually, OR we might have a key.
+
+    let priceData = isCash ? { price: 1 } : memoizedPrices[symbol];
+    if (isGold) {
+      // For gold, we rely on asset.currentPrice passed from Portfolio or calculated there
+      // OR if we fetch it in prices object under ticker?
+      // Portfolio.js passes 'prices' which is the big object.
+      // Gold ticker in Yahoo is GC=F or similar, but we want IDR price.
+      // In Portfolio.js we calculated `currentPrice` for gold item. 
+      // AssetTable uses `memoizedPrices[symbol]` OR `asset.currentPrice`.
+      // So we should be fine falling back to asset.currentPrice.
+      priceData = { price: asset.currentPrice || 0 };
+    }
 
     if (!isCash && !isStock && (!priceData || !priceData.price) && !asset.isManual && !asset.useManualPrice) {
       return {
@@ -98,6 +114,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       // Robust cash calculation
       valueIDR = Number(amount) || 0;
       valueUSD = numRate && numRate > 0 ? valueIDR / numRate : 0;
+    } else if (type === 'gold') {
+      // Gold
+      valueIDR = currentPrice * amount;
+      valueUSD = numRate && numRate > 0 ? valueIDR / numRate : 0;
     } else {
       // Crypto: Price is in USD
       valueUSD = currentPrice * amount;
@@ -121,7 +141,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     // 1. Group assets by ticker/symbol
     const groups = {};
     memoizedAssets.forEach(asset => {
-      const key = (type === 'stock' || type === 'cash') ? asset.ticker : asset.symbol;
+      const key = (type === 'stock' || type === 'cash' || type === 'gold') ? asset.ticker : asset.symbol;
       if (!groups[key]) groups[key] = [];
       groups[key].push(asset);
     });
@@ -166,8 +186,17 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       const gainLoss = assetValue.price ? Math.round((assetValue.price * totalShares) - costBasis) : 0;
 
       // Calculate modas
-      const modalIDR = type === 'stock' ? (sampleAsset.market === 'US' ? (memoizedExchangeRate ? totalCost * memoizedExchangeRate : 0) : totalCost) : (memoizedExchangeRate ? totalCost * memoizedExchangeRate : 0);
-      const modalUSD = type === 'stock' ? (sampleAsset.market === 'US' ? totalCost : (memoizedExchangeRate ? totalCost / memoizedExchangeRate : 0)) : totalCost;
+      let modalIDR, modalUSD;
+
+      if (type === 'gold' || type === 'cash' || (type === 'stock' && sampleAsset.market !== 'US')) {
+        // IDR Based Assets
+        modalIDR = totalCost;
+        modalUSD = memoizedExchangeRate ? totalCost / memoizedExchangeRate : 0;
+      } else {
+        // USD Based Assets (Crypto, US Stocks)
+        modalUSD = totalCost;
+        modalIDR = memoizedExchangeRate ? totalCost * memoizedExchangeRate : 0;
+      }
 
       return {
         key,
@@ -265,7 +294,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       return;
     }
 
-    const ticker = (type === 'stock' || type === 'cash') ? asset.ticker : asset.symbol;
+    const ticker = (type === 'stock' || type === 'cash' || type === 'gold') ? asset.ticker : asset.symbol;
     let valueFormatted = '';
 
     if (price) {
@@ -290,7 +319,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     }
 
     // Execute sell directly - the Sell Modal IS the confirmation
-    const assetId = (type === 'stock' || type === 'cash') ? asset.ticker : asset.symbol;
+    const assetId = (type === 'stock' || type === 'cash' || type === 'gold') ? asset.ticker : asset.symbol;
     onSell(assetId, asset, amountToSell);
     setSellingIndex(null);
     setSellingAsset(null);
@@ -310,7 +339,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
   const handleSaveAsset = (updatedAsset) => {
     if (onUpdate) {
-      const id = (type === 'stock' || type === 'cash') ? updatedAsset.ticker : updatedAsset.symbol;
+      const id = (type === 'stock' || type === 'cash' || type === 'gold') ? updatedAsset.ticker : updatedAsset.symbol;
 
       // Show confirmation dialog FIRST, before updating
       setConfirmModal({
@@ -381,14 +410,14 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
   const handleDeleteClick = (index, asset) => {
     if (asset.isSummary) return;
-    const assetName = (type === 'stock' || type === 'cash') ? asset.ticker : asset.symbol;
+    const assetName = (type === 'stock' || type === 'cash' || type === 'gold') ? asset.ticker : asset.symbol;
     setConfirmModal({
       isOpen: true,
       title: t('confirmDelete'),
       message: t('confirmDeleteAsset', { asset: assetName }),
       type: 'warning',
       onConfirm: () => {
-        const assetId = (type === 'stock' || type === 'cash') ? asset.ticker : asset.symbol;
+        const assetId = (type === 'stock' || type === 'cash' || type === 'gold') ? asset.ticker : asset.symbol;
         onDelete(assetId, asset);
         setConfirmModal(null);
       },
@@ -499,6 +528,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   if ((type === 'stock' && market === 'US') || type === 'crypto') {
                     gainUSD = gainRaw;
                     gainIDR = exchangeRate ? gainRaw * exchangeRate : 0;
+                  } else if (type === 'gold') {
+                    // Gold IDR based
+                    gainIDR = gainRaw;
+                    gainUSD = exchangeRate ? gainRaw / exchangeRate : 0;
                   } else {
                     // IDX Stocks are IDR based
                     gainIDR = gainRaw;
@@ -528,13 +561,23 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     avgUSD = exchangeRate ? asset.avgPrice / exchangeRate : 0;
                   }
 
-                  // Calculate Current Price in IDR and USD -- NEW
+                  // Calculate Current Price in IDR and USD
                   let currentIDR = 0, currentUSD = 0;
-                  // Use val.price if available, or asset.currentPrice
                   const activePrice = val.price || asset.currentPrice || 0;
+
                   if ((type === 'stock' && market === 'US') || type === 'crypto') {
                     currentUSD = activePrice;
                     currentIDR = exchangeRate ? activePrice * exchangeRate : 0;
+                  } else if (type === 'gold') {
+                    // Gold
+                    currentIDR = activePrice;
+                    currentUSD = exchangeRate ? activePrice / exchangeRate : 0;
+
+                    // Set avg/modal too for Gold which falls here
+                    avgIDR = asset.avgPrice;
+                    avgUSD = exchangeRate ? asset.avgPrice / exchangeRate : 0;
+                    modalIDR = costBasis;
+                    modalUSD = exchangeRate ? costBasis / exchangeRate : 0;
                   } else {
                     currentIDR = activePrice;
                     currentUSD = exchangeRate ? activePrice / exchangeRate : 0;
@@ -553,7 +596,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       {/* ITEM */}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold text-white ${type === 'stock' ? 'bg-blue-600' : type === 'crypto' ? 'bg-purple-600' : 'bg-green-600'}`}>
+                          <div className={`w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold text-white ${type === 'stock' ? 'bg-blue-600' : type === 'crypto' ? 'bg-purple-600' : type === 'gold' ? 'bg-yellow-600' : 'bg-green-600'}`}>
                             {(asset.ticker || asset.symbol || '').substring(0, 1)}
                           </div>
                           <div className="flex flex-col">
@@ -584,7 +627,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                               autoFocus
                             />
                           ) : (
-                            getMasked(formatQuantity(type === 'stock' ? asset.lots : asset.amount))
+                            getMasked(formatQuantity(type === 'stock' ? asset.lots : asset.amount)) + (type === 'gold' ? 'g' : '')
                           )}
                         </td>
                       )}
@@ -760,7 +803,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-sm shadow-inner 
-                      ${type === 'stock' ? 'bg-blue-50 dark:bg-[#1f2937] text-blue-600 dark:text-blue-400' : type === 'crypto' ? 'bg-purple-50 dark:bg-[#1f2937] text-purple-600 dark:text-purple-400' : 'bg-green-50 dark:bg-[#1f2937] text-emerald-600 dark:text-emerald-400'}
+                      ${type === 'stock' ? 'bg-blue-50 dark:bg-[#1f2937] text-blue-600 dark:text-blue-400' : type === 'crypto' ? 'bg-purple-50 dark:bg-[#1f2937] text-purple-600 dark:text-purple-400' : type === 'gold' ? 'bg-yellow-50 dark:bg-[#1f2937] text-yellow-600 dark:text-yellow-400' : 'bg-green-50 dark:bg-[#1f2937] text-emerald-600 dark:text-emerald-400'}
                     `}>
                       {(asset.ticker || asset.symbol || '').substring(0, 2)}
                     </div>
@@ -771,7 +814,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                         {(asset.useManualPrice || asset.isManual) && <span className="text-[10px] bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500 px-2 py-0.5 rounded-full font-bold border border-yellow-200 dark:border-yellow-900/50">MANUAL</span>}
                         {isSummary && <span className="text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 px-1 rounded">{t('total') || 'Total'}</span>}
                       </h3>
-                      <p className="text-xs text-gray-500 font-mono mt-0.5">{isSummary ? (t('combined') || 'Gabungan') : (type === 'stock' ? asset.broker : (type === 'crypto' ? asset.exchange : 'Bank'))}</p>
+                      <p className="text-xs text-gray-500 font-mono mt-0.5">{isSummary ? (t('combined') || 'Gabungan') : (type === 'stock' ? asset.broker : (type === 'crypto' ? asset.exchange : (type === 'gold' ? asset.broker : 'Bank')))}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -974,7 +1017,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       const totalValue = amount * multiplier * price;
 
                       if (type === 'stock' && sellingAsset.market !== 'US') return formatIDR(totalValue);
-                      if (type === 'cash') return formatIDR(totalValue);
+                      if (type === 'cash' || type === 'gold') return formatIDR(totalValue);
                       return formatUSD(totalValue);
                     })()}
                   </p>

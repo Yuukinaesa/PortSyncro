@@ -22,7 +22,7 @@ export default function Modal({ isOpen, onClose, title, children, type = 'info' 
     if (isOpen) {
       // Calculate scrollbar width to prevent layout shift
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-      document.body.style.paddingRight = `${scrollbarWidth} px`;
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
 
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
