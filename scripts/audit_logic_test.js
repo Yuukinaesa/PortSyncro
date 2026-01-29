@@ -276,6 +276,23 @@ try {
     assert.strictEqual(res6.amount, 150, 'Test 6: Update should set absolute amount');
     console.log('✅ Test 6 Passed: Update Logic');
 
+    // TEST 6b: Gold Buy/Sell Logic (Large Numbers)
+    const tx6b = [
+        { id: '1', type: 'buy', assetType: 'gold', ticker: 'ANTAM', amount: 10, price: 1000000, valueIDR: 10000000, timestamp: '2023-01-01', currency: 'IDR' },
+        { id: '2', type: 'sell', assetType: 'gold', ticker: 'ANTAM', amount: 5, price: 1200000, valueIDR: 6000000, timestamp: '2023-01-02', currency: 'IDR' }
+    ];
+    // Current price 1,200,000
+    const res6b = calculatePositionFromTransactions(tx6b, 1200000, 15000);
+
+    // Remaining: 5g
+    // Cost Basis for Remaining: 5 * 1,000,000 = 5,000,000
+    // Gain (Unrealized) for Remaining: (1,200,000 - 1,000,000) * 5 = 1,000,000
+
+    assert.strictEqual(res6b.amount, 5, 'Test 6b: Gold Amount incorrect');
+    assert.strictEqual(res6b.avgPrice, 1000000, 'Test 6b: Gold AvgPrice incorrect');
+    assert.strictEqual(res6b.totalCostIDR, 5000000, 'Test 6b: Gold TotalCostIDR incorrect');
+    console.log('✅ Test 6b Passed: Gold Logic (Large Numbers)');
+
 } catch (err) {
     console.error('❌ TESTS FAILED');
     console.error(err);
