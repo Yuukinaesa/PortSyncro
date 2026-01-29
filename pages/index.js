@@ -832,6 +832,7 @@ export default function Home() {
       // Total Invested EXCLUDES cash - cash is not an investment, has no P/L
       const totalInvestedIDR = stocksInvestedIDR + cryptoInvestedIDR + goldInvestedIDR;
 
+
       // DEBUG: Log what we're calculating
       console.log('[SNAPSHOT DEBUG] Using LIVE PRICES - Asset counts:', {
         stocks: stocks.length,
@@ -853,13 +854,109 @@ export default function Home() {
         totalInvestedIDR: Math.round(totalInvestedIDR)
       });
 
+      // Create ENRICHED portfolio with correct values calculated from LIVE PRICES
+      // This ensures when reports.js reads the snapshot, values match what Portfolio displayed
+      const enrichedPortfolio = {
+        stocks: stocks.map(stock => {
+          const priceKey = stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`;
+          const realtimePrice = prices[priceKey];
+          let currentPrice = stock.entryPrice || 0;
+          if (realtimePrice && realtimePrice.price) {
+            currentPrice = realtimePrice.price;
+          }
+          const shareCount = stock.market === 'US' ? (stock.lots || 0) : (stock.lots || 0) * 100;
+          const avgPrice = stock.avgPrice || stock.entryPrice || 0;
+
+          let portoIDR, portoUSD, totalCostIDR;
+          if (stock.market === 'US') {
+            const valueUSD = currentPrice * shareCount;
+            portoUSD = valueUSD;
+            portoIDR = valueUSD * safeExchangeRate;
+            totalCostIDR = avgPrice * shareCount * safeExchangeRate;
+          } else {
+            const valueIDR = currentPrice * shareCount;
+            portoIDR = valueIDR;
+            portoUSD = valueIDR / safeExchangeRate;
+            totalCostIDR = avgPrice * shareCount;
+          }
+
+          return {
+            ...stock,
+            currentPrice,
+            porto: portoIDR,
+            portoIDR: Math.round(portoIDR),
+            portoUSD: Math.round(portoUSD * 100) / 100,
+            totalCost: totalCostIDR,
+            totalCostIDR: Math.round(totalCostIDR)
+          };
+        }),
+        crypto: crypto.map(c => {
+          let price;
+          if ((c.useManualPrice || c.isManual) && (c.manualPrice || c.price || c.avgPrice)) {
+            price = c.manualPrice || c.price || c.avgPrice;
+          } else {
+            price = prices[c.symbol]?.price || c.currentPrice || 0;
+          }
+          const amount = parseFloat(c.amount) || 0;
+          const avgPrice = c.avgPrice || c.entryPrice || 0;
+
+          const valUSD = price * amount;
+          const portoIDR = valUSD * safeExchangeRate;
+          const totalCostIDR = avgPrice * amount * safeExchangeRate;
+
+          return {
+            ...c,
+            currentPrice: price,
+            porto: valUSD,
+            portoUSD: Math.round(valUSD * 100) / 100,
+            portoIDR: Math.round(portoIDR),
+            totalCost: avgPrice * amount,
+            totalCostIDR: Math.round(totalCostIDR)
+          };
+        }),
+        gold: gold.map(g => {
+          const price = g.currentPrice || 0;
+          const amount = parseFloat(g.weight) || 0;
+          const avgPrice = g.avgPrice || g.entryPrice || 0;
+
+          const valIDR = price * amount;
+          const totalCostIDR = avgPrice * amount;
+
+          return {
+            ...g,
+            porto: valIDR,
+            portoIDR: Math.round(valIDR),
+            portoUSD: Math.round((valIDR / safeExchangeRate) * 100) / 100,
+            totalCost: totalCostIDR,
+            totalCostIDR: Math.round(totalCostIDR)
+          };
+        }),
+        cash: cash.map(c => {
+          const amount = parseFloat(c.amount) || 0;
+          let portoIDR, portoUSD;
+          if (c.currency === 'USD') {
+            portoUSD = amount;
+            portoIDR = amount * safeExchangeRate;
+          } else {
+            portoIDR = amount;
+            portoUSD = amount / safeExchangeRate;
+          }
+          return {
+            ...c,
+            porto: portoIDR,
+            portoIDR: Math.round(portoIDR),
+            portoUSD: Math.round(portoUSD * 100) / 100
+          };
+        })
+      };
+
       const snapshotData = {
         date: today,
         totalValueIDR: Math.round(totalValueIDR),
         totalValueUSD: totalValueUSD,
         totalInvestedIDR: Math.round(totalInvestedIDR),
         timestamp: serverTimestamp(),
-        portfolio: cleanUndefinedValues(assets)
+        portfolio: cleanUndefinedValues(enrichedPortfolio)
       };
 
       if (force || !docSnap.exists()) {
