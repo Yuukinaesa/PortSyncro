@@ -795,14 +795,14 @@ export default function Home() {
 
         const now = new Date();
         const diffMs = now - lastTime;
-        // Check if last update was more than 5 seconds ago (User Request: "setiap 5 detik")
+        // Check if last update was more than 10 seconds ago (User Request: "setiap 10 detik")
         const diffSeconds = diffMs / 1000;
 
-        if (diffSeconds >= 5) {
+        if (diffSeconds >= 10) {
           secureLogger.log(`Auto-updating daily snapshot (throttle: ${diffSeconds.toFixed(1)}s passed)`);
           await setDoc(snapshotRef, snapshotData, { merge: true });
         } else {
-          // secureLogger.log('Skipping auto-update: throttled (< 5 seconds)');
+          // secureLogger.log('Skipping auto-update: throttled (< 10 seconds)');
         }
       }
     } catch (err) {
@@ -822,7 +822,7 @@ export default function Home() {
 
   // Daily Snapshot Logic (Auto - Debounce on Change)
   useEffect(() => {
-    // Debounce check for changes - Keep at 5s to match the new interval roughly
+    // Debounce check for changes
     const timeoutId = setTimeout(() => {
       if (!loading && !authLoading && assets && isInitialized) {
         recordDailySnapshot(false);
@@ -832,13 +832,13 @@ export default function Home() {
     return () => clearTimeout(timeoutId);
   }, [recordDailySnapshot, loading, authLoading, assets, isInitialized]);
 
-  // Active Daily Snapshot Sync (Periodic 5-second heartbeat)
+  // Active Daily Snapshot Sync (Periodic 10-second heartbeat)
   useEffect(() => {
     if (!loading && !authLoading && isInitialized && user) {
       const intervalId = setInterval(() => {
-        // secureLogger.log('Heartbeat: Triggering daily snapshot check (5s)');
+        // secureLogger.log('Heartbeat: Triggering daily snapshot check (10s)');
         recordDailySnapshot(false);
-      }, 5000); // Check every 5 seconds as requested
+      }, 10000); // Check every 10 seconds as requested
 
       return () => clearInterval(intervalId);
     }
