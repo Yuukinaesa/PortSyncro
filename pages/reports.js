@@ -1170,8 +1170,8 @@ function MobileHistoryCard({ item, currency, language }) {
     const profit = valueForPL - invested;
     const profitPct = invested > 0 ? (profit / invested) * 100 : 0;
 
-    // Render individual asset item
-    const renderAssetItem = (asset, type, index) => {
+    // Render individual asset item (Mobile)
+    const renderAssetItem = (asset, type, index, tickerCount = {}, getAssetKey = null) => {
         const name = type === 'stock' ? asset.ticker :
             type === 'crypto' ? asset.symbol :
                 type === 'gold' ? (asset.ticker || asset.name || 'Gold') :
@@ -1192,6 +1192,14 @@ function MobileHistoryCard({ item, currency, language }) {
             ? (assetProfit / (asset.totalCostIDR || asset.totalCost)) * 100
             : 0;
 
+        // Get broker/exchange name for mobile display
+        const brokerName = asset.broker || asset.exchange || asset.platform || '-';
+
+        // Check if this asset has duplicates
+        const assetKey = getAssetKey ? getAssetKey(asset) : name;
+        const duplicateCount = tickerCount[assetKey] || 1;
+        const isDuplicate = duplicateCount > 1;
+
         // Professional Clean Colors
         const typeColor = type === 'stock' ? 'text-blue-600 dark:text-blue-400'
             : type === 'crypto' ? 'text-orange-600 dark:text-orange-400'
@@ -1206,15 +1214,22 @@ function MobileHistoryCard({ item, currency, language }) {
         return (
             <div
                 key={`${type}-${index}`}
-                className={`flex items-center justify-between p-3 rounded bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 ${borderColor} border-l-2`}
+                className={`flex items-center justify-between p-3 rounded bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 ${borderColor} border-l-2 ${isDuplicate ? 'ring-1 ring-blue-200 dark:ring-blue-800' : ''}`}
             >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                             <p className={`text-xs font-bold ${typeColor} truncate`}>{name}</p>
+                            {isDuplicate && (
+                                <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded font-medium flex-shrink-0">
+                                    {duplicateCount}x
+                                </span>
+                            )}
                             <span className="text-[10px] text-gray-400 dark:text-gray-500">•</span>
                             <p className="text-[10px] text-gray-500 dark:text-gray-400">{quantity}</p>
                         </div>
+                        {/* Show broker/exchange on mobile */}
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate mt-0.5">{brokerName}</p>
                     </div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-2">
@@ -1231,18 +1246,47 @@ function MobileHistoryCard({ item, currency, language }) {
     const renderAssetSection = (title, assets, type) => {
         if (!assets || assets.length === 0) return null;
 
+        // Get unique ticker/symbol count
+        const getAssetKey = (asset) => {
+            if (type === 'stock') return asset.ticker;
+            if (type === 'crypto') return asset.symbol;
+            if (type === 'gold') return asset.ticker || asset.name || (asset.subtype === 'digital' ? 'digital' : 'physical');
+            return asset.ticker || asset.name;
+        };
+        const uniqueAssets = new Set(assets.map(getAssetKey));
+        const uniqueCount = uniqueAssets.size;
+
+        // Count occurrences of each ticker/symbol
+        const tickerCount = {};
+        assets.forEach(a => {
+            const key = getAssetKey(a);
+            tickerCount[key] = (tickerCount[key] || 0) + 1;
+        });
+
+        // Sort: assets with multiple brokers first (duplicates), then alphabetically
+        const sortedAssets = [...assets].sort((a, b) => {
+            const keyA = getAssetKey(a);
+            const keyB = getAssetKey(b);
+            const countA = tickerCount[keyA];
+            const countB = tickerCount[keyB];
+            // Sort by count descending (duplicates first)
+            if (countB !== countA) return countB - countA;
+            // Then alphabetically
+            return keyA.localeCompare(keyB);
+        });
+
         const totalSectionValue = assets.reduce((sum, a) => sum + (currency === 'IDR' ? (a.portoIDR || 0) : (a.portoUSD || 0)), 0);
 
         return (
             <div className="mb-4 last:mb-0">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{title}</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{title} ({uniqueCount})</span>
                     <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                         {currency === 'IDR' ? formatIDR(totalSectionValue, 0) : formatUSD(totalSectionValue)}
                     </span>
                 </div>
                 <div className="space-y-2">
-                    {assets.map((asset, idx) => renderAssetItem(asset, type, idx))}
+                    {sortedAssets.map((asset, idx) => renderAssetItem(asset, type, idx, tickerCount, getAssetKey))}
                 </div>
             </div>
         );
@@ -1371,14 +1415,43 @@ function HistoryRow({ item, currency, language, isDarkMode }) {
 
         const sectionTotal = assets.reduce((sum, a) => sum + (currency === 'IDR' ? (a.portoIDR || 0) : (a.portoUSD || 0)), 0);
 
+        // Get unique ticker/symbol count
+        const getAssetKey = (asset) => {
+            if (type === 'stock') return asset.ticker;
+            if (type === 'crypto') return asset.symbol;
+            if (type === 'gold') return asset.ticker || asset.name || (asset.subtype === 'digital' ? 'digital' : 'physical');
+            return asset.ticker || asset.name;
+        };
+        const uniqueAssets = new Set(assets.map(getAssetKey));
+        const uniqueCount = uniqueAssets.size;
+
+        // Count occurrences of each ticker/symbol
+        const tickerCount = {};
+        assets.forEach(a => {
+            const key = getAssetKey(a);
+            tickerCount[key] = (tickerCount[key] || 0) + 1;
+        });
+
+        // Sort: assets with multiple brokers first (duplicates), then alphabetically
+        const sortedAssets = [...assets].sort((a, b) => {
+            const keyA = getAssetKey(a);
+            const keyB = getAssetKey(b);
+            const countA = tickerCount[keyA];
+            const countB = tickerCount[keyB];
+            // Sort by count descending (duplicates first)
+            if (countB !== countA) return countB - countA;
+            // Then alphabetically
+            return keyA.localeCompare(keyB);
+        });
+
         return (
             <div className="mb-6 last:mb-0">
-                {/* Clean Headline */}
+                {/* Clean Headline - Show unique count */}
                 <div className="flex items-end justify-between mb-3 border-b border-gray-100 dark:border-gray-800 pb-2">
                     <h5 className="font-bold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${type === 'stock' ? 'bg-blue-500' : type === 'crypto' ? 'bg-orange-500' : type === 'gold' ? 'bg-yellow-500' : 'bg-emerald-500'}`}></span>
                         {title}
-                        <span className="text-gray-300 dark:text-gray-600 font-normal ml-1">({assets.length})</span>
+                        <span className="text-gray-300 dark:text-gray-600 font-normal ml-1">({uniqueCount})</span>
                     </h5>
                     <span className="text-xs font-mono font-medium text-gray-700 dark:text-gray-300">
                         {currency === 'IDR' ? formatIDR(sectionTotal, 0) : formatUSD(sectionTotal)}
@@ -1387,7 +1460,7 @@ function HistoryRow({ item, currency, language, isDarkMode }) {
 
                 {/* Professional Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {assets.map((asset, idx) => {
+                    {sortedAssets.map((asset, idx) => {
                         const assetName = type === 'stock' ? asset.ticker :
                             type === 'crypto' ? asset.symbol :
                                 type === 'gold' ? (asset.ticker || asset.name || (asset.subtype === 'digital' ? 'Gold Digital' : 'Gold Antam')) :
@@ -1403,22 +1476,32 @@ function HistoryRow({ item, currency, language, isDarkMode }) {
                                 : type === 'gold' ? `${formatQuantity(asset.amount || asset.weight)}g`
                                     : formatIDR(asset.amount, 0);
 
+                        const brokerName = asset.broker || asset.exchange || asset.platform || '-';
+                        const isDuplicate = tickerCount[getAssetKey(asset)] > 1;
+
                         return (
                             <div
                                 key={idx}
-                                className={`p-3 bg-white dark:bg-gray-800 border border-t-0 border-r-0 border-b-0 border-l-2 ${colorScheme} shadow-sm rounded-r-md hover:shadow-md transition-shadow`}
+                                className={`p-3 bg-white dark:bg-gray-800 border border-t-0 border-r-0 border-b-0 border-l-2 ${colorScheme} shadow-sm rounded-r-md hover:shadow-md transition-shadow ${isDuplicate ? 'ring-1 ring-blue-200 dark:ring-blue-800' : ''}`}
                             >
                                 <div className="flex justify-between items-start mb-1">
-                                    <span className="font-bold text-sm text-gray-900 dark:text-white truncate pr-2">
-                                        {assetName}
-                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                                            {assetName}
+                                        </span>
+                                        {isDuplicate && (
+                                            <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded font-medium">
+                                                {tickerCount[getAssetKey(asset)]}x
+                                            </span>
+                                        )}
+                                    </div>
                                     <span className="font-semibold text-sm text-gray-900 dark:text-white whitespace-nowrap">
                                         {assetValue}
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-end text-xs text-gray-500 dark:text-gray-400">
                                     <span className="truncate pr-2 max-w-[60%]">
-                                        {asset.broker || asset.exchange || '-'}
+                                        {brokerName}
                                     </span>
                                     <span>
                                         {assetQuantity}
