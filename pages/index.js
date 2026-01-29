@@ -2318,7 +2318,7 @@ export default function Home() {
       });
 
     } catch (error) {
-      console.error('Error resetting portfolio:', error);
+      secureLogger.error('Error resetting portfolio:', error);
       setConfirmModal({
         isOpen: true,
         title: t('error') || 'Error',
@@ -2408,7 +2408,7 @@ export default function Home() {
         onConfirm: () => setConfirmModal(null)
       });
     } catch (error) {
-      console.error('Backup error:', error);
+      secureLogger.error('Backup error:', error);
       setResetProgress(0);
       setResetStatus('');
 
@@ -2864,7 +2864,7 @@ export default function Home() {
       // Reset flag on error
       restoreInProgressRef.current = false;
 
-      console.error('Restore error:', error);
+      secureLogger.error('Restore error:', error);
       setConfirmModal({
         isOpen: true,
         title: t('error') || 'Error',

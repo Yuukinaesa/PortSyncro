@@ -22,6 +22,7 @@ import {
 import { formatIDR, formatUSD, formatQuantity } from '../lib/utils';
 import { format, subDays, parseISO, isWithinInterval } from 'date-fns';
 import { id, enUS } from 'date-fns/locale';
+import { secureLogger } from '../lib/security';
 
 // Register ChartJS components
 ChartJS.register(
@@ -70,7 +71,7 @@ export default function Reports() {
 
                 setHistoryData(data);
             } catch (error) {
-                console.error("Error fetching history:", error);
+                secureLogger.error("Error fetching history:", error);
             } finally {
                 setLoading(false);
             }

@@ -6,6 +6,8 @@ import { useLanguage } from '../lib/languageContext';
 import { usePWA } from '../lib/pwaContext';
 import { useState } from 'react';
 
+import { secureLogger } from '../lib/security';
+
 // Add progress prop
 export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onOpenAllocation, onOpenReports, onResetPortfolio, onBackup, onRestore, onLogoutAllSessions, progress = 0, processingStatus = '' }) {
     // ... existing hooks ...
@@ -392,7 +394,7 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                                                 setResetInput('');
                                                 onClose();
                                             } catch (error) {
-                                                console.error("Reset failed:", error);
+                                                secureLogger.error("Reset failed:", error);
                                             } finally {
                                                 setIsLoading(false);
                                             }
