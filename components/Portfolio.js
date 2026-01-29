@@ -555,7 +555,7 @@ export default function Portfolio({
           const key = gold.ticker?.toUpperCase() || 'GOLD';
           if (!goldByTicker[key]) {
             goldByTicker[key] = {
-              ticker: key,
+              ticker: key.replace(/GOLD/g, 'Gold'),
               holdings: [],
               totalValueIDR: 0
             };
@@ -585,13 +585,15 @@ export default function Portfolio({
             sortedHoldings.forEach(gold => {
               const gramDisplay = formatQuantity(gold.amount);
               // For digital, show Broker (e.g. Pegadaian). For physical, show Brand (e.g. Antam).
-              const label = gold.subtype === 'digital' ? (gold.broker || 'Digital') : (gold.brand || gold.broker || 'Fisik');
+              const name = gold.broker || gold.exchange || gold.brand;
+              const label = gold.subtype === 'digital' ? (name || 'Digital') : (name ? `${name} (Fisik/Batangan)` : '(Fisik/Batangan)');
               text += `• ${label}: ${formatIDR(gold.valueIDR)} (${gramDisplay} gram)\n`;
             });
           } else {
             const gold = sortedHoldings[0];
             const gramDisplay = formatQuantity(gold.amount);
-            const label = gold.subtype === 'digital' ? (gold.broker || 'Digital') : (gold.brand || gold.broker || 'Fisik');
+            const name = gold.broker || gold.exchange || gold.brand;
+            const label = gold.subtype === 'digital' ? (name || 'Digital') : (name ? `${name} (Fisik/Batangan)` : '(Fisik/Batangan)');
             text += `${group.ticker} — ${label}: ${formatIDR(gold.valueIDR)} (${gramDisplay} gram)\n`;
           }
         });

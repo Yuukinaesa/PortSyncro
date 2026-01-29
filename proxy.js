@@ -1,16 +1,16 @@
-// lib/middleware.js
-// Security middleware for PortSyncro
+// proxy.js
+// Security proxy for PortSyncro
 
 import { NextResponse } from 'next/server';
 import { secureLogger } from './lib/security';
 
-// Security middleware function
-export function middleware(request) {
+// Security proxy function
+export function proxy(request) {
   const { pathname } = request.nextUrl;
 
   // Log all requests in development
   if (process.env.NODE_ENV !== 'production') {
-    secureLogger.log(`[MIDDLEWARE] ${request.method} ${pathname}`);
+    secureLogger.log(`[PROXY] ${request.method} ${pathname}`);
   }
 
   // Security headers for all responses
@@ -93,7 +93,7 @@ export function middleware(request) {
   return response;
 }
 
-// Configure which paths the middleware should run on
+// Configure which paths the proxy should run on
 export const config = {
   matcher: [
     /*
@@ -105,4 +105,4 @@ export const config = {
      */
     '/((?!_next/static|_next/image|favicon.ico|public/).*)',
   ],
-}; 
+};
