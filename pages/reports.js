@@ -166,11 +166,14 @@ export default function Reports() {
         setSnapshotLoading(true);
 
         try {
+            // Get Live State from PortfolioStateManager (includes prices)
+            const state = portfolioStateManager.getState();
+            const prices = state.prices || {};
+            const safeExchangeRate = state.exchangeRate && state.exchangeRate > 0 ? state.exchangeRate : 16000;
+
             let finalAssets = { stocks: [], crypto: [], gold: [], cash: [] };
 
-            // 1. Try to get "Live State" from PortfolioStateManager (Most accurate, matches Dashboard)
-            const state = portfolioStateManager.getState();
-            // Check if state has data (isInitialized is not enough, as it might be initialized empty)
+            // Check if state has data
             const hasStateData = state.isInitialized && (
                 (state.assets.stocks && state.assets.stocks.length > 0) ||
                 (state.assets.crypto && state.assets.crypto.length > 0) ||
@@ -182,66 +185,225 @@ export default function Reports() {
                 console.log("Taking snapshot from Live State (Dashboard matches)", state.assets);
                 finalAssets = state.assets;
             } else {
-                // 2. Fallback: Fetch Transactions and Rebuild (If page refreshed/direct load)
+                // Fallback: Fetch Transactions and Rebuild
                 console.log("Live State empty, rebuilding from Transactions (Source of Truth)...");
                 const txRef = collection(db, 'users', user.uid, 'transactions');
-                // Order by timestamp ASC is CRITICAL for chronological reconstruction
                 const q = query(txRef, orderBy('timestamp', 'asc'));
                 const querySnapshot = await getDocs(q);
 
                 const transactions = querySnapshot.docs.map(doc => {
                     const data = doc.data();
-                    // Ensure timestamp is comparable (ISO string or Timestamp object handling usually done in buildAssets)
                     return { id: doc.id, ...data };
                 });
 
                 if (transactions.length > 0) {
-                    // Rebuild! We pass empty prices {} because we don't have live prices here.
-                    // The builder will use the "Last Transaction Price" as the current price fallback.
-                    // This is acceptable for a fallback snapshot and prevents 0 value.
                     finalAssets = portfolioStateManager.buildAssetsFromTransactions(transactions, {});
                 }
             }
 
-            const { stocks, crypto, gold, cash } = finalAssets;
+            const { stocks = [], crypto = [], gold = [], cash = [] } = finalAssets;
 
-            // Calculate totals
-            const totalValueIDR =
-                (stocks || []).reduce((sum, item) => sum + (item.portoIDR || item.porto || 0), 0) +
-                (crypto || []).reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
-                (gold || []).reduce((sum, item) => sum + (item.portoIDR || item.porto || 0), 0) +
-                (cash || []).reduce((sum, item) => sum + (item.portoIDR || item.porto || 0), 0);
+            // Check if we have live prices available
+            const hasPrices = Object.keys(prices).length > 0;
+            console.log('[MANUAL SNAPSHOT] Prices available:', hasPrices, 'Price count:', Object.keys(prices).length);
 
-            const totalValueUSD =
-                (stocks || []).reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
-                (crypto || []).reduce((sum, item) => sum + (item.portoUSD || item.porto || 0), 0) +
-                (gold || []).reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
-                (cash || []).reduce((sum, item) => sum + (item.portoUSD || 0), 0);
+            let totalValueIDR = 0;
+            let totalValueUSD = 0;
+            let totalInvestedIDR = 0;
+            let enrichedPortfolio = { stocks: [], crypto: [], gold: [], cash: [] };
 
-            // Calculate invested - EXCLUDE cash/bank as it has no P/L (matches Portfolio main page)
-            const totalInvestedIDR =
-                (stocks || []).reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
-                (crypto || []).reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
-                (gold || []).reduce((sum, item) => sum + (item.totalCost || 0), 0);
-            // Note: Cash is NOT included in invested calculation - it's just stored value with no profit/loss
+            if (hasPrices) {
+                // ===== USE LIVE PRICES (SAME LOGIC AS index.js auto snapshot) =====
+                console.log('[MANUAL SNAPSHOT] Using LIVE PRICES for calculation');
+
+                // Calculate STOCKS using LIVE prices
+                let stocksValueIDR = 0;
+                let stocksValueUSD = 0;
+                let stocksInvestedIDR = 0;
+                const enrichedStocks = stocks.map(stock => {
+                    const priceKey = stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`;
+                    const realtimePrice = prices[priceKey];
+                    let currentPrice = stock.currentPrice || stock.entryPrice || 0;
+                    if (realtimePrice && realtimePrice.price) {
+                        currentPrice = realtimePrice.price;
+                    }
+
+                    const shareCount = stock.market === 'US' ? (stock.lots || 0) : (stock.lots || 0) * 100;
+                    const avgPrice = stock.avgPrice || stock.entryPrice || 0;
+
+                    let portoIDR, portoUSD, totalCostIDR;
+                    if (stock.market === 'US') {
+                        const valueUSD = currentPrice * shareCount;
+                        portoUSD = valueUSD;
+                        portoIDR = valueUSD * safeExchangeRate;
+                        totalCostIDR = avgPrice * shareCount * safeExchangeRate;
+                        stocksValueUSD += valueUSD;
+                        stocksValueIDR += valueUSD * safeExchangeRate;
+                    } else {
+                        const valueIDR = currentPrice * shareCount;
+                        portoIDR = valueIDR;
+                        portoUSD = valueIDR / safeExchangeRate;
+                        totalCostIDR = avgPrice * shareCount;
+                        stocksValueIDR += valueIDR;
+                        stocksValueUSD += valueIDR / safeExchangeRate;
+                    }
+                    stocksInvestedIDR += totalCostIDR;
+
+                    return {
+                        ...stock,
+                        currentPrice,
+                        porto: portoIDR,
+                        portoIDR: Math.round(portoIDR),
+                        portoUSD: Math.round(portoUSD * 100) / 100,
+                        totalCost: totalCostIDR,
+                        totalCostIDR: Math.round(totalCostIDR)
+                    };
+                });
+
+                // Calculate CRYPTO using LIVE prices
+                let cryptoValueIDR = 0;
+                let cryptoValueUSD = 0;
+                let cryptoInvestedIDR = 0;
+                const enrichedCrypto = crypto.map(c => {
+                    let price;
+                    if ((c.useManualPrice || c.isManual) && (c.manualPrice || c.price || c.avgPrice)) {
+                        price = c.manualPrice || c.price || c.avgPrice;
+                    } else {
+                        price = prices[c.symbol]?.price || c.currentPrice || 0;
+                    }
+                    const amount = parseFloat(c.amount) || 0;
+                    const avgPrice = c.avgPrice || c.entryPrice || 0;
+
+                    const valUSD = price * amount;
+                    const portoIDR = valUSD * safeExchangeRate;
+                    const totalCostIDR = avgPrice * amount * safeExchangeRate;
+
+                    cryptoValueUSD += valUSD;
+                    cryptoValueIDR += valUSD * safeExchangeRate;
+                    cryptoInvestedIDR += totalCostIDR;
+
+                    return {
+                        ...c,
+                        currentPrice: price,
+                        porto: valUSD,
+                        portoUSD: Math.round(valUSD * 100) / 100,
+                        portoIDR: Math.round(portoIDR),
+                        totalCost: avgPrice * amount,
+                        totalCostIDR: Math.round(totalCostIDR)
+                    };
+                });
+
+                // Calculate GOLD
+                let goldValueIDR = 0;
+                let goldValueUSD = 0;
+                let goldInvestedIDR = 0;
+                const enrichedGold = gold.map(g => {
+                    const price = g.currentPrice || 0;
+                    const amount = parseFloat(g.weight) || 0;
+                    const avgPrice = g.avgPrice || g.entryPrice || 0;
+
+                    const valIDR = price * amount;
+                    const totalCostIDR = avgPrice * amount;
+
+                    goldValueIDR += valIDR;
+                    goldValueUSD += valIDR / safeExchangeRate;
+                    goldInvestedIDR += totalCostIDR;
+
+                    return {
+                        ...g,
+                        porto: valIDR,
+                        portoIDR: Math.round(valIDR),
+                        portoUSD: Math.round((valIDR / safeExchangeRate) * 100) / 100,
+                        totalCost: totalCostIDR,
+                        totalCostIDR: Math.round(totalCostIDR)
+                    };
+                });
+
+                // Calculate CASH
+                let cashValueIDR = 0;
+                let cashValueUSD = 0;
+                const enrichedCash = cash.map(c => {
+                    const amount = parseFloat(c.amount) || 0;
+                    let portoIDR, portoUSD;
+                    if (c.currency === 'USD') {
+                        portoUSD = amount;
+                        portoIDR = amount * safeExchangeRate;
+                        cashValueUSD += amount;
+                        cashValueIDR += amount * safeExchangeRate;
+                    } else {
+                        portoIDR = amount;
+                        portoUSD = amount / safeExchangeRate;
+                        cashValueIDR += amount;
+                        cashValueUSD += amount / safeExchangeRate;
+                    }
+                    return {
+                        ...c,
+                        porto: portoIDR,
+                        portoIDR: Math.round(portoIDR),
+                        portoUSD: Math.round(portoUSD * 100) / 100
+                    };
+                });
+
+                totalValueIDR = stocksValueIDR + cryptoValueIDR + goldValueIDR + cashValueIDR;
+                totalValueUSD = stocksValueUSD + cryptoValueUSD + goldValueUSD + cashValueUSD;
+                totalInvestedIDR = stocksInvestedIDR + cryptoInvestedIDR + goldInvestedIDR;
+
+                enrichedPortfolio = {
+                    stocks: enrichedStocks,
+                    crypto: enrichedCrypto,
+                    gold: enrichedGold,
+                    cash: enrichedCash
+                };
+            } else {
+                // ===== NO LIVE PRICES - USE STORED VALUES FROM ASSETS =====
+                // This happens when user navigates directly to reports page without going through index.js first
+                console.log('[MANUAL SNAPSHOT] No live prices - using STORED VALUES from assets');
+
+                // Use stored portoIDR values (already calculated with live prices when they were available)
+                totalValueIDR =
+                    stocks.reduce((sum, item) => sum + (item.portoIDR || item.porto || 0), 0) +
+                    crypto.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
+                    gold.reduce((sum, item) => sum + (item.portoIDR || item.porto || 0), 0) +
+                    cash.reduce((sum, item) => sum + (item.portoIDR || item.porto || item.amount || 0), 0);
+
+                totalValueUSD =
+                    stocks.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
+                    crypto.reduce((sum, item) => sum + (item.portoUSD || item.porto || 0), 0) +
+                    gold.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
+                    cash.reduce((sum, item) => sum + (item.portoUSD || 0), 0);
+
+                // Calculate invested - EXCLUDE cash
+                totalInvestedIDR =
+                    stocks.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
+                    crypto.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
+                    gold.reduce((sum, item) => sum + (item.totalCost || 0), 0);
+
+                // Use assets as-is (they already have correct values)
+                enrichedPortfolio = { stocks, crypto, gold, cash };
+            }
+
+            console.log('[MANUAL SNAPSHOT] Final values:', {
+                totalValueIDR: Math.round(totalValueIDR),
+                totalInvestedIDR: Math.round(totalInvestedIDR),
+                hasPrices
+            });
 
             const today = new Date().toLocaleDateString('en-CA');
             const snapshotRef = doc(db, 'users', user.uid, 'history', today);
 
             const snapshotData = {
                 date: today,
-                totalValueIDR,
-                totalValueUSD,
-                totalInvestedIDR,
+                totalValueIDR: Math.round(totalValueIDR),
+                totalValueUSD: totalValueUSD,
+                totalInvestedIDR: Math.round(totalInvestedIDR),
                 timestamp: serverTimestamp(),
-                portfolio: cleanUndefinedValues({ stocks, crypto, gold, cash })
+                portfolio: cleanUndefinedValues(enrichedPortfolio)
             };
 
             // Use full overwrite (no merge) to prevent portfolio array duplication
             await setDoc(snapshotRef, snapshotData);
 
             // Refresh history data
-            // Reuse logic: fetch, sort, set state
             const historyRef = collection(db, 'users', user.uid, 'history');
             const q = query(historyRef, orderBy('date', 'asc'));
             const snapshot = await getDocs(q);
