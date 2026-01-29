@@ -4,6 +4,20 @@ const withPWA = require('next-pwa')({
     register: true,
     skipWaiting: true,
     disable: process.env.NODE_ENV === 'development',
+    // Strictly disable offline fallback for data/logic
+    // "❌ Tidak boleh ada offline mode"
+    runtimeCaching: [
+        {
+            urlPattern: /^https?.*/,
+            handler: 'NetworkOnly',
+            options: {
+                cacheName: 'offline-cache',
+                expiration: {
+                    maxEntries: 0,
+                },
+            }
+        }
+    ]
 });
 
 const nextConfig = {
