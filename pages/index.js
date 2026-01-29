@@ -787,10 +787,11 @@ export default function Home() {
 
         const now = new Date();
         const diffMs = now - lastTime;
-        const diffHours = diffMs / (1000 * 60 * 60);
+        // Check if last update was more than 1 minute ago
+        const diffMinutes = diffMs / (1000 * 60);
 
-        if (diffHours >= 1) {
-          secureLogger.log(`Auto-updating daily snapshot (hourly throttle: ${diffHours.toFixed(2)}h passed)`);
+        if (diffMinutes >= 1) {
+          secureLogger.log(`Auto-updating daily snapshot (throttle: ${diffMinutes.toFixed(2)}m passed)`);
           await setDoc(snapshotRef, snapshotData, { merge: true });
         } else {
           // secureLogger.log('Skipping auto-update: throttled (< 1 hour)');
