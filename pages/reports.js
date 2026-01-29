@@ -451,29 +451,38 @@ export default function Reports() {
                 <title>{language === 'en' ? 'Portfolio Reports' : 'Laporan Portfolio'} | PortSyncro</title>
             </Head>
 
-            {/* Header */}
-            <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
-                <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+            {/* Header - Mobile Optimized */}
+            <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-[#0d1117]/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 safe-area-padding">
+                <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-2 sm:gap-4">
                         <button
                             onClick={() => router.push('/')}
-                            className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            className="p-2.5 -ml-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors touch-target"
+                            aria-label={language === 'en' ? 'Go back' : 'Kembali'}
                         >
-                            <FiArrowLeft className="w-6 h-6" />
+                            <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
                         </button>
-                        <h1 className="text-xl font-bold tracking-tight">{language === 'en' ? 'Reports & History' : 'Laporan & Riwayat'}</h1>
+                        <div>
+                            <h1 className="text-base sm:text-xl font-bold tracking-tight leading-tight">{language === 'en' ? 'Reports' : 'Laporan'}</h1>
+                            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden xs:block">{language === 'en' ? 'History & Analytics' : 'Riwayat & Analitik'}</p>
+                        </div>
                     </div>
 
-                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                    {/* Currency Toggle - Mobile Optimized */}
+                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner">
                         <button
                             onClick={() => setCurrency('IDR')}
-                            className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${currency === 'IDR' ? 'bg-white dark:bg-gray-700 shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 ${currency === 'IDR'
+                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/25'
+                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
                         >
                             IDR
                         </button>
                         <button
                             onClick={() => setCurrency('USD')}
-                            className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${currency === 'USD' ? 'bg-white dark:bg-gray-700 shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 ${currency === 'USD'
+                                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md shadow-green-500/25'
+                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
                         >
                             USD
                         </button>
@@ -481,167 +490,309 @@ export default function Reports() {
                 </div>
             </header>
 
-            <main className="container mx-auto px-4 py-6 space-y-6">
-                {/* Controls */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-2">
-                        <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg text-blue-600 dark:text-blue-400">
-                            <FiCalendar className="w-5 h-5" />
+            <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 pb-20">
+                {/* Controls - Mobile Optimized */}
+                <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    {/* Header Row */}
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                        <div className="flex items-center gap-2">
+                            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-xl text-white shadow-md shadow-blue-500/25">
+                                <FiCalendar className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </div>
+                            <h2 className="font-bold text-sm sm:text-base">{language === 'en' ? 'Date Range' : 'Rentang Tanggal'}</h2>
                         </div>
-                        <h2 className="font-semibold">{language === 'en' ? 'Date Range' : 'Rentang Tanggal'}</h2>
-                    </div>
 
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
-                        <input
-                            type="date"
-                            value={dateRange.start}
-                            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                            className="flex-1 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                        />
-                        <span className="text-gray-400">-</span>
-                        <input
-                            type="date"
-                            value={dateRange.end}
-                            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                            className="flex-1 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                        />
+                        {/* All Time Button - Desktop */}
                         <button
                             onClick={() => {
                                 if (historyData.length > 0) {
-                                    // Find earliest date
                                     const earliest = historyData[0].date;
                                     const today = new Date().toISOString().split('T')[0];
                                     setDateRange({ start: earliest, end: today });
                                 }
                             }}
-                            className="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors whitespace-nowrap"
+                            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                         >
+                            <FiCalendar className="w-3.5 h-3.5" />
                             All Time
                         </button>
+                    </div>
+
+                    {/* Date Inputs Row */}
+                    <div className="flex items-center gap-2 sm:gap-3 mb-3">
+                        <div className="flex-1 relative">
+                            <input
+                                type="date"
+                                value={dateRange.start}
+                                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                                className="w-full px-3 py-2.5 sm:py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-xs sm:text-sm font-medium touch-target"
+                            />
+                        </div>
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600">
+                            <span className="text-gray-500 dark:text-gray-400 text-xs">→</span>
+                        </div>
+                        <div className="flex-1 relative">
+                            <input
+                                type="date"
+                                value={dateRange.end}
+                                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                                className="w-full px-3 py-2.5 sm:py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-xs sm:text-sm font-medium touch-target"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Action Buttons Row */}
+                    <div className="grid grid-cols-3 gap-2 sm:flex sm:justify-end sm:gap-2">
+                        {/* All Time - Mobile Only */}
+                        <button
+                            onClick={() => {
+                                if (historyData.length > 0) {
+                                    const earliest = historyData[0].date;
+                                    const today = new Date().toISOString().split('T')[0];
+                                    setDateRange({ start: earliest, end: today });
+                                }
+                            }}
+                            className="sm:hidden flex items-center justify-center gap-1.5 py-2.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-semibold hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors touch-target"
+                        >
+                            <FiCalendar className="w-4 h-4" />
+                            <span>All</span>
+                        </button>
+
+                        {/* Download CSV */}
                         <button
                             onClick={downloadCSV}
                             disabled={!filteredData.length}
-                            className="px-3 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center gap-1.5 py-2.5 sm:px-4 sm:py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-semibold hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                             title="Download CSV"
                         >
                             <FiDownload className="w-4 h-4" />
-                            <span className="hidden sm:inline">CSV</span>
+                            <span>CSV</span>
                         </button>
+
+                        {/* Capture Snapshot */}
                         <button
                             onClick={captureSnapshot}
                             disabled={snapshotLoading}
-                            className="px-3 py-2 bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-lg text-sm font-medium hover:bg-pink-200 dark:hover:bg-pink-900/50 transition-colors whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center gap-1.5 py-2.5 sm:px-4 sm:py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl text-xs font-semibold hover:from-pink-600 hover:to-rose-600 transition-all shadow-md shadow-pink-500/25 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                             title={language === 'en' ? 'Capture Snapshot' : 'Ambil Snapshot'}
                         >
                             {snapshotLoading ? (
-                                <div className="w-4 h-4 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" />
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             ) : (
                                 <FiCamera className="w-4 h-4" />
                             )}
-                            <span className="hidden sm:inline">{language === 'en' ? 'Snapshot' : 'Snapshot'}</span>
+                            <span>{language === 'en' ? 'Snap' : 'Snap'}</span>
                         </button>
                     </div>
                 </div>
 
-                {/* Stats Grid */}
+                {/* Stats Grid - Professional Design */}
                 {stats && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <div className="flex items-center gap-1.5 mb-1 text-gray-500 dark:text-gray-400">
-                                <p className="text-sm">{language === 'en' ? 'Net Change (Period)' : 'Perubahan Bersih'}</p>
-                                <div className="group relative">
-                                    <FiInfo className="w-3.5 h-3.5 cursor-help" />
-                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
-                                        {language === 'en' ? 'Difference in value from start to end of selected period' : 'Selisih nilai dari awal hingga akhir periode terpilih.'}
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+                        {/* Net Change Card */}
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className={`p-1.5 rounded-md ${stats.change >= 0 ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                                    {stats.change >= 0 ? (
+                                        <FiTrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                    ) : (
+                                        <FiTrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                    )}
                                 </div>
-                            </div>
-                            <div className="flex items-end gap-2">
-                                <span className={`text-2xl font-bold ${stats.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                    {stats.change >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.change, 0) : formatUSD(stats.change)}
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                    {language === 'en' ? 'Net Change' : 'Perubahan'}
                                 </span>
-                                <span className={`px-2 py-0.5 rounded-md text-xs font-bold mb-1 ${stats.changePct >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                                    {stats.changePct >= 0 ? <FiTrendingUp className="inline mr-1" /> : <FiTrendingDown className="inline mr-1" />}
-                                    {Math.abs(stats.changePct).toFixed(2)}%
+                            </div>
+
+                            <p className={`text-xl sm:text-2xl font-bold truncate ${stats.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {stats.change >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.change, 0) : formatUSD(stats.change)}
+                            </p>
+
+                            <div className="mt-2">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${stats.changePct >= 0
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                    }`}>
+                                    {stats.changePct >= 0 ? '↑' : '↓'} {Math.abs(stats.changePct).toFixed(1)}%
                                 </span>
                             </div>
                         </div>
 
-                        <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <div className="flex items-center gap-1.5 mb-1 text-gray-500 dark:text-gray-400">
-                                <p className="text-sm">{language === 'en' ? 'Total Profit' : 'Pertumbuhan Kotor'}</p>
-                                <div className="group relative">
-                                    <FiInfo className="w-3.5 h-3.5 cursor-help" />
-                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
-                                        {language === 'en' ? 'Total Return on Investment (Current Value - Total Invested)' : 'Total keuntungan dari modal awal (Nilai Saat Ini - Total Investasi).'}
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                                    </div>
+                        {/* Total Profit Card */}
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30">
+                                    <FiActivity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                 </div>
-                            </div>
-                            <div className="flex items-end gap-2">
-                                <span className={`text-2xl font-bold ${stats.grossChange >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
-                                    {stats.grossChange >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.grossChange, 0) : formatUSD(stats.grossChange)}
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                    {language === 'en' ? 'Total Profit' : 'Total Profit'}
                                 </span>
-                                <span className={`px-2 py-0.5 rounded-md text-xs font-bold mb-1 ${stats.grossChangePct >= 0 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'}`}>
-                                    {stats.grossChange >= 0 ? <FiActivity className="inline mr-1" /> : <FiActivity className="inline mr-1" />}
-                                    {Math.abs(stats.grossChangePct).toFixed(2)}%
+                            </div>
+
+                            <p className={`text-xl sm:text-2xl font-bold truncate ${stats.grossChange >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                                {stats.grossChange >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.grossChange, 0) : formatUSD(stats.grossChange)}
+                            </p>
+
+                            <div className="mt-2">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${stats.grossChangePct >= 0
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                    : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                    }`}>
+                                    <FiActivity className="w-2.5 h-2.5" /> {Math.abs(stats.grossChangePct).toFixed(1)}%
                                 </span>
                             </div>
                         </div>
 
-                        <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{language === 'en' ? 'Highest Value' : 'Nilai Tertinggi'}</p>
-                            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {/* Highest Value Card */}
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="p-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30">
+                                    <FiTrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                    {language === 'en' ? 'Highest' : 'Tertinggi'}
+                                </span>
+                            </div>
+
+                            <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
                                 {currency === 'IDR' ? formatIDR(stats.high, 0) : formatUSD(stats.high)}
+                            </p>
+
+                            <div className="mt-2">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                    🏆 ATH
+                                </span>
                             </div>
                         </div>
 
-                        <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{language === 'en' ? 'Lowest Value' : 'Nilai Terendah'}</p>
-                            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {/* Lowest Value Card */}
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="p-1.5 rounded-md bg-red-100 dark:bg-red-900/30">
+                                    <FiTrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                </div>
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                    {language === 'en' ? 'Lowest' : 'Terendah'}
+                                </span>
+                            </div>
+
+                            <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
                                 {currency === 'IDR' ? formatIDR(stats.low, 0) : formatUSD(stats.low)}
+                            </p>
+
+                            <div className="mt-2">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                    📉 ATL
+                                </span>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Chart Section */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                        <FiActivity className="text-blue-500" />
-                        {language === 'en' ? 'Portfolio Growth' : 'Pertumbuhan Portfolio'}
-                    </h3>
+                {/* Chart Section - Professional Design */}
+                <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-4 sm:mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">
+                        <h3 className="text-sm sm:text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+                            <div className="p-1.5 sm:p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400">
+                                <FiActivity className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </div>
+                            {language === 'en' ? 'Portfolio Growth' : 'Pertumbuhan Portfolio'}
+                        </h3>
 
-                    <div className="h-[350px] w-full">
+                        {filteredData.length > 0 && (
+                            <span className="text-[10px] sm:text-xs px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-medium">
+                                {filteredData.length} {language === 'en' ? 'days' : 'hari'}
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="h-[220px] sm:h-[350px] w-full">
                         {filteredData.length > 0 ? (
                             <Line data={chartData} options={chartOptions} />
                         ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                                <p>{language === 'en' ? 'No data available for selected range' : 'Tidak ada data untuk rentang yang dipilih'}</p>
-                                <p className="text-xs mt-2 text-center max-w-xs">{language === 'en' ? 'History is recorded daily when you visit the app. Check back tomorrow!' : 'Riwayat dicatat harian saat Anda membuka aplikasi. Cek lagi besok!'}</p>
+                            <div className="h-full flex flex-col items-center justify-center text-gray-400 p-4">
+                                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                    <FiActivity className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                                </div>
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 text-center">
+                                    {language === 'en' ? 'No data available' : 'Tidak ada data'}
+                                </p>
+                                <p className="text-xs sm:text-sm mt-2 text-center max-w-[240px] sm:max-w-xs text-gray-500 dark:text-gray-500">
+                                    {language === 'en' ? 'Capture a snapshot to start tracking.' : 'Ambil snapshot untuk mulai melacak.'}
+                                </p>
+                                <button
+                                    onClick={captureSnapshot}
+                                    disabled={snapshotLoading}
+                                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50"
+                                >
+                                    {snapshotLoading ? 'Loading...' : (language === 'en' ? 'Capture Now' : 'Ambil Sekarang')}
+                                </button>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* History Table */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                        <h3 className="text-lg font-bold">{language === 'en' ? 'History Log' : 'Riwayat Harian'}</h3>
+                {/* History Section - Professional Design */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <h3 className="text-sm sm:text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+                            <div className="p-1.5 sm:p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+                                <FiCalendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400" />
+                            </div>
+                            {language === 'en' ? 'History Log' : 'Riwayat Harian'}
+                        </h3>
+                        {filteredData.length > 0 && (
+                            <span className="text-[10px] sm:text-xs px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-medium">
+                                {filteredData.length} {language === 'en' ? 'snapshots' : 'snapshot'}
+                            </span>
+                        )}
                     </div>
 
-                    <div className="overflow-x-auto">
+                    {/* Mobile Card View - Hidden on sm and up */}
+                    <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                        {filteredData.length > 0 ? (
+                            [...filteredData].reverse().map((item) => (
+                                <MobileHistoryCard
+                                    key={item.id}
+                                    item={item}
+                                    currency={currency}
+                                    language={language}
+                                />
+                            ))
+                        ) : (
+                            <div className="px-4 py-8 text-center text-gray-500">
+                                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                    <FiCalendar className="w-6 h-6 text-gray-300 dark:text-gray-600" />
+                                </div>
+                                <p className="text-sm">{language === 'en' ? 'No history found' : 'Tidak ada riwayat'}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Desktop Table View - Professional Design */}
+                    <div className="hidden sm:block overflow-x-auto relative">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400">
-                                <tr>
-                                    <th className="px-6 py-4 font-medium w-8"></th>
-                                    <th className="px-6 py-4 font-medium">{language === 'en' ? 'Date' : 'Tanggal'}</th>
-                                    <th className="px-6 py-4 font-medium">{language === 'en' ? 'Total Value' : 'Total Nilai'} ({currency})</th>
-                                    <th className="px-6 py-4 font-medium">{language === 'en' ? 'Invested' : 'Investasi'} (IDR)</th>
+                            <thead>
+                                <tr className="bg-gray-50 dark:bg-gray-700/30 border-b border-gray-100 dark:border-gray-700">
+                                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-12"></th>
+                                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                        <div className="flex items-center gap-2">
+                                            {language === 'en' ? 'Date' : 'Tanggal'}
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                        <div className="flex items-center gap-2">
+                                            {language === 'en' ? 'Total Value' : 'Total Nilai'}
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                        <div className="flex items-center gap-2">
+                                            {language === 'en' ? 'Invested' : 'Investasi'}
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
                                 {filteredData.length > 0 ? (
                                     [...filteredData].reverse().map((item) => (
                                         <HistoryRow
@@ -654,8 +805,18 @@ export default function Reports() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
-                                            {language === 'en' ? 'No history found' : 'Tidak ada riwayat'}
+                                        <td colSpan="4" className="px-6 py-12">
+                                            <div className="text-center">
+                                                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center shadow-inner">
+                                                    <FiCalendar className="w-10 h-10 text-gray-300 dark:text-gray-500" />
+                                                </div>
+                                                <p className="text-base font-semibold text-gray-600 dark:text-gray-400">
+                                                    {language === 'en' ? 'No history found' : 'Tidak ada riwayat'}
+                                                </p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                                                    {language === 'en' ? 'Capture your first snapshot to start tracking.' : 'Ambil snapshot pertama untuk mulai melacak.'}
+                                                </p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}
@@ -679,10 +840,10 @@ export default function Reports() {
                         <div className="text-center space-y-4">
                             {/* Icon */}
                             <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner ${notification.type === 'success'
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                                    : notification.type === 'error'
-                                        ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                                        : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                                : notification.type === 'error'
+                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                                    : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
                                 }`}>
                                 {notification.type === 'success' ? (
                                     <FiCheck className="w-8 h-8" />
@@ -695,10 +856,10 @@ export default function Reports() {
 
                             {/* Title */}
                             <h3 className={`text-xl font-bold ${notification.type === 'success'
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : notification.type === 'error'
-                                        ? 'text-red-600 dark:text-red-400'
-                                        : 'text-yellow-600 dark:text-yellow-400'
+                                ? 'text-green-600 dark:text-green-400'
+                                : notification.type === 'error'
+                                    ? 'text-red-600 dark:text-red-400'
+                                    : 'text-yellow-600 dark:text-yellow-400'
                                 }`}>
                                 {notification.title}
                             </h3>
@@ -712,10 +873,10 @@ export default function Reports() {
                             <button
                                 onClick={() => setNotification(null)}
                                 className={`w-full py-3 rounded-xl font-semibold transition-all transform hover:scale-[1.02] active:scale-[0.98] ${notification.type === 'success'
-                                        ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25'
-                                        : notification.type === 'error'
-                                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25'
-                                            : 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg shadow-yellow-500/25'
+                                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25'
+                                    : notification.type === 'error'
+                                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25'
+                                        : 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg shadow-yellow-500/25'
                                     }`}
                             >
                                 OK
@@ -728,52 +889,265 @@ export default function Reports() {
     );
 }
 
-// Sub-component for Row to handle expand state independently
+// Mobile Card Component for History - Professional Design
+function MobileHistoryCard({ item, currency, language }) {
+    const [expanded, setExpanded] = useState(false);
+
+    // Calculate profit/loss
+    const totalValue = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
+    const invested = currency === 'IDR' ? item.totalInvestedIDR :
+        (item.totalInvestedIDR > 0 ? item.totalInvestedIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000) : 0);
+    const profit = totalValue - invested;
+    const profitPct = invested > 0 ? (profit / invested) * 100 : 0;
+
+    // Render individual asset item
+    const renderAssetItem = (asset, type, index) => {
+        const name = type === 'stock' ? asset.ticker :
+            type === 'crypto' ? asset.symbol :
+                type === 'gold' ? (asset.ticker || asset.name || 'Gold') :
+                    asset.ticker;
+
+        const quantity = type === 'stock' ?
+            (asset.market === 'US' ? `${formatQuantity(asset.lots)} shr` : `${formatQuantity(asset.lots)} lot`) :
+            type === 'crypto' ? `${formatQuantity(asset.amount)}` :
+                type === 'gold' ? `${formatQuantity(asset.amount || asset.weight)}g` :
+                    formatIDR(asset.amount, 0);
+
+        const value = currency === 'IDR'
+            ? formatIDR(asset.portoIDR || asset.totalValueIDR || 0, 0)
+            : formatUSD(asset.portoUSD || asset.totalValueUSD || 0);
+
+        const assetProfit = (asset.portoIDR || 0) - (asset.totalCostIDR || asset.totalCost || 0);
+        const assetProfitPct = (asset.totalCostIDR || asset.totalCost) > 0
+            ? (assetProfit / (asset.totalCostIDR || asset.totalCost)) * 100
+            : 0;
+
+        // Professional Clean Colors
+        const typeColor = type === 'stock' ? 'text-blue-600 dark:text-blue-400'
+            : type === 'crypto' ? 'text-orange-600 dark:text-orange-400'
+                : type === 'gold' ? 'text-yellow-600 dark:text-yellow-400'
+                    : 'text-emerald-600 dark:text-emerald-400';
+
+        const borderColor = type === 'stock' ? 'border-l-blue-500'
+            : type === 'crypto' ? 'border-l-orange-500'
+                : type === 'gold' ? 'border-l-yellow-500'
+                    : 'border-l-emerald-500';
+
+        return (
+            <div
+                key={`${type}-${index}`}
+                className={`flex items-center justify-between p-3 rounded bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 ${borderColor} border-l-2`}
+            >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                            <p className={`text-xs font-bold ${typeColor} truncate`}>{name}</p>
+                            <span className="text-[10px] text-gray-400 dark:text-gray-500">•</span>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400">{quantity}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="text-right flex-shrink-0 ml-2">
+                    <p className="text-xs font-semibold text-gray-900 dark:text-gray-200">{value}</p>
+                    <p className={`text-[10px] ${assetProfitPct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {assetProfitPct >= 0 ? '+' : ''}{assetProfitPct.toFixed(1)}%
+                    </p>
+                </div>
+            </div>
+        );
+    };
+
+    // Render asset section
+    const renderAssetSection = (title, assets, type) => {
+        if (!assets || assets.length === 0) return null;
+
+        const totalSectionValue = assets.reduce((sum, a) => sum + (currency === 'IDR' ? (a.portoIDR || 0) : (a.portoUSD || 0)), 0);
+
+        return (
+            <div className="mb-4 last:mb-0">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{title}</span>
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        {currency === 'IDR' ? formatIDR(totalSectionValue, 0) : formatUSD(totalSectionValue)}
+                    </span>
+                </div>
+                <div className="space-y-2">
+                    {assets.map((asset, idx) => renderAssetItem(asset, type, idx))}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="p-4 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+            {/* Main Card Header */}
+            <div
+                className="flex items-center gap-4 cursor-pointer"
+                onClick={() => setExpanded(!expanded)}
+            >
+                {/* Clean Date Layout */}
+                <div className="flex flex-col items-center justify-center w-12 text-center flex-shrink-0">
+                    <span className="text-lg font-bold text-gray-900 dark:text-white leading-none">{format(parseISO(item.date), 'd')}</span>
+                    <span className="text-[10px] uppercase font-medium text-gray-500 dark:text-gray-400 mt-0.5">{format(parseISO(item.date), 'MMM', { locale: language === 'en' ? enUS : id })}</span>
+                </div>
+
+                {/* Value Info */}
+                <div className="flex-1 min-w-0 border-l border-gray-100 dark:border-gray-800 pl-4">
+                    <p className="text-base font-bold text-gray-900 dark:text-white truncate">
+                        {currency === 'IDR' ? formatIDR(totalValue, 0) : formatUSD(totalValue)}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-xs font-medium ${profit >= 0
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-red-600 dark:text-red-400'
+                            }`}>
+                            {profit >= 0 ? '+' : ''}{Math.abs(profitPct).toFixed(1)}%
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">•</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {profit >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(profit, 0) : formatUSD(profit)}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Expand Chevron */}
+                <div className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+            </div>
+
+            {/* Expanded Content - Professional Details */}
+            {expanded && (
+                <div className="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700 animate-fadeIn">
+                    {item.portfolio ? (
+                        <>
+                            {/* Stats Summary - Clean Grid */}
+                            <div className="grid grid-cols-3 gap-2 mb-6">
+                                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+                                    <p className="text-[10px] text-gray-500 uppercase">{language === 'en' ? 'Invested' : 'Modal'}</p>
+                                    <p className="text-xs font-semibold text-gray-900 dark:text-white mt-1">
+                                        {currency === 'IDR' ? formatIDR(item.totalInvestedIDR || 0, 0) : formatUSD(invested)}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+                                    <p className="text-[10px] text-gray-500 uppercase">{language === 'en' ? 'Value' : 'Nilai'}</p>
+                                    <p className="text-xs font-semibold text-gray-900 dark:text-white mt-1">
+                                        {currency === 'IDR' ? formatIDR(totalValue, 0) : formatUSD(totalValue)}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+                                    <p className="text-[10px] text-gray-500 uppercase">{language === 'en' ? 'P/L' : 'P/L'}</p>
+                                    <p className={`text-xs font-semibold mt-1 ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {profit >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(profit, 0) : formatUSD(profit)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Asset Sections */}
+                            <div className="space-y-4">
+                                {renderAssetSection(language === 'en' ? 'Stocks' : 'Saham', item.portfolio.stocks, 'stock')}
+                                {renderAssetSection('Crypto', item.portfolio.crypto, 'crypto')}
+                                {renderAssetSection(language === 'en' ? 'Gold' : 'Emas', item.portfolio.gold, 'gold')}
+                                {renderAssetSection(language === 'en' ? 'Cash' : 'Kas', item.portfolio.cash, 'cash')}
+                            </div>
+
+                            {(!item.portfolio.stocks?.length && !item.portfolio.crypto?.length && !item.portfolio.gold?.length && !item.portfolio.cash?.length) && (
+                                <div className="text-center py-4 text-gray-400">
+                                    <p className="text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded inline-block">{language === 'en' ? 'No asset details' : 'Detail aset tidak tersedia'}</p>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="text-center py-4 text-gray-400">
+                            <p className="text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded inline-block">{language === 'en' ? 'No data' : 'Tidak ada data'}</p>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Sub-component for Desktop Row - Professional Design
 function HistoryRow({ item, currency, language, isDarkMode }) {
     const [expanded, setExpanded] = useState(false);
 
-    // Helper to render asset list
+    // Calculate profit for this row
+    const totalValue = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
+    const invested = currency === 'IDR' ? item.totalInvestedIDR :
+        (item.totalInvestedIDR > 0 ? item.totalInvestedIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000) : 0);
+    const profit = totalValue - invested;
+    const profitPct = invested > 0 ? (profit / invested) * 100 : 0;
+
+    // Helper to render asset list with professional design
     const renderAssetList = (title, assets, type) => {
         if (!assets || assets.length === 0) return null;
-        return (
-            <div className="mb-4">
-                <h5 className="font-bold text-xs uppercase text-gray-500 mb-2">{title}</h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {assets.map((asset, idx) => (
-                        <div key={idx} className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-1">
-                            {/* Top Row: Name & Value */}
-                            <div className="flex justify-between items-start">
-                                <span className="font-bold text-xs text-gray-800 dark:text-gray-200">
-                                    {type === 'stock' ? asset.ticker :
-                                        type === 'crypto' ? asset.symbol :
-                                            type === 'gold' ? (asset.ticker || asset.name || (asset.subtype === 'digital' ? 'Gold Digital' : 'Gold Antam')) :
-                                                asset.ticker}
-                                </span>
-                                <span className="font-bold font-mono text-xs text-gray-900 dark:text-gray-100">
-                                    {currency === 'IDR'
-                                        ? formatIDR(asset.portoIDR || asset.totalValueIDR || (asset.currentPrice * (asset.amount || asset.lots * 100) * (asset.currency === 'USD' ? 16000 : 1)))
-                                        : formatUSD(asset.portoUSD || asset.totalValueUSD || (asset.currentPrice * (asset.amount || asset.lots * 100) / (asset.currency === 'IDR' ? 16000 : 1)))
-                                    }
-                                </span>
-                            </div>
 
-                            {/* Bottom Row: Broker & Quantity */}
-                            <div className="flex justify-between items-center text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">
-                                <span>
-                                    {asset.broker || asset.exchange || '-'}
-                                </span>
-                                <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300">
-                                    {type === 'stock' ? (
-                                        asset.market === 'US' ? `${formatQuantity(asset.lots)} Share` : `${formatQuantity(asset.lots)} Lot`
-                                    ) : type === 'crypto' ? (
-                                        `${formatQuantity(asset.amount)} Unit`
-                                    ) : type === 'gold' ? (
-                                        `${formatQuantity(asset.amount || asset.weight)} Gram`
-                                    ) : null}
-                                </span>
+        const colorScheme = type === 'stock' ? 'border-l-blue-500'
+            : type === 'crypto' ? 'border-l-orange-500'
+                : type === 'gold' ? 'border-l-yellow-500'
+                    : 'border-l-emerald-500';
+
+        const sectionTotal = assets.reduce((sum, a) => sum + (currency === 'IDR' ? (a.portoIDR || 0) : (a.portoUSD || 0)), 0);
+
+        return (
+            <div className="mb-6 last:mb-0">
+                {/* Clean Headline */}
+                <div className="flex items-end justify-between mb-3 border-b border-gray-100 dark:border-gray-800 pb-2">
+                    <h5 className="font-bold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${type === 'stock' ? 'bg-blue-500' : type === 'crypto' ? 'bg-orange-500' : type === 'gold' ? 'bg-yellow-500' : 'bg-emerald-500'}`}></span>
+                        {title}
+                        <span className="text-gray-300 dark:text-gray-600 font-normal ml-1">({assets.length})</span>
+                    </h5>
+                    <span className="text-xs font-mono font-medium text-gray-700 dark:text-gray-300">
+                        {currency === 'IDR' ? formatIDR(sectionTotal, 0) : formatUSD(sectionTotal)}
+                    </span>
+                </div>
+
+                {/* Professional Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {assets.map((asset, idx) => {
+                        const assetName = type === 'stock' ? asset.ticker :
+                            type === 'crypto' ? asset.symbol :
+                                type === 'gold' ? (asset.ticker || asset.name || (asset.subtype === 'digital' ? 'Gold Digital' : 'Gold Antam')) :
+                                    asset.ticker;
+
+                        const assetValue = currency === 'IDR'
+                            ? formatIDR(asset.portoIDR || asset.totalValueIDR || 0, 0)
+                            : formatUSD(asset.portoUSD || asset.totalValueUSD || 0);
+
+                        const assetQuantity = type === 'stock'
+                            ? (asset.market === 'US' ? `${formatQuantity(asset.lots)} shr` : `${formatQuantity(asset.lots)} lot`)
+                            : type === 'crypto' ? `${formatQuantity(asset.amount)} unit`
+                                : type === 'gold' ? `${formatQuantity(asset.amount || asset.weight)}g`
+                                    : formatIDR(asset.amount, 0);
+
+                        return (
+                            <div
+                                key={idx}
+                                className={`p-3 bg-white dark:bg-gray-800 border border-t-0 border-r-0 border-b-0 border-l-2 ${colorScheme} shadow-sm rounded-r-md hover:shadow-md transition-shadow`}
+                            >
+                                <div className="flex justify-between items-start mb-1">
+                                    <span className="font-bold text-sm text-gray-900 dark:text-white truncate pr-2">
+                                        {assetName}
+                                    </span>
+                                    <span className="font-semibold text-sm text-gray-900 dark:text-white whitespace-nowrap">
+                                        {assetValue}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-end text-xs text-gray-500 dark:text-gray-400">
+                                    <span className="truncate pr-2 max-w-[60%]">
+                                        {asset.broker || asset.exchange || '-'}
+                                    </span>
+                                    <span>
+                                        {assetQuantity}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         );
@@ -783,20 +1157,44 @@ function HistoryRow({ item, currency, language, isDarkMode }) {
         <>
             <tr
                 onClick={() => setExpanded(!expanded)}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                className={`group cursor-pointer transition-colors duration-200 border-b border-gray-50 dark:border-gray-800 last:border-0 ${expanded
+                    ? 'bg-blue-50/50 dark:bg-blue-900/10'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-800/60'
+                    }`}
             >
-                <td className="px-6 py-4 text-gray-400">
-                    <div className={`transform transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                <td className="px-6 py-4 w-12 text-center text-gray-400">
+                    <div className={`transition-transform duration-200 ${expanded ? 'rotate-90 text-blue-500' : ''}`}>
+                        <svg className="w-3 h-3" viewBox="0 0 10 16" fill="currentColor">
+                            <path d="M2.5 1L1.4925 2.0075L7.4775 8L1.4925 13.9925L2.5 15L9.5 8L2.5 1Z" />
+                        </svg>
                     </div>
                 </td>
-                <td className="px-6 py-4 text-gray-900 dark:text-gray-200 font-medium">
-                    {format(parseISO(item.date), 'dd MMMM yyyy', { locale: language === 'en' ? enUS : id })}
+                <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {format(parseISO(item.date), 'dd MMM yyyy', { locale: language === 'en' ? enUS : id })}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {format(parseISO(item.date), 'EEEE', { locale: language === 'en' ? enUS : id })}
+                        </span>
+                    </div>
                 </td>
-                <td className="px-6 py-4 text-gray-900 dark:text-gray-200">
-                    {currency === 'IDR' ? formatIDR(item.totalValueIDR, 0) : formatUSD(item.totalValueUSD)}
+                <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {currency === 'IDR' ? formatIDR(item.totalValueIDR, 0) : formatUSD(item.totalValueUSD)}
+                        </span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className={`text-xs font-medium ${profitPct >= 0
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-red-600 dark:text-red-400'
+                                }`}>
+                                {profitPct >= 0 ? '+' : ''}{Math.abs(profitPct).toFixed(1)}%
+                            </span>
+                        </div>
+                    </div>
                 </td>
-                <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
+                <td className="px-6 py-4 font-mono text-sm text-gray-600 dark:text-gray-400">
                     {currency === 'IDR' ? (
                         item.totalInvestedIDR > 0 ? formatIDR(item.totalInvestedIDR, 0) : '-'
                     ) : (
@@ -807,9 +1205,28 @@ function HistoryRow({ item, currency, language, isDarkMode }) {
                 </td>
             </tr>
             {expanded && (
-                <tr className="bg-gray-50/50 dark:bg-gray-800/30">
-                    <td colSpan="4" className="px-6 py-4">
-                        <div className="pl-4 border-l-2 border-blue-500">
+                <tr className="bg-gray-50/30 dark:bg-gray-900/20">
+                    <td colSpan="4" className="px-0 py-0">
+                        <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-800 animate-fadeIn relative">
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
+
+                            {/* Summary Bar */}
+                            <div className="flex border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
+                                <div className="pr-8 mr-8 border-r border-gray-200 dark:border-gray-700">
+                                    <span className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">{language === 'en' ? 'Total Invested' : 'Total Modal'}</span>
+                                    <span className="text-lg font-bold text-gray-900 dark:text-white">
+                                        {currency === 'IDR' ? formatIDR(item.totalInvestedIDR || 0, 0) : formatUSD(invested)}
+                                    </span>
+                                </div>
+                                <div className="pr-8 mr-8 border-r border-gray-200 dark:border-gray-700">
+                                    <span className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">{language === 'en' ? 'Net Profit' : 'Profit Bersih'}</span>
+                                    <span className={`text-lg font-bold ${profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                        {profit >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(profit, 0) : formatUSD(profit)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Assets Grid */}
                             {item.portfolio ? (
                                 <>
                                     {renderAssetList(language === 'en' ? 'Stocks' : 'Saham', item.portfolio.stocks, 'stock')}
@@ -818,15 +1235,19 @@ function HistoryRow({ item, currency, language, isDarkMode }) {
                                     {renderAssetList(language === 'en' ? 'Cash' : 'Kas', item.portfolio.cash, 'cash')}
 
                                     {(!item.portfolio.stocks?.length && !item.portfolio.crypto?.length && !item.portfolio.gold?.length && !item.portfolio.cash?.length) && (
-                                        <p className="text-gray-500 italic text-sm">
-                                            {language === 'en' ? 'No detailed assets recorded for this date.' : 'Tidak ada detail aset tercatat untuk tanggal ini.'}
-                                        </p>
+                                        <div className="py-4 text-center ">
+                                            <p className="text-gray-400 text-sm">
+                                                {language === 'en' ? 'No detailed assets recorded.' : 'Tidak ada detail aset tercatat.'}
+                                            </p>
+                                        </div>
                                     )}
                                 </>
                             ) : (
-                                <p className="text-gray-500 italic text-sm">
-                                    {language === 'en' ? 'Portfolio breakdown not available for this snapshot.' : 'Rincian portfolio tidak tersedia untuk snapshot ini.'}
-                                </p>
+                                <div className="py-4 text-center">
+                                    <p className="text-gray-400 text-sm">
+                                        {language === 'en' ? 'Portfolio breakdown not available.' : 'Rincian portfolio tidak tersedia.'}
+                                    </p>
+                                </div>
                             )}
                         </div>
                     </td>
