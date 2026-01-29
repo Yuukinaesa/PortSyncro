@@ -573,11 +573,11 @@ export default function Reports() {
                         <button
                             onClick={captureSnapshot}
                             disabled={snapshotLoading}
-                            className="flex items-center justify-center gap-1.5 py-2.5 sm:px-4 sm:py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl text-xs font-semibold hover:from-pink-600 hover:to-rose-600 transition-all shadow-md shadow-pink-500/25 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                            className="flex items-center justify-center gap-1.5 py-2.5 sm:px-4 sm:py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                             title={language === 'en' ? 'Capture Snapshot' : 'Ambil Snapshot'}
                         >
                             {snapshotLoading ? (
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <div className="w-4 h-4 border-2 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full animate-spin" />
                             ) : (
                                 <FiCamera className="w-4 h-4" />
                             )}
@@ -723,7 +723,7 @@ export default function Reports() {
                                 <button
                                     onClick={captureSnapshot}
                                     disabled={snapshotLoading}
-                                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50"
+                                    className="mt-4 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs sm:text-sm font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all disabled:opacity-50"
                                 >
                                     {snapshotLoading ? 'Loading...' : (language === 'en' ? 'Capture Now' : 'Ambil Sekarang')}
                                 </button>
