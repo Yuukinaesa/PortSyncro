@@ -1,12 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/authContext';
 import { useTheme } from '../lib/themeContext';
 import { useLanguage } from '../lib/languageContext';
 import { db } from '../lib/firebase';
-import { collection, query, orderBy, getDocs, where, limit } from 'firebase/firestore';
-import { FiArrowLeft, FiCalendar, FiDownload, FiTrendingUp, FiTrendingDown, FiActivity, FiInfo } from 'react-icons/fi';
+import { collection, query, orderBy, getDocs, where, limit, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { FiArrowLeft, FiCalendar, FiDownload, FiTrendingUp, FiTrendingDown, FiActivity, FiInfo, FiCamera, FiCheck, FiX } from 'react-icons/fi';
 import { Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -37,7 +37,7 @@ ChartJS.register(
 
 export default function Reports() {
     const router = useRouter();
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, getUserPortfolio } = useAuth();
     const { isDarkMode } = useTheme();
     const { t, language } = useLanguage();
 
@@ -49,6 +49,8 @@ export default function Reports() {
         end: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('en-CA') // Last day of current month (Local)
     });
     const [currency, setCurrency] = useState('IDR'); // IDR or USD view
+    const [snapshotLoading, setSnapshotLoading] = useState(false);
+    const [notification, setNotification] = useState(null);
 
     // Fetch History Data
     useEffect(() => {
@@ -80,6 +82,117 @@ export default function Reports() {
             router.push('/login');
         }
     }, [user, authLoading, router]);
+
+    // Helper to clean undefined values for Firestore
+    const cleanUndefinedValues = (obj) => {
+        if (obj === null || obj === undefined) return null;
+        if (Array.isArray(obj)) {
+            return obj.map(cleanUndefinedValues).filter(item => item !== undefined);
+        }
+        if (typeof obj === 'object') {
+            const cleaned = {};
+            for (const [key, value] of Object.entries(obj)) {
+                if (value !== undefined) {
+                    cleaned[key] = cleanUndefinedValues(value);
+                }
+            }
+            return cleaned;
+        }
+        return obj;
+    };
+
+    // Capture Daily Snapshot
+    const captureSnapshot = useCallback(async () => {
+        if (!user) {
+            setNotification({
+                type: 'error',
+                title: language === 'en' ? 'Error' : 'Gagal',
+                message: language === 'en' ? 'Please login first' : 'Silakan login terlebih dahulu'
+            });
+            return;
+        }
+
+        setSnapshotLoading(true);
+
+        try {
+            // Fetch current portfolio
+            const portfolio = await getUserPortfolio();
+
+            if (!portfolio) {
+                setNotification({
+                    type: 'warning',
+                    title: language === 'en' ? 'No Data' : 'Tidak Ada Data',
+                    message: language === 'en' ? 'No portfolio data available' : 'Tidak ada data portfolio'
+                });
+                setSnapshotLoading(false);
+                return;
+            }
+
+            const stocks = portfolio.stocks || [];
+            const crypto = portfolio.crypto || [];
+            const gold = portfolio.gold || [];
+            const cash = portfolio.cash || [];
+
+            // Calculate totals
+            const totalValueIDR =
+                stocks.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
+                crypto.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
+                gold.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
+                cash.reduce((sum, item) => sum + (item.portoIDR || 0), 0);
+
+            const totalValueUSD =
+                stocks.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
+                crypto.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
+                gold.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
+                cash.reduce((sum, item) => sum + (item.portoUSD || 0), 0);
+
+            const totalInvestedIDR =
+                stocks.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
+                crypto.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
+                gold.reduce((sum, item) => sum + (item.totalCost || 0), 0) +
+                cash.reduce((sum, item) => sum + (item.totalCost || 0), 0);
+
+            const today = new Date().toLocaleDateString('en-CA');
+            const snapshotRef = doc(db, 'users', user.uid, 'history', today);
+
+            const snapshotData = {
+                date: today,
+                totalValueIDR,
+                totalValueUSD,
+                totalInvestedIDR,
+                timestamp: serverTimestamp(),
+                portfolio: cleanUndefinedValues(portfolio)
+            };
+
+            await setDoc(snapshotRef, snapshotData, { merge: true });
+
+            // Refresh history data
+            const historyRef = collection(db, 'users', user.uid, 'history');
+            const q = query(historyRef, orderBy('date', 'asc'));
+            const snapshot = await getDocs(q);
+            const data = snapshot.docs.map(doc => ({
+                ...doc.data(),
+                id: doc.id
+            }));
+            setHistoryData(data);
+
+            setNotification({
+                type: 'success',
+                title: language === 'en' ? 'Success' : 'Berhasil',
+                message: language === 'en' ? 'Snapshot saved successfully!' : 'Snapshot berhasil disimpan!'
+            });
+
+        } catch (error) {
+            console.error('Error capturing snapshot:', error);
+            setNotification({
+                type: 'error',
+                title: language === 'en' ? 'Error' : 'Gagal',
+                message: (language === 'en' ? 'Failed to save snapshot: ' : 'Gagal menyimpan snapshot: ') + error.message
+            });
+        } finally {
+            setSnapshotLoading(false);
+        }
+    }, [user, language, getUserPortfolio]);
 
     // Filter Data based on Range
     useEffect(() => {
@@ -414,6 +527,19 @@ export default function Reports() {
                             <FiDownload className="w-4 h-4" />
                             <span className="hidden sm:inline">CSV</span>
                         </button>
+                        <button
+                            onClick={captureSnapshot}
+                            disabled={snapshotLoading}
+                            className="px-3 py-2 bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-lg text-sm font-medium hover:bg-pink-200 dark:hover:bg-pink-900/50 transition-colors whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={language === 'en' ? 'Capture Snapshot' : 'Ambil Snapshot'}
+                        >
+                            {snapshotLoading ? (
+                                <div className="w-4 h-4 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <FiCamera className="w-4 h-4" />
+                            )}
+                            <span className="hidden sm:inline">{language === 'en' ? 'Snapshot' : 'Snapshot'}</span>
+                        </button>
                     </div>
                 </div>
 
@@ -538,6 +664,66 @@ export default function Reports() {
                     </div>
                 </div>
             </main>
+
+            {/* Beautiful Notification Modal */}
+            {notification && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full relative animate-slideUp border border-gray-100 dark:border-gray-700">
+                        <button
+                            onClick={() => setNotification(null)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        >
+                            <FiX className="w-5 h-5" />
+                        </button>
+
+                        <div className="text-center space-y-4">
+                            {/* Icon */}
+                            <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner ${notification.type === 'success'
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                                    : notification.type === 'error'
+                                        ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                                        : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+                                }`}>
+                                {notification.type === 'success' ? (
+                                    <FiCheck className="w-8 h-8" />
+                                ) : notification.type === 'error' ? (
+                                    <FiX className="w-8 h-8" />
+                                ) : (
+                                    <FiInfo className="w-8 h-8" />
+                                )}
+                            </div>
+
+                            {/* Title */}
+                            <h3 className={`text-xl font-bold ${notification.type === 'success'
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : notification.type === 'error'
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-yellow-600 dark:text-yellow-400'
+                                }`}>
+                                {notification.title}
+                            </h3>
+
+                            {/* Message */}
+                            <p className="text-gray-600 dark:text-gray-300 text-sm">
+                                {notification.message}
+                            </p>
+
+                            {/* Button */}
+                            <button
+                                onClick={() => setNotification(null)}
+                                className={`w-full py-3 rounded-xl font-semibold transition-all transform hover:scale-[1.02] active:scale-[0.98] ${notification.type === 'success'
+                                        ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25'
+                                        : notification.type === 'error'
+                                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25'
+                                            : 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg shadow-yellow-500/25'
+                                    }`}
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

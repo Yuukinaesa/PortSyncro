@@ -30,22 +30,9 @@ export function middleware(request) {
   // Strict referrer policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // Content Security Policy - Updated for Firebase and APIs
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.gstatic.com https://www.googleapis.com https://apis.google.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https:",
-    "connect-src 'self' https://api.coingecko.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://min-api.cryptocompare.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebase.googleapis.com https://api.exchangerate-api.com https://api.fixer.io https://api.currencylayer.com https://*.firebaseio.com https://*.firebase.com wss://*.firebaseio.com wss://*.firebase.com https://fonts.googleapis.com https://fonts.gstatic.com",
-    "frame-src 'none'",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "upgrade-insecure-requests"
-  ].join('; ');
-
-  response.headers.set('Content-Security-Policy', csp);
+  // Content Security Policy is handled in next.config.js to allow conditional 'unsafe-eval' in dev
+  // and stricter policies in production. Avoiding duplicate headers.
+  // const csp = ...
 
   // HTTP Strict Transport Security
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');

@@ -653,9 +653,11 @@ export default function Portfolio({
         'Avg Price',
         'Current Price',
         'Total Cost (IDR)',
+        'Total Cost (USD)',
         'Market Value (IDR)',
         'Market Value (USD)',
         'Gain/Loss (IDR)',
+        'Gain/Loss (USD)',
         'Performance (%)'
       ];
       csvRows.push(headers);
@@ -683,21 +685,25 @@ export default function Portfolio({
           const avgPriceLabel = isUS ? formatUSD(stock.avgPrice) : formatIDR(stock.avgPrice);
           const currPriceLabel = isUS ? formatUSD(stock.currentPrice) : formatIDR(stock.currentPrice);
 
-          // Calculate IDR values for uniformity
-          let costIDR = 0, valueIDR = 0, gainIDR = 0, valueUSD = 0;
+          // Calculate IDR and USD values for uniformity
+          let costIDR = 0, costUSD = 0, valueIDR = 0, valueUSD = 0, gainIDR = 0, gainUSD = 0;
 
           if (isUS) {
             const shares = stock.lots;
             valueUSD = (stock.currentPrice * shares);
             valueIDR = valueUSD * exchangeRate;
-            costIDR = (stock.avgPrice * shares) * exchangeRate;
+            costUSD = (stock.avgPrice * shares);
+            costIDR = costUSD * exchangeRate;
+            gainUSD = valueUSD - costUSD;
             gainIDR = valueIDR - costIDR;
           } else {
             const shares = stock.lots * 100;
             valueIDR = (stock.currentPrice * shares);
             valueUSD = valueIDR / (exchangeRate || 14000);
             costIDR = stock.avgPrice * shares;
+            costUSD = costIDR / (exchangeRate || 14000);
             gainIDR = valueIDR - costIDR;
+            gainUSD = valueUSD - costUSD;
           }
 
           csvRows.push([
@@ -708,9 +714,11 @@ export default function Portfolio({
             avgPriceLabel,
             currPriceLabel,
             formatIDR(costIDR),
+            formatUSD(costUSD),
             formatIDR(valueIDR),
             formatUSD(valueUSD),
             formatIDR(gainIDR),
+            formatUSD(gainUSD),
             (stock.gainPercentage || 0).toFixed(2) + '%'
           ]);
         });
@@ -723,6 +731,7 @@ export default function Portfolio({
           const valueIDR = valueUSD * exchangeRate;
           const costUSD = (crypto.avgPrice * crypto.amount);
           const costIDR = costUSD * exchangeRate;
+          const gainUSD = valueUSD - costUSD;
           const gainIDR = valueIDR - costIDR;
 
           csvRows.push([
@@ -733,9 +742,11 @@ export default function Portfolio({
             formatUSD(crypto.avgPrice),
             formatUSD(crypto.currentPrice),
             formatIDR(costIDR),
+            formatUSD(costUSD),
             formatIDR(valueIDR),
             formatUSD(valueUSD),
             formatIDR(gainIDR),
+            formatUSD(gainUSD),
             (crypto.gainPercentage || 0).toFixed(2) + '%'
           ]);
         });
@@ -755,9 +766,11 @@ export default function Portfolio({
             '-', // Avg Price
             '-', // Curr Price
             formatIDR(valIDR), // Cost (same as value)
+            formatUSD(valUSD),
             formatIDR(valIDR),
             formatUSD(valUSD),
-            '0',
+            formatIDR(0),
+            formatUSD(0),
             '0%'
           ]);
         });
@@ -769,7 +782,9 @@ export default function Portfolio({
           const valueIDR = gold.portoIDR || (gold.currentPrice * gold.amount);
           const valueUSD = valueIDR / (exchangeRate || 1);
           const costIDR = gold.totalCostIDR || (gold.avgPrice * gold.amount);
+          const costUSD = costIDR / (exchangeRate || 1);
           const gainIDR = valueIDR - costIDR;
+          const gainUSD = valueUSD - costUSD;
 
           // Refined label logic for CSV
           const label = gold.subtype === 'digital' ? (gold.broker || 'Digital') : (gold.brand || 'Physical');
@@ -781,10 +796,12 @@ export default function Portfolio({
             `${gold.amount} gram`, // Quantity
             formatIDR(gold.avgPrice), // Avg Price
             formatIDR(gold.currentPrice), // Curr Price
-            formatIDR(costIDR), // Cost
+            formatIDR(costIDR), // Cost IDR
+            formatUSD(costUSD), // Cost USD
             formatIDR(valueIDR),
             formatUSD(valueUSD),
             formatIDR(gainIDR),
+            formatUSD(gainUSD),
             (gold.gainPercentage || 0).toFixed(2) + '%'
           ]);
         });

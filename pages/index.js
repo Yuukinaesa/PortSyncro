@@ -707,7 +707,16 @@ export default function Home() {
   // Reusable Snapshot Function
   const recordDailySnapshot = useCallback(async (force = false) => {
     if (!user || loading || authLoading || !assets || !isInitialized) {
-      if (force) alert('Data belum siap, coba sesaat lagi.');
+      if (force) {
+        setConfirmModal({
+          isOpen: true,
+          title: t('pleaseWait') || 'Mohon Tunggu',
+          message: language === 'en' ? 'Data is not ready yet. Please try again shortly.' : 'Data belum siap, coba sesaat lagi.',
+          type: 'warning',
+          confirmText: t('ok') || 'OK',
+          onConfirm: () => setConfirmModal(null)
+        });
+      }
       return;
     }
 
@@ -755,7 +764,16 @@ export default function Home() {
       if (force || !docSnap.exists()) {
         secureLogger.log(`Recording daily snapshot (${force ? 'Manual' : 'Auto'}):`, today);
         await setDoc(snapshotRef, snapshotData, { merge: true });
-        if (force) alert('Snapshot berhasil disimpan!');
+        if (force) {
+          setConfirmModal({
+            isOpen: true,
+            title: t('success') || 'Berhasil',
+            message: language === 'en' ? 'Snapshot saved successfully!' : 'Snapshot berhasil disimpan!',
+            type: 'success',
+            confirmText: t('ok') || 'OK',
+            onConfirm: () => setConfirmModal(null)
+          });
+        }
       } else {
         // Auto-update throttle: Only update if last update was > 1 hour ago
         const lastData = docSnap.data();
@@ -780,9 +798,18 @@ export default function Home() {
       }
     } catch (err) {
       secureLogger.error('Error saving daily snapshot:', err);
-      if (force) alert('Gagal menyimpan snapshot: ' + err.message);
+      if (force) {
+        setConfirmModal({
+          isOpen: true,
+          title: t('error') || 'Gagal',
+          message: (language === 'en' ? 'Failed to save snapshot: ' : 'Gagal menyimpan snapshot: ') + err.message,
+          type: 'error',
+          confirmText: t('ok') || 'OK',
+          onConfirm: () => setConfirmModal(null)
+        });
+      }
     }
-  }, [user, assets, loading, authLoading, isInitialized, exchangeRate]);
+  }, [user, assets, loading, authLoading, isInitialized, exchangeRate, t, language]);
 
   // Daily Snapshot Logic (Auto)
   useEffect(() => {
@@ -3057,7 +3084,6 @@ export default function Home() {
             onRestore={handleRestore}
             onLogoutAllSessions={logoutAllSessions}
             onOpenReports={() => router.push('/reports')}
-            onCaptureSnapshot={() => recordDailySnapshot(true)}
             progress={resetProgress}
             processingStatus={resetStatus}
           />
