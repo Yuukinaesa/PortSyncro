@@ -186,9 +186,9 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Market Selector */}
       <div>
-        <label className="block text-xs font-bold text-gray-500 font-bold uppercase tracking-wider mb-2 ml-1">
+        <p className="block text-xs font-bold text-gray-500 font-bold uppercase tracking-wider mb-2 ml-1">
           Pasar (Market)
-        </label>
+        </p>
         <div className="flex bg-gray-100 dark:bg-[#0d1117] rounded-xl p-1 border border-gray-200 dark:border-gray-800">
           <button
             type="button"

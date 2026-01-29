@@ -188,9 +188,9 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
           <ErrorBoundary>
             {/* Asset Type Selection */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+              <p className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
                 {t('assetType')}
-              </label>
+              </p>
               <div className="flex bg-gray-100 dark:bg-[#0d1117] rounded-xl p-1 border border-gray-200 dark:border-gray-800">
                 <button
                   onClick={() => {
@@ -255,10 +255,11 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
                       {/* Source */}
                       <div className="sm:col-span-4">
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                        <label htmlFor={`purchase-source-${index}`} className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
                           {assetType === 'stock' ? t('broker') : t('exchange')}
                         </label>
                         <input
+                          id={`purchase-source-${index}`}
                           type="text"
                           value={purchase.source}
                           onChange={(e) => updatePurchase(index, 'source', e.target.value)}
@@ -269,10 +270,11 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
 
                       {/* Amount */}
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                        <label htmlFor={`purchase-amount-${index}`} className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
                           {assetType === 'stock' ? t('lots') : t('amount')}
                         </label>
                         <input
+                          id={`purchase-amount-${index}`}
                           type="text"
                           value={purchase.amount}
                           onChange={(e) => updatePurchase(index, 'amount', e.target.value)}
@@ -284,10 +286,11 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                       {/* Price & Currency */}
                       <div className="sm:col-span-5 flex gap-2">
                         <div className="flex-1">
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                          <label htmlFor={`purchase-price-${index}`} className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
                             {t('price')}
                           </label>
                           <input
+                            id={`purchase-price-${index}`}
                             type="text"
                             value={purchase.price}
                             onChange={(e) => updatePurchase(index, 'price', e.target.value)}
@@ -296,10 +299,11 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                           />
                         </div>
                         <div className="w-20">
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                          <label htmlFor={`purchase-currency-${index}`} className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
                             {t('currency')}
                           </label>
                           <select
+                            id={`purchase-currency-${index}`}
                             value={purchase.currency}
                             onChange={(e) => updatePurchase(index, 'currency', e.target.value)}
                             className="w-full px-2 py-2 bg-white dark:bg-[#161b22] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"

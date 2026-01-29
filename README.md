@@ -1,4 +1,4 @@
-# ⋆✴︎˚｡⋆ Just Launched My New Project: PortSyncro - Easy Portfolio Synchronization for Cryptocurrencies and Stocks ⋆✴︎˚｡⋆
+# ⋆✴︎˚｡⋆ Just Launched My New Project: PortSyncro - Easy Portfolio Synchronization for Cryptocurrencies, Stocks, and Gold ⋆✴︎˚｡⋆
 
 Ever found yourself in this frustrating situation? You have the same stock (like BBRI) across 3 different brokerages, or Bitcoin spread across 2 different exchanges, and you're constantly struggling to track your true average price and overall portfolio performance?
 
@@ -18,7 +18,7 @@ When you invest in the same asset across multiple platforms, you're not just div
 
 ## The Solution
 
-PortSyncro bridges the gap between smart diversification and manageable portfolio tracking. It's a modern, secure platform that unifies your investments across multiple platforms into one intelligent dashboard. With this, I can more easily maintain both stock and crypto investments simultaneously.
+PortSyncro bridges the gap between smart diversification and manageable portfolio tracking. It's a modern, secure platform that unifies your investments across multiple platforms into one intelligent dashboard. With this, I can more easily maintain stock, crypto, and gold investments simultaneously.
 
 ## Key Features
 
@@ -26,13 +26,17 @@ PortSyncro bridges the gap between smart diversification and manageable portfoli
 
 ✅ **Smart Average Price Calculator** - Accurate calculations regardless of where you bought each asset
 
-✅ **Real-time Performance Tracking** - Live updates from Yahoo Finance & crypto APIs
+✅ **Real-time Performance Tracking** - Live updates from Yahoo Finance, Crypto APIs, & Gold Markets
 
 ✅ **Dual Currency Support** - Gain/loss calculations in both IDR and USD
 
 ✅ **Comprehensive Analytics** - Detailed performance insights and reporting
 
 ✅ **Export Functionality** - Detailed analysis and reporting capabilities
+
+✅ **Gold Asset Management** - Track physical & digital gold prices from Antam/Pegadaian
+
+✅ **Accessibility Focused** - WCAG compliant interface for inclusive access
 
 ## Security & Reliability
 
@@ -42,11 +46,14 @@ PortSyncro bridges the gap between smart diversification and manageable portfoli
 - **Input validation & sanitization** for XSS protection
 - **Rate limiting** (30 requests/minute per user/IP)
 - **Security headers** (CSP, HSTS, X-Frame-Options)
+- **Advanced Middleware Protection** for bot detection and route security
+- **Secure Logging** with production-safe constraints
 
 ## Data Sources
 
 - **Indonesian Stocks (IDX)** - Yahoo Finance API integration
 - **Global Cryptocurrencies** - CryptoCompare API support
+- **Gold (Emas)** - Real-time Antam/Pegadaian & Global Market prices
 - **Exchange Rates** - Real-time USD/IDR conversion
 
 ## Why This Matters
@@ -63,7 +70,7 @@ This project represents months of development and real-world problem-solving. It
 
 - **Frontend**: Next.js 15, React 18, Tailwind CSS
 - **Backend**: Firebase (Authentication, Database)
-- **APIs**: Yahoo Finance, CryptoCompare, Exchange Rate API
+- **APIs**: Yahoo Finance, CryptoCompare, Exchange Rate API, Gold Price Data (Antam/Pegadaian)
 - **Security**: AES-256 encryption, rate limiting, input validation
 
 ## Screenshots
@@ -81,7 +88,7 @@ This project represents months of development and real-world problem-solving. It
 
 ---
 
-**PortSyncro** - Sinkronisasi Portofolio yang Mudah untuk Kripto dan Saham
+**PortSyncro** - Sinkronisasi Portofolio yang Mudah untuk Kripto, Saham, dan Emas
 
 *Built with ❤️ for the Indonesian investment community*
 

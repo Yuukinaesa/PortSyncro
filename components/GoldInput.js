@@ -126,9 +126,9 @@ export default function GoldInput({ onAdd, onComplete }) {
         <form onSubmit={handleSubmit} className="space-y-6">
             {/* Type Selector */}
             <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+                <p className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
                     Tipe Emas
-                </label>
+                </p>
                 <div className="flex bg-gray-100 dark:bg-[#0d1117] rounded-xl p-1 border border-gray-200 dark:border-gray-800">
                     <button
                         type="button"
@@ -156,9 +156,9 @@ export default function GoldInput({ onAdd, onComplete }) {
             {/* Brand Selector (Physical Only) */}
             {subtype === 'physical' && (
                 <div className="animate-fadeIn">
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+                    <p className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
                         Merek (Brand)
-                    </label>
+                    </p>
                     <div className="grid grid-cols-3 gap-2">
                         {['antam', 'ubs', 'galeri24'].map((b) => (
                             <button

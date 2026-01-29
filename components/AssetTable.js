@@ -843,6 +843,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             value={newAmount}
                             onChange={(e) => setNewAmount(e.target.value)}
                             className="w-full px-2 py-1 bg-white dark:bg-[#161b22] border border-gray-300 dark:border-gray-700 rounded text-right text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                            aria-label={t('editAmount') || 'Edit Amount'}
                           />
                           <div className="flex justify-end gap-2">
                             <button onClick={() => handleSaveAmount(idx, asset)} className="text-[10px] bg-green-600 px-2 py-1 rounded text-white">Save</button>
@@ -990,10 +991,11 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
           >
             <div className="space-y-4">
               <div className="bg-gray-50 dark:bg-[#0d1117] p-4 rounded-xl border border-gray-200 dark:border-gray-800">
-                <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-2 block">
+                <label htmlFor="sellAmountInput" className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-2 block">
                   {t('amountToSell') || 'Jumlah yang dijual'} ({type === 'stock' ? 'Lot' : 'Unit'})
                 </label>
                 <input
+                  id="sellAmountInput"
                   type="text"
                   value={sellAmount}
                   onChange={(e) => setSellAmount(e.target.value)}

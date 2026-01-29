@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { secureLogger } from './lib/security';
 
 // Security proxy function
-export function proxy(request) {
+export function middleware(request) {
   const { pathname } = request.nextUrl;
 
   // Log all requests in development

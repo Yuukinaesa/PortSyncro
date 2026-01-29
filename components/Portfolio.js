@@ -1066,6 +1066,7 @@ export default function Portfolio({
         <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
           <FiSearch className="text-gray-500 group-focus-within:text-blue-500 transition-colors" />
         </div>
+        <label htmlFor="portfolio-search" className="sr-only">{t('search') || 'Search'}</label>
         <input
           id="portfolio-search"
           name="portfolio-search"
