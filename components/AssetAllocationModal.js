@@ -142,7 +142,9 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl flex items-center justify-between">
                     <div>
                         <p className="text-xs text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
-                            {activeTab === 'all' ? 'Total Portfolio' : `Total ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
+                            {activeTab === 'all'
+                                ? t('totalPortfolio')
+                                : t('totalCategory', { category: activeTab.charAt(0).toUpperCase() + activeTab.slice(1) })}
                         </p>
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white mt-1">
                             {getMasked(formatIDR(currentCategoryTotal))}
@@ -172,7 +174,7 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
                                         : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}
                                 `}
                             >
-                                {type === 'all' ? 'Semua' : type.charAt(0).toUpperCase() + type.slice(1)}
+                                {type === 'all' ? t('all') : type.charAt(0).toUpperCase() + type.slice(1)}
                             </button>
                         ))}
                     </div>
@@ -187,7 +189,7 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                                     }`}
                             >
-                                % dari Total Porto
+                                {t('percentageOfTotal')}
                             </button>
                             <button
                                 onClick={() => setCalculationBasis('category')}
@@ -196,7 +198,7 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                                     }`}
                             >
-                                % dari Kategori
+                                {t('percentageOfCategory')}
                             </button>
                         </div>
                     )}
