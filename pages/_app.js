@@ -4,6 +4,7 @@ import { ThemeProvider } from '../lib/themeContext';
 import { LanguageProvider } from '../lib/languageContext';
 import { PWAProvider } from '../lib/pwaContext';
 import ErrorBoundary from '../components/ErrorBoundary';
+import ConnectionStatus from '../components/ConnectionStatus';
 import Head from 'next/head';
 import '../styles/globals.css';
 
@@ -22,6 +23,7 @@ function MyApp({ Component, pageProps }) {
                 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
                 <meta name="format-detection" content="telephone=no" />
               </Head>
+              <ConnectionStatus />
               <Component {...pageProps} />
             </PWAProvider>
           </LanguageProvider>
