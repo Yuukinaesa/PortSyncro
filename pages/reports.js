@@ -6,7 +6,7 @@ import { useTheme } from '../lib/themeContext';
 import { useLanguage } from '../lib/languageContext';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, getDocs, where, limit } from 'firebase/firestore';
-import { FiArrowLeft, FiCalendar, FiDownload, FiTrendingUp, FiTrendingDown, FiActivity } from 'react-icons/fi';
+import { FiArrowLeft, FiCalendar, FiDownload, FiTrendingUp, FiTrendingDown, FiActivity, FiInfo } from 'react-icons/fi';
 import { Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -421,7 +421,16 @@ export default function Reports() {
                 {stats && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{language === 'en' ? 'Net Change (Period)' : 'Perubahan Bersih'}</p>
+                            <div className="flex items-center gap-1.5 mb-1 text-gray-500 dark:text-gray-400">
+                                <p className="text-sm">{language === 'en' ? 'Net Change (Period)' : 'Perubahan Bersih'}</p>
+                                <div className="group relative">
+                                    <FiInfo className="w-3.5 h-3.5 cursor-help" />
+                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
+                                        {language === 'en' ? 'Difference in value from start to end of selected period' : 'Selisih nilai dari awal hingga akhir periode terpilih.'}
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                    </div>
+                                </div>
+                            </div>
                             <div className="flex items-end gap-2">
                                 <span className={`text-2xl font-bold ${stats.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                     {stats.change >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.change, 0) : formatUSD(stats.change)}
@@ -434,7 +443,16 @@ export default function Reports() {
                         </div>
 
                         <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{language === 'en' ? 'Total Profit' : 'Pertumbuhan Kotor'}</p>
+                            <div className="flex items-center gap-1.5 mb-1 text-gray-500 dark:text-gray-400">
+                                <p className="text-sm">{language === 'en' ? 'Total Profit' : 'Pertumbuhan Kotor'}</p>
+                                <div className="group relative">
+                                    <FiInfo className="w-3.5 h-3.5 cursor-help" />
+                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
+                                        {language === 'en' ? 'Total Return on Investment (Current Value - Total Invested)' : 'Total keuntungan dari modal awal (Nilai Saat Ini - Total Investasi).'}
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                    </div>
+                                </div>
+                            </div>
                             <div className="flex items-end gap-2">
                                 <span className={`text-2xl font-bold ${stats.grossChange >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
                                     {stats.grossChange >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.grossChange, 0) : formatUSD(stats.grossChange)}
