@@ -263,6 +263,11 @@ export default function TransactionHistory({
       const finalValueUSD = valueUSD || (exchangeRate && exchangeRate > 0 ? valueIDR / exchangeRate : 0);
 
       return { valueIDR, valueUSD: finalValueUSD };
+    } else if (transaction.assetType === 'gold') {
+      // For gold, typically IDR based in this app
+      const valueIDR = transaction.valueIDR || 0;
+      const valueUSD = transaction.valueUSD || (exchangeRate && exchangeRate > 0 ? valueIDR / exchangeRate : 0);
+      return { valueIDR, valueUSD };
     }
 
     if (transaction.assetType === 'cash') {
