@@ -305,6 +305,7 @@ export default function TransactionHistory({
         let assetTypeText = '';
         if (tx.assetType === 'stock') assetTypeText = t('stock');
         else if (tx.assetType === 'crypto') assetTypeText = t('crypto');
+        else if (tx.assetType === 'gold') assetTypeText = t('gold') || 'Gold';
         else if (tx.assetType === 'cash') assetTypeText = t('bankAndWalletShort');
         else assetTypeText = tx.assetType;
 
@@ -504,6 +505,15 @@ export default function TransactionHistory({
               >
                 {t('crypto')}
               </button>
+              <button
+                onClick={() => setAssetTypeFilter('gold')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${assetTypeFilter === 'gold'
+                  ? 'bg-yellow-600 text-white shadow-lg shadow-yellow-900/20'
+                  : 'bg-gray-100 dark:bg-[#0d1117] text-gray-500 hover:text-gray-900 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-200 dark:hover:bg-gray-800 dark:hover:text-white'
+                  }`}
+              >
+                {t('gold') || 'Gold'}
+              </button>
             </div>
           </div>
         </div>
@@ -569,8 +579,9 @@ export default function TransactionHistory({
                           <span className="text-xs text-gray-500">
                             {tx.assetType === 'stock' ? t('stock') :
                               tx.assetType === 'crypto' ? t('crypto') :
-                                tx.assetType === 'cash' ? t('bankAndWalletShort') :
-                                  tx.assetType}
+                                tx.assetType === 'gold' ? (t('gold') || 'Gold') :
+                                  tx.assetType === 'cash' ? t('bankAndWalletShort') :
+                                    tx.assetType}
                           </span>
                         </div>
                       </td>
