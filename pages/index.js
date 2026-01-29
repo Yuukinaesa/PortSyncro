@@ -753,12 +753,16 @@ export default function Home() {
       const gold = assets.gold || [];
       const cash = assets.cash || [];
 
-      // Combine all assets for iteration
-      const allAssets = [...stocks, ...crypto, ...gold, ...cash];
+      // Total Value includes ALL assets (including cash) - this is the total portfolio value
+      const investableAssets = [...stocks, ...crypto, ...gold];
+      const allAssets = [...investableAssets, ...cash];
 
       const totalValueIDR = allAssets.reduce((sum, item) => sum + getValueIDR(item), 0);
       const totalValueUSD = allAssets.reduce((sum, item) => sum + getValueUSD(item), 0);
-      const totalInvestedIDR = allAssets.reduce((sum, item) => sum + getCostIDR(item), 0);
+
+      // Total Invested EXCLUDES cash - cash is not an investment, has no P/L
+      // This is consistent with Portfolio main page calculation
+      const totalInvestedIDR = investableAssets.reduce((sum, item) => sum + getCostIDR(item), 0);
 
       const snapshotData = {
         date: today,
@@ -771,7 +775,8 @@ export default function Home() {
 
       if (force || !docSnap.exists()) {
         secureLogger.log(`Recording daily snapshot (${force ? 'Manual' : 'Auto'}):`, today);
-        await setDoc(snapshotRef, snapshotData, { merge: true });
+        // Use full overwrite (no merge) to prevent portfolio array duplication
+        await setDoc(snapshotRef, snapshotData);
         if (force) {
           setConfirmModal({
             isOpen: true,
@@ -800,7 +805,8 @@ export default function Home() {
 
         if (diffSeconds >= 10) {
           secureLogger.log(`Auto-updating daily snapshot (throttle: ${diffSeconds.toFixed(1)}s passed)`);
-          await setDoc(snapshotRef, snapshotData, { merge: true });
+          // Use full overwrite (no merge) to prevent portfolio array duplication
+          await setDoc(snapshotRef, snapshotData);
         } else {
           // secureLogger.log('Skipping auto-update: throttled (< 10 seconds)');
         }

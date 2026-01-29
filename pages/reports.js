@@ -59,6 +59,33 @@ function calculateInvestedExcludingCash(item) {
     return item.totalInvestedIDR || 0;
 }
 
+/**
+ * Helper: Calculate portfolio VALUE excluding cash/bank (for P/L calculation)
+ * P/L should only be calculated on investments (Stocks, Crypto, Gold), not on cash
+ * @param {Object} item - History snapshot item with portfolio data
+ * @returns {number} Total value in IDR (excluding cash)
+ */
+function calculateValueExcludingCash(item) {
+    // If we have portfolio breakdown, calculate from the portfolio data
+    if (item.portfolio) {
+        const { stocks, crypto, gold } = item.portfolio;
+        // Note: Cash is intentionally EXCLUDED from value for P/L calculation
+        const stocksValue = (stocks || []).reduce((sum, s) => sum + (s.portoIDR || s.porto || 0), 0);
+        const cryptoValue = (crypto || []).reduce((sum, c) => sum + (c.portoIDR || 0), 0);
+        const goldValue = (gold || []).reduce((sum, g) => sum + (g.portoIDR || g.porto || 0), 0);
+        return stocksValue + cryptoValue + goldValue;
+    }
+
+    // Fallback: Use stored totalValueIDR minus any cash we can calculate
+    // This is less accurate but better than nothing
+    if (item.portfolio?.cash) {
+        const cashValue = (item.portfolio.cash || []).reduce((sum, c) => sum + (c.portoIDR || c.porto || c.amount || 0), 0);
+        return (item.totalValueIDR || 0) - cashValue;
+    }
+
+    return item.totalValueIDR || 0;
+}
+
 export default function Reports() {
     const router = useRouter();
     const { user, loading: authLoading, getUserPortfolio } = useAuth();
@@ -210,7 +237,8 @@ export default function Reports() {
                 portfolio: cleanUndefinedValues({ stocks, crypto, gold, cash })
             };
 
-            await setDoc(snapshotRef, snapshotData, { merge: true });
+            // Use full overwrite (no merge) to prevent portfolio array duplication
+            await setDoc(snapshotRef, snapshotData);
 
             // Refresh history data
             // Reuse logic: fetch, sort, set state
@@ -421,7 +449,7 @@ export default function Reports() {
         document.body.removeChild(link);
     };
 
-    // Stats Calculation - Use helper to exclude cash from invested (matches Portfolio main)
+    // Stats Calculation - EXCLUDE cash from BOTH value and invested for P/L (matches Portfolio main)
     const stats = useMemo(() => {
         if (filteredData.length === 0) return null;
 
@@ -429,19 +457,25 @@ export default function Reports() {
             const item = filteredData[0];
             const val = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
 
-            // Calculate invested for single item - Exclude cash for P/L calculation
+            // Calculate invested and value for single item - Exclude cash for P/L calculation
             const investedIDR = calculateInvestedExcludingCash(item);
+            const valueExclCashIDR = calculateValueExcludingCash(item);
+
             let invested = 0;
+            let valueForPL = 0;
             if (currency === 'IDR') {
                 invested = investedIDR;
+                valueForPL = valueExclCashIDR;
             } else {
                 const implicitRate = (item.totalValueIDR > 0 && item.totalValueUSD > 0)
                     ? (item.totalValueIDR / item.totalValueUSD)
                     : 16000;
                 invested = investedIDR > 0 ? (investedIDR / implicitRate) : 0;
+                valueForPL = valueExclCashIDR > 0 ? (valueExclCashIDR / implicitRate) : 0;
             }
 
-            const grossChange = val - invested;
+            // P/L = (Value without cash) - (Invested without cash)
+            const grossChange = valueForPL - invested;
             const grossChangePct = invested > 0 ? (grossChange / invested) * 100 : 0;
 
             return {
@@ -465,24 +499,29 @@ export default function Reports() {
         const low = Math.min(...values);
 
         // Gross Growth (Total Profit/Loss based on latest snapshot in range)
-        // Exclude cash from invested for P/L calculation
+        // EXCLUDE cash from BOTH value and invested for P/L calculation
         const latest = filteredData[filteredData.length - 1];
-        const latestVal = currency === 'IDR' ? latest.totalValueIDR : latest.totalValueUSD;
 
-        // Calculate latest invested - Exclude cash
+        // Calculate latest invested and value - Exclude cash
         const latestInvestedIDR = calculateInvestedExcludingCash(latest);
+        const latestValueExclCashIDR = calculateValueExcludingCash(latest);
+
         let latestInvested = 0;
+        let latestValueForPL = 0;
         if (currency === 'IDR') {
             latestInvested = latestInvestedIDR;
+            latestValueForPL = latestValueExclCashIDR;
         } else {
-            // Invested USD
+            // USD conversion
             const implicitRate = (latest.totalValueIDR > 0 && latest.totalValueUSD > 0)
                 ? (latest.totalValueIDR / latest.totalValueUSD)
                 : 16000;
             latestInvested = latestInvestedIDR > 0 ? (latestInvestedIDR / implicitRate) : 0;
+            latestValueForPL = latestValueExclCashIDR > 0 ? (latestValueExclCashIDR / implicitRate) : 0;
         }
 
-        const grossChange = latestVal - latestInvested;
+        // P/L = (Value without cash) - (Invested without cash)
+        const grossChange = latestValueForPL - latestInvested;
         const grossChangePct = latestInvested > 0 ? (grossChange / latestInvested) * 100 : 0;
 
         return {
@@ -943,12 +982,20 @@ export default function Reports() {
 function MobileHistoryCard({ item, currency, language }) {
     const [expanded, setExpanded] = useState(false);
 
-    // Calculate profit/loss - Use helper to exclude cash from invested (matches Portfolio main)
-    const totalValue = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
+    // Calculate profit/loss - EXCLUDE cash from BOTH value and invested (matches Portfolio main P/L)
+    // P/L = (Stocks+Crypto+Gold Value) - (Stocks+Crypto+Gold Invested)
+    const valueExclCashIDR = calculateValueExcludingCash(item);
     const investedIDR = calculateInvestedExcludingCash(item);
+
+    // For display, we show totalValue (including cash), but P/L is calculated without cash
+    const totalValue = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
     const invested = currency === 'IDR' ? investedIDR :
         (investedIDR > 0 ? investedIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000) : 0);
-    const profit = totalValue - invested;
+
+    // P/L uses value excluding cash
+    const valueForPL = currency === 'IDR' ? valueExclCashIDR :
+        (valueExclCashIDR > 0 ? valueExclCashIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000) : 0);
+    const profit = valueForPL - invested;
     const profitPct = invested > 0 ? (profit / invested) * 100 : 0;
 
     // Render individual asset item
@@ -1125,12 +1172,20 @@ function MobileHistoryCard({ item, currency, language }) {
 function HistoryRow({ item, currency, language, isDarkMode }) {
     const [expanded, setExpanded] = useState(false);
 
-    // Calculate profit for this row - Use helper to exclude cash from invested (matches Portfolio main)
-    const totalValue = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
+    // Calculate profit for this row - EXCLUDE cash from BOTH value and invested (matches Portfolio main P/L)
+    // P/L = (Stocks+Crypto+Gold Value) - (Stocks+Crypto+Gold Invested)
+    const valueExclCashIDR = calculateValueExcludingCash(item);
     const investedIDR = calculateInvestedExcludingCash(item);
+
+    // For display, we show totalValue (including cash), but P/L is calculated without cash
+    const totalValue = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
     const invested = currency === 'IDR' ? investedIDR :
         (investedIDR > 0 ? investedIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000) : 0);
-    const profit = totalValue - invested;
+
+    // P/L uses value excluding cash
+    const valueForPL = currency === 'IDR' ? valueExclCashIDR :
+        (valueExclCashIDR > 0 ? valueExclCashIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000) : 0);
+    const profit = valueForPL - invested;
     const profitPct = invested > 0 ? (profit / invested) * 100 : 0;
 
     // Helper to render asset list with professional design
