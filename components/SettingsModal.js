@@ -7,7 +7,7 @@ import { usePWA } from '../lib/pwaContext';
 import { useState } from 'react';
 
 // Add progress prop
-export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onOpenAllocation, onResetPortfolio, onBackup, onRestore, onLogoutAllSessions, progress = 0, processingStatus = '' }) {
+export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onOpenAllocation, onOpenReports, onCaptureSnapshot, onResetPortfolio, onBackup, onRestore, onLogoutAllSessions, progress = 0, processingStatus = '' }) {
     // ... existing hooks ...
     const { isDarkMode, toggleTheme } = useTheme();
     const { t, language, toggleLanguage } = useLanguage();
@@ -193,6 +193,52 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                             </span>
                             <span className="text-xs text-gray-500">
                                 {t('viewAssetAllocation') || 'Lihat alokasi per aset'}
+                            </span>
+                        </div>
+                    </div>
+                </button>
+
+                {/* Portfolio Reports Button */}
+                <button
+                    onClick={() => {
+                        if (onOpenReports) onOpenReports();
+                        onClose();
+                    }}
+                    className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-gray-100 dark:hover:bg-[#1f2937] hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 group"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-xl bg-white dark:bg-[#161b22] text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-300 transition-colors shadow-sm">
+                            <FiActivity className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                            <span className="block font-bold text-gray-900 dark:text-gray-200 group-hover:text-black dark:group-hover:text-white transition-colors">
+                                {language === 'en' ? 'Portfolio Reports' : 'Laporan Portfolio'}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                                {language === 'en' ? 'View daily progress and history' : 'Lihat progress harian dan riwayat'}
+                            </span>
+                        </div>
+                    </div>
+                </button>
+
+                {/* Capture Daily Snapshot Button (Manual Trigger) */}
+                <button
+                    onClick={() => {
+                        if (onCaptureSnapshot) onCaptureSnapshot();
+                        onClose();
+                    }}
+                    className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-gray-100 dark:hover:bg-[#1f2937] hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 group"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-xl bg-white dark:bg-[#161b22] text-pink-600 dark:text-pink-400 group-hover:text-pink-500 dark:group-hover:text-pink-300 transition-colors shadow-sm">
+                            <FiActivity className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                            <span className="block font-bold text-gray-900 dark:text-gray-200 group-hover:text-black dark:group-hover:text-white transition-colors">
+                                {language === 'en' ? 'Capture Daily Snapshot' : 'Ambil Snapshot Harian'}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                                {language === 'en' ? 'Force record today\'s portfolio state' : 'Rekam manual kondisi portfolio hari ini'}
                             </span>
                         </div>
                     </div>

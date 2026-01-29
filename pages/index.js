@@ -10,7 +10,7 @@ import SettingsModal from '../components/SettingsModal';
 import { useAuth } from '../lib/authContext';
 import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
-import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { FiLogOut, FiUser, FiCreditCard, FiSettings } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
@@ -702,6 +702,81 @@ export default function Home() {
       unsubscribe();
     };
   }, [user, updateTransactions]);
+
+  // Daily Snapshot Logic
+  // Reusable Snapshot Function
+  const recordDailySnapshot = useCallback(async (force = false) => {
+    if (!user || loading || authLoading || !assets || !isInitialized) {
+      if (force) alert('Data belum siap, coba sesaat lagi.');
+      return;
+    }
+
+    // Use Local Date
+    const dateObj = new Date();
+    const today = dateObj.toLocaleDateString('en-CA');
+    const snapshotRef = doc(db, 'users', user.uid, 'history', today);
+
+    try {
+      const docSnap = await getDoc(snapshotRef);
+
+      // Calculate Totals Manually from Assets (Fixes 0 Value Bug & Currency Mixing)
+      const stocks = assets.stocks || [];
+      const crypto = assets.crypto || [];
+      const gold = assets.gold || [];
+      const cash = assets.cash || [];
+
+      const totalValueIDR =
+        stocks.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
+        crypto.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
+        gold.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
+        cash.reduce((sum, item) => sum + (item.portoIDR || 0), 0);
+
+      const totalValueUSD =
+        stocks.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
+        crypto.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
+        gold.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
+        cash.reduce((sum, item) => sum + (item.portoUSD || 0), 0);
+
+      const totalInvestedIDR =
+        stocks.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
+        crypto.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
+        gold.reduce((sum, item) => sum + (item.totalCost || 0), 0) +
+        cash.reduce((sum, item) => sum + (item.totalCost || 0), 0);
+
+      const snapshotData = {
+        date: today,
+        totalValueIDR,
+        totalValueUSD,
+        totalInvestedIDR,
+        timestamp: serverTimestamp(),
+        portfolio: cleanUndefinedValues(assets)
+      };
+
+      if (force || !docSnap.exists()) {
+        secureLogger.log(`Recording daily snapshot (${force ? 'Manual' : 'Auto'}):`, today);
+        await setDoc(snapshotRef, snapshotData, { merge: true });
+        if (force) alert('Snapshot berhasil disimpan!');
+      } else {
+        // Auto-update existing snapshot to keep it fresh
+        await setDoc(snapshotRef, snapshotData, { merge: true });
+      }
+    } catch (err) {
+      secureLogger.error('Error saving daily snapshot:', err);
+      if (force) alert('Gagal menyimpan snapshot: ' + err.message);
+    }
+  }, [user, assets, loading, authLoading, isInitialized, exchangeRate]);
+
+  // Daily Snapshot Logic (Auto)
+  useEffect(() => {
+    // Debounce check
+    const timeoutId = setTimeout(() => {
+      if (!loading && !authLoading && assets && isInitialized) {
+        recordDailySnapshot(false);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeoutId);
+  }, [recordDailySnapshot, loading, authLoading, assets, isInitialized]);
 
 
 
@@ -2963,6 +3038,8 @@ export default function Home() {
             onBackup={handleBackup}
             onRestore={handleRestore}
             onLogoutAllSessions={logoutAllSessions}
+            onOpenReports={() => router.push('/reports')}
+            onCaptureSnapshot={() => recordDailySnapshot(true)}
             progress={resetProgress}
             processingStatus={resetStatus}
           />

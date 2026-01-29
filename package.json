@@ -14,7 +14,9 @@
   "dependencies": {
     "@vercel/analytics": "^1.6.1",
     "axios": "^1.13.2",
+    "chart.js": "^4.5.1",
     "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
     "express-rate-limit": "^7.1.5",
     "firebase": "^12.7.0",
     "helmet": "^8.1.0",
@@ -23,6 +25,7 @@
     "next-pwa": "^5.6.0",
     "node-fetch": "^2.7.0",
     "react": "^19.2.3",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.3",
     "react-error-boundary": "^5.0.0",
     "react-icons": "^5.5.0",

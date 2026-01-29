@@ -366,6 +366,8 @@ export default function Portfolio({
 
     // Total Cost normalized to IDR for % calc
     const totalCostNormalizedIDR = totalCostIDR + (totalCostUSD * safeExchangeRate);
+    // Total Cost normalized to USD for display
+    const totalCostNormalizedUSD = totalCostUSD + (safeExchangeRate > 0 ? totalCostIDR / safeExchangeRate : 0);
 
     return {
       totalStockGainIDR: stocksGainIDR,
@@ -377,6 +379,7 @@ export default function Portfolio({
       totalGainIDR,
       totalGainUSD,
       totalCost: totalCostNormalizedIDR,
+      totalCostUSD: totalCostNormalizedUSD,
       gainPercent: totalCostNormalizedIDR > 0 ? (totalGainIDR / totalCostNormalizedIDR) * 100 : 0,
       stocksGainPercent: totalCostIDR > 0 ? (stocksGainIDR / totalCostIDR) * 100 : 0,
       cryptoGainPercent: totalCostUSD > 0 ? (cryptoGainUSD / totalCostUSD) * 100 : 0,
@@ -907,6 +910,20 @@ export default function Portfolio({
             <p className="text-xs text-gray-500 font-mono">
               {getMasked(formatUSD(totals.totalUSD))}
             </p>
+
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500 mb-1">
+                Invested
+              </p>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-300 transform transition-colors">
+                  {getMasked(formatIDR(gains.totalCost))}
+                </span>
+                <span className="text-xs text-gray-400 font-mono">
+                  {getMasked(formatUSD(gains.totalCostUSD))}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
