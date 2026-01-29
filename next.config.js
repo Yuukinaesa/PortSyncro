@@ -4,6 +4,12 @@ const withPWA = require('next-pwa')({
     register: true,
     skipWaiting: true,
     disable: process.env.NODE_ENV === 'development',
+    buildExcludes: [
+        /middleware-manifest\.json$/,
+        /_middleware\.js$/,
+        /_worker\.js$/,
+        /dynamic-css-manifest\.json$/
+    ],
     // Strictly disable offline fallback for data/logic
     // "❌ Tidak boleh ada offline mode"
     runtimeCaching: [

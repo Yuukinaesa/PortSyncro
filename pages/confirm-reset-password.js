@@ -164,6 +164,7 @@ export default function ConfirmResetPassword() {
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder={t('passwordMinLength')}
+                        autoComplete="new-password"
                       />
                     </div>
                   </div>
@@ -185,6 +186,7 @@ export default function ConfirmResetPassword() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder={t('confirmPasswordPlaceholder')}
+                        autoComplete="new-password"
                       />
                     </div>
                   </div>

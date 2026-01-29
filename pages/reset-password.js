@@ -122,6 +122,7 @@ export default function ResetPassword() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('emailPlaceholder')}
+                    autoComplete="email"
                   />
                 </div>
               </div>
