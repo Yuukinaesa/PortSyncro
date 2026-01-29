@@ -728,29 +728,37 @@ export default function Home() {
     try {
       const docSnap = await getDoc(snapshotRef);
 
+      // Helper to calculate values ensuring currency conversion
+      const getValueIDR = (item) => {
+        const val = item.porto || 0;
+        if (item.currency === 'USD') return val * (exchangeRate || 16000);
+        return val;
+      };
+
+      const getValueUSD = (item) => {
+        const val = item.porto || 0;
+        if (item.currency === 'IDR') return val / (exchangeRate || 16000);
+        return val;
+      };
+
+      const getCostIDR = (item) => {
+        const val = item.totalCost || 0;
+        if (item.currency === 'USD') return val * (exchangeRate || 16000);
+        return val;
+      };
+
       // Calculate Totals Manually from Assets (Fixes 0 Value Bug & Currency Mixing)
       const stocks = assets.stocks || [];
       const crypto = assets.crypto || [];
       const gold = assets.gold || [];
       const cash = assets.cash || [];
 
-      const totalValueIDR =
-        stocks.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
-        crypto.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
-        gold.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
-        cash.reduce((sum, item) => sum + (item.portoIDR || 0), 0);
+      // Combine all assets for iteration
+      const allAssets = [...stocks, ...crypto, ...gold, ...cash];
 
-      const totalValueUSD =
-        stocks.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
-        crypto.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
-        gold.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
-        cash.reduce((sum, item) => sum + (item.portoUSD || 0), 0);
-
-      const totalInvestedIDR =
-        stocks.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
-        crypto.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
-        gold.reduce((sum, item) => sum + (item.totalCost || 0), 0) +
-        cash.reduce((sum, item) => sum + (item.totalCost || 0), 0);
+      const totalValueIDR = allAssets.reduce((sum, item) => sum + getValueIDR(item), 0);
+      const totalValueUSD = allAssets.reduce((sum, item) => sum + getValueUSD(item), 0);
+      const totalInvestedIDR = allAssets.reduce((sum, item) => sum + getCostIDR(item), 0);
 
       const snapshotData = {
         date: today,
@@ -775,7 +783,7 @@ export default function Home() {
           });
         }
       } else {
-        // Auto-update throttle: Only update if last update was > 1 hour ago
+        // Auto-update throttle: Only update if last update was > 1 minute ago
         const lastData = docSnap.data();
         // Handle Firestore Timestamp or standard Date string/object
         let lastTime = new Date(0);
@@ -794,7 +802,7 @@ export default function Home() {
           secureLogger.log(`Auto-updating daily snapshot (throttle: ${diffMinutes.toFixed(2)}m passed)`);
           await setDoc(snapshotRef, snapshotData, { merge: true });
         } else {
-          // secureLogger.log('Skipping auto-update: throttled (< 1 hour)');
+          // secureLogger.log('Skipping auto-update: throttled (< 1 minute)');
         }
       }
     } catch (err) {
@@ -812,9 +820,9 @@ export default function Home() {
     }
   }, [user, assets, loading, authLoading, isInitialized, exchangeRate, t, language]);
 
-  // Daily Snapshot Logic (Auto)
+  // Daily Snapshot Logic (Auto - Debounce on Change)
   useEffect(() => {
-    // Debounce check
+    // Debounce check for changes
     const timeoutId = setTimeout(() => {
       if (!loading && !authLoading && assets && isInitialized) {
         recordDailySnapshot(false);
@@ -823,6 +831,17 @@ export default function Home() {
 
     return () => clearTimeout(timeoutId);
   }, [recordDailySnapshot, loading, authLoading, assets, isInitialized]);
+
+  // Active Daily Snapshot Sync (Periodic 1-minute heartbeat)
+  useEffect(() => {
+    if (!loading && !authLoading && isInitialized && user) {
+      const intervalId = setInterval(() => {
+        recordDailySnapshot(false);
+      }, 60000); // Check every 1 minute
+
+      return () => clearInterval(intervalId);
+    }
+  }, [recordDailySnapshot, loading, authLoading, isInitialized, user]);
 
 
 
