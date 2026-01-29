@@ -19,6 +19,7 @@ import TransactionHistory from '../components/TransactionHistory';
 import { fetchExchangeRate } from '../lib/fetchExchangeRate';
 import Modal from '../components/Modal';
 import AveragePriceCalculator from '../components/AveragePriceCalculator';
+import AssetAllocationModal from '../components/AssetAllocationModal';
 import refreshOptimizer from '../lib/refreshOptimizer';
 import { usePortfolioState } from '../lib/usePortfolioState';
 import Notification from '../components/Notification';
@@ -287,6 +288,7 @@ export default function Home() {
   const [showAverageCalculator, setShowAverageCalculator] = useState(false);
   const [rateLimitNotification, setRateLimitNotification] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const [resetProgress, setResetProgress] = useState(0);
   const [resetStatus, setResetStatus] = useState('');
   const [restoreComplete, setRestoreComplete] = useState(false);
@@ -2932,6 +2934,7 @@ export default function Home() {
             hideBalance={hideBalance}
             onToggleHideBalance={() => setHideBalance(!hideBalance)}
             onOpenCalculator={() => setShowAverageCalculator(true)}
+            onOpenAllocation={() => setIsAllocationModalOpen(true)}
             onResetPortfolio={handleResetPortfolio}
             onBackup={handleBackup}
             onRestore={handleRestore}
@@ -3000,10 +3003,10 @@ export default function Home() {
                     setConfirmModal(null);
                   }}
                   className={`px-6 py-2.5 font-bold rounded-xl transition-all duration-200 shadow-lg ${confirmModal?.type === 'error'
-                      ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/20'
-                      : confirmModal?.type === 'success'
-                        ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20'
-                        : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20'
+                    ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/20'
+                    : confirmModal?.type === 'success'
+                      ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20'
+                      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20'
                     }`}
                 >
                   {confirmModal?.confirmText || t('ok')}
@@ -3017,6 +3020,17 @@ export default function Home() {
           <AveragePriceCalculator
             isOpen={showAverageCalculator}
             onClose={() => setShowAverageCalculator(false)}
+          />
+        )}
+
+        {isAllocationModalOpen && (
+          <AssetAllocationModal
+            isOpen={isAllocationModalOpen}
+            onClose={() => setIsAllocationModalOpen(false)}
+            assets={assets}
+            prices={prices}
+            exchangeRate={exchangeRate}
+            hideBalance={hideBalance}
           />
         )}
 

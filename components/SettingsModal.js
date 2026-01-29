@@ -1,13 +1,13 @@
 import Modal from './Modal';
 import { useTheme } from '../lib/themeContext';
-import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity, FiTrash2, FiAlertTriangle, FiDownload, FiUpload, FiLogOut } from 'react-icons/fi';
+import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity, FiTrash2, FiAlertTriangle, FiDownload, FiUpload, FiLogOut, FiPieChart } from 'react-icons/fi';
 import { FaDownload, FaApple, FaTimes } from 'react-icons/fa';
 import { useLanguage } from '../lib/languageContext';
 import { usePWA } from '../lib/pwaContext';
 import { useState } from 'react';
 
 // Add progress prop
-export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onResetPortfolio, onBackup, onRestore, onLogoutAllSessions, progress = 0, processingStatus = '' }) {
+export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onOpenAllocation, onResetPortfolio, onBackup, onRestore, onLogoutAllSessions, progress = 0, processingStatus = '' }) {
     // ... existing hooks ...
     const { isDarkMode, toggleTheme } = useTheme();
     const { t, language, toggleLanguage } = useLanguage();
@@ -170,6 +170,29 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                             </span>
                             <span className="text-xs text-gray-500">
                                 {t('calculateAveragePriceDesc')}
+                            </span>
+                        </div>
+                    </div>
+                </button>
+
+                {/* Asset Allocation Button */}
+                <button
+                    onClick={() => {
+                        if (onOpenAllocation) onOpenAllocation();
+                        onClose();
+                    }}
+                    className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-gray-100 dark:hover:bg-[#1f2937] hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 group"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-xl bg-white dark:bg-[#161b22] text-teal-600 dark:text-teal-400 group-hover:text-teal-500 dark:group-hover:text-teal-300 transition-colors shadow-sm">
+                            <FiPieChart className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                            <span className="block font-bold text-gray-900 dark:text-gray-200 group-hover:text-black dark:group-hover:text-white transition-colors">
+                                {t('assetAllocation') || 'Alokasi Aset'}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                                {t('viewAssetAllocation') || 'Lihat alokasi per aset'}
                             </span>
                         </div>
                     </div>
