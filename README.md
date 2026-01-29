@@ -53,7 +53,7 @@ PortSyncro bridges the gap between smart diversification and manageable portfoli
 
 - **Indonesian Stocks (IDX)** - Yahoo Finance API integration
 - **Global Cryptocurrencies** - CryptoCompare API support
-- **Gold (Emas)** - Real-time Antam/Pegadaian & Global Market prices
+- **Gold (Emas)** - Price Reference: Pegadaian (via IndoGold), Global Trend: XAU/USD (Yahoo Finance)
 - **Exchange Rates** - Real-time USD/IDR conversion
 
 ## Why This Matters
@@ -70,7 +70,7 @@ This project represents months of development and real-world problem-solving. It
 
 - **Frontend**: Next.js 15, React 18, Tailwind CSS
 - **Backend**: Firebase (Authentication, Database)
-- **APIs**: Yahoo Finance, CryptoCompare, Exchange Rate API, Gold Price Data (Antam/Pegadaian)
+- **Gold (Emas)** - Price Reference: Pegadaian (via IndoGold), Global Trend: XAU/USD (Yahoo Finance)
 - **Security**: AES-256 encryption, rate limiting, input validation
 
 ## Screenshots

@@ -103,14 +103,14 @@ export default async function handler(req, res) {
   if (verifiedUid) {
     rateLimitIdentifier = `user_${verifiedUid}`;
   } else {
-    // If user claims to be logged in (sends userId) but has no valid token, BLOCK IT.
-    if (req.body.userId) {
-      secureLogger.warn(`Potential spoofing attempt. UserId provided but no valid token. IP: ${clientIP}`);
-      return res.status(401).json({ message: 'Unauthorized. Invalid or missing token.' });
-    }
-    // Anonymous request
-    const userAgent = req.headers['user-agent'] || 'unknown';
-    rateLimitIdentifier = `ip_${clientIP}_${userAgent.substring(0, 50)}`;
+    // STRICT SECURITY MODE: Reject all unauthenticated requests.
+    // "Auth bypass -> CRITICAL" constraint.
+    // Verify if this is a demo account use-case (if valid token not presented but userId is fake demo)
+    // But secureLogger showed verifyResponse checked against Google Identity.
+
+    // For now, we block ALL anonymous traffic to this internal API.
+    secureLogger.warn(`Blocked unauthenticated access attempt to /api/prices from IP: ${clientIP}`);
+    return res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
   }
 
   if (!checkRateLimit(rateLimitIdentifier)) {

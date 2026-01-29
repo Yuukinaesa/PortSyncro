@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useLanguage } from '../lib/languageContext';
 import { normalizeNumberInput } from '../lib/utils';
 import { secureLogger } from './../lib/security';
+import { useAuth } from '../lib/authContext';
 
 export default function GoldInput({ onAdd, onComplete }) {
+    const { user } = useAuth();
     const [subtype, setSubtype] = useState('digital'); // 'digital' or 'physical'
     const [brand, setBrand] = useState('antam'); // 'antam', 'ubs', 'galeri24' (only for physical)
     const [weight, setWeight] = useState(''); // Grams
@@ -21,9 +23,13 @@ export default function GoldInput({ onAdd, onComplete }) {
     useEffect(() => {
         const fetchPrice = async () => {
             try {
+                const token = user ? await user.getIdToken() : null;
                 const response = await fetch('/api/prices', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token && { 'Authorization': `Bearer ${token}` })
+                    },
                     body: JSON.stringify({ gold: true })
                 });
 

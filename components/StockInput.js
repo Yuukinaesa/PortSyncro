@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
 import { normalizeNumberInput, validateIDXLots } from '../lib/utils';
 import { secureLogger } from './../lib/security';
+import { useAuth } from '../lib/authContext';
 
 export default function StockInput({ onAdd, onComplete, exchangeRate }) {
+  const { user } = useAuth();
   const [market, setMarket] = useState('IDX'); // 'IDX' or 'US'
   const [ticker, setTicker] = useState('');
   const [amount, setAmount] = useState(''); // Lots for IDX, Shares for US
@@ -78,10 +80,12 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       secureLogger.log('Submitting tickers:', tickersToTry);
 
       // Fetch current stock price
+      const token = user ? await user.getIdToken() : null;
       const response = await fetch('/api/prices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
           stocks: tickersToTry,

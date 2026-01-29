@@ -240,7 +240,11 @@ export default function Portfolio({
         totalGoldUSD += valIDR / safeExchangeRate;
       }
 
-      // TODO: Gold daily change tracking if available
+      // Include Gold in 24h Change calculation if change data is available
+      if (gold.change !== null && gold.change !== undefined) {
+        avgDayChange += (gold.change * valIDR);  // Weighted by value (in IDR)
+        totalAssetsWithChange += valIDR;
+      }
     });
 
     const totalIDR = totalStocksIDR + totalCryptoIDR + totalGoldIDR + totalCashIDR;

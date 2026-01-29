@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
 import { normalizeNumberInput } from '../lib/utils';
 import { secureLogger } from './../lib/security';
+import { useAuth } from '../lib/authContext';
 
 export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
+  const { user } = useAuth();
   const [symbol, setSymbol] = useState('');
   const [amount, setAmount] = useState('');
   const [avgPrice, setAvgPrice] = useState(''); // New Average Price field (USD)
@@ -17,11 +19,13 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
 
   const fetchCryptoPrice = async (symbol) => {
     try {
+      const token = user ? await user.getIdToken() : null;
       // Use the same API endpoint as the main price fetching system
       const response = await fetch('/api/prices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
           stocks: [],

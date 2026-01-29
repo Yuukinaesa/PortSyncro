@@ -32,6 +32,7 @@ const nextConfig = {
 
     // Security Headers Configuration
     async headers() {
+        const isDev = process.env.NODE_ENV === 'development';
         return [
             {
                 source: '/(.*)',
@@ -56,7 +57,8 @@ const nextConfig = {
                         key: 'Content-Security-Policy',
                         value: [
                             "default-src 'self'",
-                            "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://storage.googleapis.com",
+                            // Remove 'unsafe-eval' in production for better security against XSS
+                            `script-src 'self' ${isDev ? "'unsafe-eval'" : ''} 'unsafe-inline' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://storage.googleapis.com`,
                             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
                             "font-src 'self' https://fonts.gstatic.com data:",
                             "img-src 'self' data: https:",

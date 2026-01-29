@@ -515,7 +515,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                 const renderRow = (asset, idx, isChild, isSummary) => {
                   const val = calculateAssetValue(asset, asset.currency, exchangeRate);
                   let price = prices ? prices[type === 'stock' ? (asset.market === 'US' ? asset.ticker : `${asset.ticker}.JK`) : asset.symbol] : null;
-                  if (!price) price = { price: val.price || asset.currentPrice, change: asset.change || 0 };
+                  if (!price) price = { price: val.price || asset.currentPrice, change: (asset.change !== undefined && asset.change !== null) ? asset.change : null };
 
                   const market = asset.market || 'IDX';
                   const amount = type === 'stock' ? (market === 'US' ? asset.lots : asset.lots * 100) : asset.amount;
@@ -643,8 +643,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           <div className="text-xs text-gray-500 dark:text-gray-400" title={price.lastUpdate ? `Last update: ${price.lastUpdate}` : ''}>
                             {getMasked(formatUSD(currentUSD, currentUSD < 1 && currentUSD > 0 ? 4 : 2))}
                           </div>
-                          <div className={`text-xs ${price.change >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
-                            {(!asset.useManualPrice && !asset.isManual) && (
+                          <div className={`text-xs ${(price.change !== null && price.change !== undefined && price.change >= 0) ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
+                            {(!asset.useManualPrice && !asset.isManual && price.change !== null && price.change !== undefined) && (
                               <>
                                 {getMasked(`${price.change >= 0 ? '+' : ''}${price.change}%`)}
                                 <span className="text-[10px] opacity-70 ml-1">({price.changeTime || '24h'})</span>
@@ -752,9 +752,9 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
             const isSummary = asset._isSummary;
             const assetValue = calculateAssetValue(asset, asset.currency, exchangeRate);
             let price = prices ? prices[type === 'stock' ? (asset.market === 'US' ? asset.ticker : `${asset.ticker}.JK`) : asset.symbol] : null;
-            if (!price) price = { price: assetValue.price || asset.currentPrice, change: asset.change || 0 };
+            if (!price) price = { price: assetValue.price || asset.currentPrice, change: (asset.change !== undefined && asset.change !== null) ? asset.change : null };
             const { valueIDR, valueUSD } = assetValue;
-            const change = price.change || 0;
+            const change = (price.change !== undefined && price.change !== null) ? price.change : null;
             const market = asset.market || 'IDX';
             const amount = type === 'stock' ? (market === 'US' ? asset.lots : asset.lots * 100) : asset.amount;
             const costBasis = asset.avgPrice * amount;
@@ -873,8 +873,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                         <div className="flex flex-col items-end">
                           <p className="font-bold text-gray-700 dark:text-gray-200 font-mono text-sm">{getMasked(formatIDR(currentIDR))}</p>
                           <p className="text-gray-500 dark:text-gray-400 font-mono text-[10px]">{getMasked(formatUSD(currentUSD, currentUSD < 1 && currentUSD > 0 ? 4 : 2))}</p>
-                          <span className={`text-[10px] font-bold ${isChangePos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
-                            {getMasked(`${isChangePos ? '+' : ''}${change.toFixed(2)}%`, false)}
+                          <span className={`text-[10px] font-bold ${(change !== null && change !== undefined && change >= 0) ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
+                            {(change !== null && change !== undefined) && getMasked(`${isChangePos ? '+' : ''}${change.toFixed(2)}%`, false)}
                           </span>
                         </div>
                       </div>
