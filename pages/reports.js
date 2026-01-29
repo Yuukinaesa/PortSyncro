@@ -6,6 +6,7 @@ import { useTheme } from '../lib/themeContext';
 import { useLanguage } from '../lib/languageContext';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, getDocs, where, limit, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import portfolioStateManager from '../lib/portfolioStateManager';
 import { FiArrowLeft, FiCalendar, FiDownload, FiTrendingUp, FiTrendingDown, FiActivity, FiInfo, FiCamera, FiCheck, FiX } from 'react-icons/fi';
 import { Line } from 'react-chartjs-2';
 import {
@@ -116,129 +117,63 @@ export default function Reports() {
         setSnapshotLoading(true);
 
         try {
-            // Fetch current portfolio
-            const portfolio = await getUserPortfolio();
+            let finalAssets = { stocks: [], crypto: [], gold: [], cash: [] };
 
-            if (!portfolio) {
-                setNotification({
-                    type: 'warning',
-                    title: language === 'en' ? 'No Data' : 'Tidak Ada Data',
-                    message: language === 'en' ? 'No portfolio data available' : 'Tidak ada data portfolio'
+            // 1. Try to get "Live State" from PortfolioStateManager (Most accurate, matches Dashboard)
+            const state = portfolioStateManager.getState();
+            // Check if state has data (isInitialized is not enough, as it might be initialized empty)
+            const hasStateData = state.isInitialized && (
+                (state.assets.stocks && state.assets.stocks.length > 0) ||
+                (state.assets.crypto && state.assets.crypto.length > 0) ||
+                (state.assets.gold && state.assets.gold.length > 0) ||
+                (state.assets.cash && state.assets.cash.length > 0)
+            );
+
+            if (hasStateData) {
+                console.log("Taking snapshot from Live State (Dashboard matches)", state.assets);
+                finalAssets = state.assets;
+            } else {
+                // 2. Fallback: Fetch Transactions and Rebuild (If page refreshed/direct load)
+                console.log("Live State empty, rebuilding from Transactions (Source of Truth)...");
+                const txRef = collection(db, 'users', user.uid, 'transactions');
+                // Order by timestamp ASC is CRITICAL for chronological reconstruction
+                const q = query(txRef, orderBy('timestamp', 'asc'));
+                const querySnapshot = await getDocs(q);
+
+                const transactions = querySnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    // Ensure timestamp is comparable (ISO string or Timestamp object handling usually done in buildAssets)
+                    return { id: doc.id, ...data };
                 });
-                setSnapshotLoading(false);
-                return;
+
+                if (transactions.length > 0) {
+                    // Rebuild! We pass empty prices {} because we don't have live prices here.
+                    // The builder will use the "Last Transaction Price" as the current price fallback.
+                    // This is acceptable for a fallback snapshot and prevents 0 value.
+                    finalAssets = portfolioStateManager.buildAssetsFromTransactions(transactions, {});
+                }
             }
 
-            // Deduplicate Logic to ensure clean snapshot even if DB is dirty
-            const deduplicate = (items, keyProp, secondaryKeyProp) => {
-                if (!items || !Array.isArray(items)) return [];
-                const map = new Map();
-
-                items.forEach(item => {
-                    const primary = (item[keyProp] || '').toUpperCase();
-                    const secondary = (item[secondaryKeyProp] || '').toUpperCase();
-                    const key = `${primary}|${secondary}`; // Combine Ticker|Broker to identify unique asset holding
-
-                    if (map.has(key)) {
-                        // Found duplicate - this shouldn't happen in a clean state, but we handle it by keeping the one with valid values
-                        // Or we could sum them? If it's a true duplicate (double entry error), we should take one.
-                        // If it's a split holding (same ticker, same broker), they should be summed.
-                        // Given the bug report (Double Value), it implies they are CLONES.
-                        // Safe bet: If exact clone (same amount), ignore. If different, sum?
-                        // "BMHS" 360 vs 360 -> Ignore.
-                        // "BMHS" 360 vs 200 -> Sum.
-                        // BUT, the screenshot showed DIFFERENT amounts for the duplicates?
-                        // No, wait. 360, 264, 303. These are unrelated numbers.
-                        // This implies the user DOES have multiple 'BMHS' holdings? 
-                        // If so, 153m might be CORRECT?
-                        // No, Dashboard says 72m.
-                        // This means Dashboard deduplicates/groups by Ticker ONLY (ignoring Broker).
-                        // So for the Snapshot to match Dashboard, we must GROUP BY TICKER ONLY.
-
-                        // REVISED STRATEGY: Group by Ticker/Symbol ONLY to match Dashboard totals.
-                        const existing = map.get(key);
-
-                        // We do NOT sum them if we assume they are erroneous duplicates from a bad restore.
-                        // However, if they are legitimate separate buys that look like assets...
-                        // If Dashboard (72m) is correct, and Dashboard sums by Ticker.
-                        // Then `assets` must NOT have these extras.
-                        // If `getUserPortfolio` returns them, they ARE in DB.
-                        // So we should deduplicate by Ticker and assume duplicates are errors?
-                        // No, that's risky. 
-                        // Let's rely on the keys: Ticker + Broker.
-                        // If the DB has multiple entries with SAME Ticker and SAME Broker, that's a data corruption.
-                        // If different Broker, they are distinct.
-
-                        // But wait, the user complaint is "Double Value".
-                        // Converting "BMHS 360" + "BMHS 264" + "BMHS 303".
-                        // If real portfolio only has ONE of these (e.g. 360), then the others are ghosts.
-                        // The safest way to match Dashboard is to trust that duplicates with same keys are errors.
-                    }
-
-                    // Actually, let's just use the logic that works:
-                    // If we want to match Dashboard, we shouldn't receive garbage.
-                    // But since we are receiving garbage, let's filter strict duplicates first.
-                    // Then group by ticker.
-                });
-
-                // Simplified Deduplication: Uniq by Ticker/Symbol.
-                // NOTE: This consolidates multiple positions of same stock into one asset entry for the snapshot.
-                // This mimics the Dashboard aggregation and prevents "Ghost" duplicates from inflating value.
-                const consolidatedMap = new Map();
-
-                items.forEach(item => {
-                    const key = (item[keyProp] || '').toUpperCase(); // Group by Ticker ONLY (Match Dashboard)
-
-                    if (!consolidatedMap.has(key)) {
-                        consolidatedMap.set(key, { ...item }); // Clone
-                    } else {
-                        // Merge/Sum Logic
-                        const existing = consolidatedMap.get(key);
-
-                        // If values seem identical (duplicate entry), don't add.
-                        const isDuplicate = existing.lots === item.lots && existing.amount === item.amount;
-
-                        if (!isDuplicate) {
-                            // Sum amounts if they are distinct holdings
-                            existing.lots = (parseFloat(existing.lots) || 0) + (parseFloat(item.lots) || 0);
-                            existing.amount = (parseFloat(existing.amount) || 0) + (parseFloat(item.amount) || 0);
-
-                            // Recalculate values
-                            existing.porto = (existing.porto || 0) + (item.porto || 0);
-                            existing.portoIDR = (existing.portoIDR || 0) + (item.portoIDR || 0);
-                            existing.portoUSD = (existing.portoUSD || 0) + (item.portoUSD || 0);
-                            existing.totalCost = (existing.totalCost || 0) + (item.totalCost || 0);
-                            existing.totalCostIDR = (existing.totalCostIDR || 0) + (item.totalCostIDR || 0);
-                        }
-                    }
-                });
-
-                return Array.from(consolidatedMap.values());
-            };
-
-            const stocks = deduplicate(portfolio.stocks || [], 'ticker', 'broker');
-            const crypto = deduplicate(portfolio.crypto || [], 'symbol', 'exchange');
-            const gold = deduplicate(portfolio.gold || [], 'ticker', 'brand');
-            const cash = deduplicate(portfolio.cash || [], 'ticker', 'ticker');
+            const { stocks, crypto, gold, cash } = finalAssets;
 
             // Calculate totals
             const totalValueIDR =
-                stocks.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
-                crypto.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
-                gold.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
-                cash.reduce((sum, item) => sum + (item.portoIDR || 0), 0);
+                (stocks || []).reduce((sum, item) => sum + (item.portoIDR || item.porto || 0), 0) +
+                (crypto || []).reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
+                (gold || []).reduce((sum, item) => sum + (item.portoIDR || item.porto || 0), 0) +
+                (cash || []).reduce((sum, item) => sum + (item.portoIDR || item.porto || 0), 0);
 
             const totalValueUSD =
-                stocks.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
-                crypto.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
-                gold.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
-                cash.reduce((sum, item) => sum + (item.portoUSD || 0), 0);
+                (stocks || []).reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
+                (crypto || []).reduce((sum, item) => sum + (item.portoUSD || item.porto || 0), 0) +
+                (gold || []).reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
+                (cash || []).reduce((sum, item) => sum + (item.portoUSD || 0), 0);
 
             const totalInvestedIDR =
-                stocks.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
-                crypto.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
-                gold.reduce((sum, item) => sum + (item.totalCost || 0), 0) +
-                cash.reduce((sum, item) => sum + (item.totalCost || 0), 0);
+                (stocks || []).reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
+                (crypto || []).reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
+                (gold || []).reduce((sum, item) => sum + (item.totalCost || 0), 0) +
+                (cash || []).reduce((sum, item) => sum + (item.totalCost || 0), 0); // Cash invested = value
 
             const today = new Date().toLocaleDateString('en-CA');
             const snapshotRef = doc(db, 'users', user.uid, 'history', today);
@@ -254,7 +189,8 @@ export default function Reports() {
 
             await setDoc(snapshotRef, snapshotData, { merge: true });
 
-            // Refresh history data matches existing logic...
+            // Refresh history data
+            // Reuse logic: fetch, sort, set state
             const historyRef = collection(db, 'users', user.uid, 'history');
             const q = query(historyRef, orderBy('date', 'asc'));
             const snapshot = await getDocs(q);
