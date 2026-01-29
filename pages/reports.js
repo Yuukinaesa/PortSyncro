@@ -535,7 +535,6 @@ export default function Reports() {
     }), [currency, isDarkMode]);
 
     // Download CSV Handler
-    // Download CSV Handler
     const downloadCSV = () => {
         if (!filteredData || filteredData.length === 0) return;
 
@@ -551,15 +550,16 @@ export default function Reports() {
         csvRows.push(['Currency Mode', currency]);
         csvRows.push([]); // Empty row
 
-        // 2. Headers
+        // 2. Headers - Match the display on Reports page
         const headers = [
             'Date',
-            'Total Value (IDR)',
-            'Total Value (USD)',
-            'Invested (IDR)',
-            'Invested (USD)',
-            'Growth (IDR)',
-            'Growth (%)'
+            'Total Portfolio (IDR)',
+            'Total Portfolio (USD)',
+            'Invested excl. Cash (IDR)',
+            'Invested excl. Cash (USD)',
+            'P/L (IDR)',
+            'P/L (USD)',
+            'P/L (%)'
         ];
         csvRows.push(headers);
 
@@ -568,47 +568,57 @@ export default function Reports() {
             return `"${String(str).replace(/"/g, '""')}"`;
         };
 
-        // 3. Rows
+        // 3. Rows - Use same calculation as stats display (exclude cash from P/L)
         filteredData.forEach(item => {
             const date = format(parseISO(item.date), 'yyyy-MM-dd');
 
-            // Calculate Invested USD
+            // Calculate implicit exchange rate from the snapshot
             const implicitRate = (item.totalValueIDR > 0 && item.totalValueUSD > 0)
                 ? (item.totalValueIDR / item.totalValueUSD)
                 : 16000;
-            const investedUSD = item.totalInvestedIDR > 0 ? (item.totalInvestedIDR / implicitRate) : 0;
 
-            // Calculate Growth
-            const profitIDR = item.totalValueIDR - item.totalInvestedIDR;
-            const profitPct = item.totalInvestedIDR > 0 ? (profitIDR / item.totalInvestedIDR) * 100 : 0;
+            // Total Portfolio Value (includes cash)
+            const totalValueIDR = item.totalValueIDR || 0;
+            const totalValueUSD = item.totalValueUSD || 0;
 
-            const valIDR = formatIDR(item.totalValueIDR);
-            const valUSD = formatUSD(item.totalValueUSD);
-            const invIDR = formatIDR(item.totalInvestedIDR || 0);
-            const invUSD = formatUSD(investedUSD);
-            const growthIDR = formatIDR(profitIDR);
+            // Invested EXCLUDING cash (matches Reports page logic)
+            const investedIDR = calculateInvestedExcludingCash(item);
+            const investedUSD = investedIDR > 0 ? (investedIDR / implicitRate) : 0;
+
+            // Value EXCLUDING cash for P/L calculation (matches Reports page logic)
+            const valueExclCashIDR = calculateValueExcludingCash(item);
+            const valueExclCashUSD = valueExclCashIDR > 0 ? (valueExclCashIDR / implicitRate) : 0;
+
+            // P/L = (Value without cash) - (Invested without cash)
+            const profitIDR = valueExclCashIDR - investedIDR;
+            const profitUSD = valueExclCashUSD - investedUSD;
+            const profitPct = investedIDR > 0 ? (profitIDR / investedIDR) * 100 : 0;
 
             csvRows.push([
                 date,
-                valIDR,
-                valUSD,
-                invIDR,
-                invUSD,
-                growthIDR,
+                formatIDR(totalValueIDR),
+                formatUSD(totalValueUSD),
+                formatIDR(investedIDR),
+                formatUSD(investedUSD),
+                formatIDR(profitIDR),
+                formatUSD(profitUSD),
                 profitPct.toFixed(2) + '%'
             ]);
         });
 
-        const csvContent = "data:text/csv;charset=utf-8,"
-            + csvRows.map(e => e.map(escape).join(",")).join("\n");
+        // Add UTF-8 BOM for Excel compatibility
+        const BOM = '\uFEFF';
+        const csvContent = BOM + csvRows.map(e => e.map(escape).join(",")).join("\n");
 
-        const encodedUri = encodeURI(csvContent);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
+        link.setAttribute("href", url);
         link.setAttribute("download", `PortSyncro_History_${dateRange.start}_${dateRange.end}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     // Stats Calculation - EXCLUDE cash from BOTH value and invested for P/L (matches Portfolio main)
