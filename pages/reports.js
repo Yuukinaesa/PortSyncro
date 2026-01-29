@@ -184,15 +184,110 @@ export default function Reports() {
         }
     }), [currency, isDarkMode]);
 
+    // Download CSV Handler
+    // Download CSV Handler
+    const downloadCSV = () => {
+        if (!filteredData || filteredData.length === 0) return;
+
+        const currentDate = new Date().toLocaleString('id-ID', {
+            dateStyle: 'full', timeStyle: 'short'
+        });
+
+        // 1. Metadata / Header Info
+        const csvRows = [];
+        csvRows.push(['PORTFOLIO HISTORY REPORT']);
+        csvRows.push(['Generated At', currentDate]);
+        csvRows.push(['Date Range', `${dateRange.start} to ${dateRange.end}`]);
+        csvRows.push(['Currency Mode', currency]);
+        csvRows.push([]); // Empty row
+
+        // 2. Headers
+        const headers = [
+            'Date',
+            'Total Value (IDR)',
+            'Total Value (USD)',
+            'Invested (IDR)',
+            'Invested (USD)',
+            'Growth (IDR)',
+            'Growth (%)'
+        ];
+        csvRows.push(headers);
+
+        const escape = (str) => {
+            if (str === null || str === undefined) return '""';
+            return `"${String(str).replace(/"/g, '""')}"`;
+        };
+
+        // 3. Rows
+        filteredData.forEach(item => {
+            const date = format(parseISO(item.date), 'yyyy-MM-dd');
+
+            // Calculate Invested USD
+            const implicitRate = (item.totalValueIDR > 0 && item.totalValueUSD > 0)
+                ? (item.totalValueIDR / item.totalValueUSD)
+                : 16000;
+            const investedUSD = item.totalInvestedIDR > 0 ? (item.totalInvestedIDR / implicitRate) : 0;
+
+            // Calculate Growth
+            const profitIDR = item.totalValueIDR - item.totalInvestedIDR;
+            const profitPct = item.totalInvestedIDR > 0 ? (profitIDR / item.totalInvestedIDR) * 100 : 0;
+
+            const valIDR = formatIDR(item.totalValueIDR);
+            const valUSD = formatUSD(item.totalValueUSD);
+            const invIDR = formatIDR(item.totalInvestedIDR || 0);
+            const invUSD = formatUSD(investedUSD);
+            const growthIDR = formatIDR(profitIDR);
+
+            csvRows.push([
+                date,
+                valIDR,
+                valUSD,
+                invIDR,
+                invUSD,
+                growthIDR,
+                profitPct.toFixed(2) + '%'
+            ]);
+        });
+
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + csvRows.map(e => e.map(escape).join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `PortSyncro_History_${dateRange.start}_${dateRange.end}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     // Stats Calculation
     const stats = useMemo(() => {
         if (filteredData.length === 0) return null;
 
         if (filteredData.length === 1) {
-            const val = currency === 'IDR' ? filteredData[0].totalValueIDR : filteredData[0].totalValueUSD;
+            const item = filteredData[0];
+            const val = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
+
+            // Calculate invested for single item
+            let invested = 0;
+            if (currency === 'IDR') {
+                invested = item.totalInvestedIDR || 0;
+            } else {
+                const implicitRate = (item.totalValueIDR > 0 && item.totalValueUSD > 0)
+                    ? (item.totalValueIDR / item.totalValueUSD)
+                    : 16000;
+                invested = item.totalInvestedIDR > 0 ? (item.totalInvestedIDR / implicitRate) : 0;
+            }
+
+            const grossChange = val - invested;
+            const grossChangePct = invested > 0 ? (grossChange / invested) * 100 : 0;
+
             return {
                 change: 0,
                 changePct: 0,
+                grossChange,
+                grossChangePct,
                 high: val,
                 low: val
             };
@@ -208,9 +303,30 @@ export default function Reports() {
         const high = Math.max(...values);
         const low = Math.min(...values);
 
+        // Gross Growth (Total Profit/Loss based on latest snapshot in range)
+        const latest = filteredData[filteredData.length - 1];
+        const latestVal = currency === 'IDR' ? latest.totalValueIDR : latest.totalValueUSD;
+
+        // Calculate latest invested
+        let latestInvested = 0;
+        if (currency === 'IDR') {
+            latestInvested = latest.totalInvestedIDR || 0;
+        } else {
+            // Invested USD
+            const implicitRate = (latest.totalValueIDR > 0 && latest.totalValueUSD > 0)
+                ? (latest.totalValueIDR / latest.totalValueUSD)
+                : 16000;
+            latestInvested = latest.totalInvestedIDR > 0 ? (latest.totalInvestedIDR / implicitRate) : 0;
+        }
+
+        const grossChange = latestVal - latestInvested;
+        const grossChangePct = latestInvested > 0 ? (grossChange / latestInvested) * 100 : 0;
+
         return {
             change,
             changePct,
+            grossChange,
+            grossChangePct,
             high,
             low
         };
@@ -289,14 +405,23 @@ export default function Reports() {
                         >
                             All Time
                         </button>
+                        <button
+                            onClick={downloadCSV}
+                            disabled={!filteredData.length}
+                            className="px-3 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Download CSV"
+                        >
+                            <FiDownload className="w-4 h-4" />
+                            <span className="hidden sm:inline">CSV</span>
+                        </button>
                     </div>
                 </div>
 
                 {/* Stats Grid */}
                 {stats && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{language === 'en' ? 'Net Change' : 'Perubahan Bersih'}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{language === 'en' ? 'Net Change (Period)' : 'Perubahan Bersih'}</p>
                             <div className="flex items-end gap-2">
                                 <span className={`text-2xl font-bold ${stats.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                     {stats.change >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.change, 0) : formatUSD(stats.change)}
@@ -304,6 +429,19 @@ export default function Reports() {
                                 <span className={`px-2 py-0.5 rounded-md text-xs font-bold mb-1 ${stats.changePct >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
                                     {stats.changePct >= 0 ? <FiTrendingUp className="inline mr-1" /> : <FiTrendingDown className="inline mr-1" />}
                                     {Math.abs(stats.changePct).toFixed(2)}%
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{language === 'en' ? 'Total Profit' : 'Pertumbuhan Kotor'}</p>
+                            <div className="flex items-end gap-2">
+                                <span className={`text-2xl font-bold ${stats.grossChange >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
+                                    {stats.grossChange >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.grossChange, 0) : formatUSD(stats.grossChange)}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-md text-xs font-bold mb-1 ${stats.grossChangePct >= 0 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'}`}>
+                                    {stats.grossChange >= 0 ? <FiActivity className="inline mr-1" /> : <FiActivity className="inline mr-1" />}
+                                    {Math.abs(stats.grossChangePct).toFixed(2)}%
                                 </span>
                             </div>
                         </div>

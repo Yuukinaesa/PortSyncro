@@ -757,8 +757,26 @@ export default function Home() {
         await setDoc(snapshotRef, snapshotData, { merge: true });
         if (force) alert('Snapshot berhasil disimpan!');
       } else {
-        // Auto-update existing snapshot to keep it fresh
-        await setDoc(snapshotRef, snapshotData, { merge: true });
+        // Auto-update throttle: Only update if last update was > 1 hour ago
+        const lastData = docSnap.data();
+        // Handle Firestore Timestamp or standard Date string/object
+        let lastTime = new Date(0);
+        if (lastData.timestamp?.toDate) {
+          lastTime = lastData.timestamp.toDate();
+        } else if (lastData.timestamp) {
+          lastTime = new Date(lastData.timestamp);
+        }
+
+        const now = new Date();
+        const diffMs = now - lastTime;
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        if (diffHours >= 1) {
+          secureLogger.log(`Auto-updating daily snapshot (hourly throttle: ${diffHours.toFixed(2)}h passed)`);
+          await setDoc(snapshotRef, snapshotData, { merge: true });
+        } else {
+          // secureLogger.log('Skipping auto-update: throttled (< 1 hour)');
+        }
       }
     } catch (err) {
       secureLogger.error('Error saving daily snapshot:', err);
