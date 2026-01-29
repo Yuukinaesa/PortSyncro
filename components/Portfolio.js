@@ -919,7 +919,7 @@ export default function Portfolio({
                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300 transform transition-colors">
                   {getMasked(formatIDR(gains.totalCost))}
                 </span>
-                <span className="text-xs text-gray-400 font-mono">
+                <span className="text-xs text-gray-500 font-mono">
                   {getMasked(formatUSD(gains.totalCostUSD))}
                 </span>
               </div>
