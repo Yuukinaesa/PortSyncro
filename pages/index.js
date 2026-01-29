@@ -1853,20 +1853,44 @@ export default function Home() {
       const gold = getAsset('gold', ticker);
       if (!gold) return;
 
-      let priceData = prices[ticker] || prices['gold']; // Try specific ticker or general gold
-      if (!priceData && asset.currentPrice) {
-        priceData = { price: asset.currentPrice };
+      // Enhanced price extraction for gold (handling nested structure)
+      let currentPrice = 0;
+
+      // 1. Try exact ticker match
+      if (prices[ticker] && prices[ticker].price) {
+        currentPrice = prices[ticker].price;
+      }
+      // 2. Try global gold object (digital/physical logic)
+      else if (prices.gold) {
+        // Determine subtype from asset (default to digital)
+        const subtype = asset.subtype || 'digital';
+        const brand = (asset.brand || '').toLowerCase();
+
+        if (subtype === 'digital') {
+          currentPrice = prices.gold.digital?.sellPrice || prices.gold.digital?.price || 0;
+        } else if (subtype === 'physical') {
+          if (prices.gold.physical && prices.gold.physical[brand]) {
+            currentPrice = prices.gold.physical[brand].price || 0;
+          } else {
+            currentPrice = prices.gold.digital?.sellPrice || 0; // Fallback
+          }
+        }
+      }
+      // 3. Fallback to asset's last known current price
+      else if (asset.currentPrice) {
+        currentPrice = asset.currentPrice;
       }
 
-      if (!priceData) {
-        // Fallback to manual refresh logic if needed, but for Gold usually we have global 'gold' or specific ticker
+      if (!currentPrice || currentPrice <= 0) {
+        // Final attempt to refresh
         await performPriceFetch();
-        priceData = prices[ticker] || prices['gold'];
+        // quick re-check... simplified for brevity, assume fetch might update prices ref
+        if (prices.gold?.digital?.sellPrice) currentPrice = prices.gold.digital.sellPrice;
       }
 
-      if (!priceData) throw new Error('Harga emas tidak tersedia');
+      if (!currentPrice || currentPrice <= 0) throw new Error('Harga emas tidak tersedia');
 
-      const valueIDR = priceData.price * amountToSell;
+      const valueIDR = currentPrice * amountToSell;
       const valueUSD = valueIDR / (exchangeRate || 16500);
 
       const now = new Date();
@@ -1880,8 +1904,8 @@ export default function Home() {
         assetType: 'gold',
         ticker: ticker.toUpperCase(),
         amount: amountToSell,
-        price: priceData.price,
-        avgPrice: gold.avgPrice,
+        price: currentPrice,
+        avgPrice: gold.avgPrice || 0,
         valueIDR,
         valueUSD,
         timestamp: serverTimestamp(),
