@@ -728,47 +728,136 @@ export default function Home() {
     try {
       const docSnap = await getDoc(snapshotRef);
 
-      // Helper to calculate values ensuring currency conversion
-      const getValueIDR = (item) => {
-        const val = item.porto || 0;
-        if (item.currency === 'USD') return val * (exchangeRate || 16000);
-        return val;
-      };
+      // CRITICAL: Calculate values using LIVE PRICES, exactly like Portfolio.js does!
+      // This ensures snapshot matches what user sees in Portfolio
+      const safeExchangeRate = exchangeRate && exchangeRate > 0 ? exchangeRate : 16000;
 
-      const getValueUSD = (item) => {
-        const val = item.porto || 0;
-        if (item.currency === 'IDR') return val / (exchangeRate || 16000);
-        return val;
-      };
-
-      const getCostIDR = (item) => {
-        const val = item.totalCost || 0;
-        if (item.currency === 'USD') return val * (exchangeRate || 16000);
-        return val;
-      };
-
-      // Calculate Totals Manually from Assets (Fixes 0 Value Bug & Currency Mixing)
       const stocks = assets.stocks || [];
       const crypto = assets.crypto || [];
       const gold = assets.gold || [];
       const cash = assets.cash || [];
 
-      // Total Value includes ALL assets (including cash) - this is the total portfolio value
-      const investableAssets = [...stocks, ...crypto, ...gold];
-      const allAssets = [...investableAssets, ...cash];
+      // Calculate STOCKS using LIVE prices (same logic as Portfolio.js)
+      let stocksValueIDR = 0;
+      let stocksValueUSD = 0;
+      let stocksInvestedIDR = 0;
+      stocks.forEach(stock => {
+        // Get live price from prices state (same as Portfolio.js)
+        const priceKey = stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`;
+        const realtimePrice = prices[priceKey];
+        let currentPrice = stock.entryPrice || 0;
+        if (realtimePrice && realtimePrice.price) {
+          currentPrice = realtimePrice.price;
+        }
 
-      const totalValueIDR = allAssets.reduce((sum, item) => sum + getValueIDR(item), 0);
-      const totalValueUSD = allAssets.reduce((sum, item) => sum + getValueUSD(item), 0);
+        const shareCount = stock.market === 'US' ? (stock.lots || 0) : (stock.lots || 0) * 100;
+
+        if (stock.market === 'US') {
+          const valueUSD = currentPrice * shareCount;
+          stocksValueUSD += valueUSD;
+          stocksValueIDR += valueUSD * safeExchangeRate;
+        } else {
+          const valueIDR = currentPrice * shareCount;
+          stocksValueIDR += valueIDR;
+          stocksValueUSD += valueIDR / safeExchangeRate;
+        }
+
+        // Calculate invested from average price (cost basis)
+        const avgPrice = stock.avgPrice || stock.entryPrice || 0;
+        if (stock.market === 'US') {
+          stocksInvestedIDR += avgPrice * shareCount * safeExchangeRate;
+        } else {
+          stocksInvestedIDR += avgPrice * shareCount;
+        }
+      });
+
+      // Calculate CRYPTO using LIVE prices (same logic as Portfolio.js)
+      let cryptoValueIDR = 0;
+      let cryptoValueUSD = 0;
+      let cryptoInvestedIDR = 0;
+      crypto.forEach(c => {
+        // Get live price from prices state
+        let price;
+        if ((c.useManualPrice || c.isManual) && (c.manualPrice || c.price || c.avgPrice)) {
+          price = c.manualPrice || c.price || c.avgPrice;
+        } else {
+          price = prices[c.symbol]?.price || c.currentPrice || 0;
+        }
+
+        const amount = parseFloat(c.amount) || 0;
+        const valUSD = price * amount;
+        cryptoValueUSD += valUSD;
+        cryptoValueIDR += valUSD * safeExchangeRate;
+
+        // Calculate invested from average price
+        const avgPrice = c.avgPrice || c.entryPrice || 0;
+        cryptoInvestedIDR += avgPrice * amount * safeExchangeRate;
+      });
+
+      // Calculate GOLD
+      let goldValueIDR = 0;
+      let goldValueUSD = 0;
+      let goldInvestedIDR = 0;
+      gold.forEach(g => {
+        const price = g.currentPrice || 0;
+        const amount = parseFloat(g.weight) || 0;
+        const valIDR = price * amount;
+
+        goldValueIDR += valIDR;
+        goldValueUSD += valIDR / safeExchangeRate;
+
+        // Calculate invested
+        const avgPrice = g.avgPrice || g.entryPrice || 0;
+        goldInvestedIDR += avgPrice * amount;
+      });
+
+      // Calculate CASH (no P/L, just value)
+      let cashValueIDR = 0;
+      let cashValueUSD = 0;
+      cash.forEach(c => {
+        const amount = parseFloat(c.amount) || 0;
+        if (c.currency === 'USD') {
+          cashValueUSD += amount;
+          cashValueIDR += amount * safeExchangeRate;
+        } else {
+          cashValueIDR += amount;
+          cashValueUSD += amount / safeExchangeRate;
+        }
+      });
+
+      // Total Value includes ALL assets (including cash)
+      const totalValueIDR = stocksValueIDR + cryptoValueIDR + goldValueIDR + cashValueIDR;
+      const totalValueUSD = stocksValueUSD + cryptoValueUSD + goldValueUSD + cashValueUSD;
 
       // Total Invested EXCLUDES cash - cash is not an investment, has no P/L
-      // This is consistent with Portfolio main page calculation
-      const totalInvestedIDR = investableAssets.reduce((sum, item) => sum + getCostIDR(item), 0);
+      const totalInvestedIDR = stocksInvestedIDR + cryptoInvestedIDR + goldInvestedIDR;
+
+      // DEBUG: Log what we're calculating
+      console.log('[SNAPSHOT DEBUG] Using LIVE PRICES - Asset counts:', {
+        stocks: stocks.length,
+        crypto: crypto.length,
+        gold: gold.length,
+        cash: cash.length
+      });
+      console.log('[SNAPSHOT DEBUG] Value breakdown (IDR) with LIVE prices:', {
+        stocksValueIDR: Math.round(stocksValueIDR),
+        cryptoValueIDR: Math.round(cryptoValueIDR),
+        goldValueIDR: Math.round(goldValueIDR),
+        cashValueIDR: Math.round(cashValueIDR),
+        totalValueIDR: Math.round(totalValueIDR)
+      });
+      console.log('[SNAPSHOT DEBUG] Invested breakdown (IDR):', {
+        stocksInvestedIDR: Math.round(stocksInvestedIDR),
+        cryptoInvestedIDR: Math.round(cryptoInvestedIDR),
+        goldInvestedIDR: Math.round(goldInvestedIDR),
+        totalInvestedIDR: Math.round(totalInvestedIDR)
+      });
 
       const snapshotData = {
         date: today,
-        totalValueIDR,
-        totalValueUSD,
-        totalInvestedIDR,
+        totalValueIDR: Math.round(totalValueIDR),
+        totalValueUSD: totalValueUSD,
+        totalInvestedIDR: Math.round(totalInvestedIDR),
         timestamp: serverTimestamp(),
         portfolio: cleanUndefinedValues(assets)
       };
@@ -824,7 +913,7 @@ export default function Home() {
         });
       }
     }
-  }, [user, assets, loading, authLoading, isInitialized, exchangeRate, t, language]);
+  }, [user, assets, prices, loading, authLoading, isInitialized, exchangeRate, t, language]);
 
   // Daily Snapshot Logic (Auto - Debounce on Change)
   useEffect(() => {
