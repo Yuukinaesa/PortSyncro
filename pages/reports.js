@@ -19,7 +19,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import { formatIDR, formatUSD } from '../lib/utils';
+import { formatIDR, formatUSD, formatQuantity } from '../lib/utils';
 import { format, subDays, parseISO, isWithinInterval } from 'date-fns';
 import { id, enUS } from 'date-fns/locale';
 
@@ -186,7 +186,17 @@ export default function Reports() {
 
     // Stats Calculation
     const stats = useMemo(() => {
-        if (filteredData.length < 2) return null;
+        if (filteredData.length === 0) return null;
+
+        if (filteredData.length === 1) {
+            const val = currency === 'IDR' ? filteredData[0].totalValueIDR : filteredData[0].totalValueUSD;
+            return {
+                change: 0,
+                changePct: 0,
+                high: val,
+                low: val
+            };
+        }
 
         const startVal = currency === 'IDR' ? filteredData[0].totalValueIDR : filteredData[0].totalValueUSD;
         const endVal = currency === 'IDR' ? filteredData[filteredData.length - 1].totalValueIDR : filteredData[filteredData.length - 1].totalValueUSD;
@@ -388,17 +398,38 @@ function HistoryRow({ item, currency, language, isDarkMode }) {
                 <h5 className="font-bold text-xs uppercase text-gray-500 mb-2">{title}</h5>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {assets.map((asset, idx) => (
-                        <div key={idx} className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg text-xs flex justify-between items-center">
-                            <span className="font-medium">
-                                {type === 'stock' ? asset.ticker :
-                                    type === 'crypto' ? asset.symbol :
-                                        type === 'gold' ? (asset.name || 'Emas') :
-                                            asset.ticker}
-                                {type === 'stock' && <span className="text-gray-400 ml-1 text-[10px]">{asset.lot} Lot</span>}
-                            </span>
-                            <span className="font-mono">
-                                {asset.currency === 'USD' ? formatUSD(asset.currentPrice * (asset.amount || asset.lots * 100)) : formatIDR(asset.currentPrice * (asset.amount || asset.lots * 100))}
-                            </span>
+                        <div key={idx} className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-1">
+                            {/* Top Row: Name & Value */}
+                            <div className="flex justify-between items-start">
+                                <span className="font-bold text-xs text-gray-800 dark:text-gray-200">
+                                    {type === 'stock' ? asset.ticker :
+                                        type === 'crypto' ? asset.symbol :
+                                            type === 'gold' ? (asset.ticker || asset.name || (asset.subtype === 'digital' ? 'Gold Digital' : 'Gold Antam')) :
+                                                asset.ticker}
+                                </span>
+                                <span className="font-bold font-mono text-xs text-gray-900 dark:text-gray-100">
+                                    {currency === 'IDR'
+                                        ? formatIDR(asset.portoIDR || asset.totalValueIDR || (asset.currentPrice * (asset.amount || asset.lots * 100) * (asset.currency === 'USD' ? 16000 : 1)))
+                                        : formatUSD(asset.portoUSD || asset.totalValueUSD || (asset.currentPrice * (asset.amount || asset.lots * 100) / (asset.currency === 'IDR' ? 16000 : 1)))
+                                    }
+                                </span>
+                            </div>
+
+                            {/* Bottom Row: Broker & Quantity */}
+                            <div className="flex justify-between items-center text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">
+                                <span>
+                                    {asset.broker || asset.exchange || '-'}
+                                </span>
+                                <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300">
+                                    {type === 'stock' ? (
+                                        asset.market === 'US' ? `${formatQuantity(asset.lots)} Share` : `${formatQuantity(asset.lots)} Lot`
+                                    ) : type === 'crypto' ? (
+                                        `${formatQuantity(asset.amount)} Unit`
+                                    ) : type === 'gold' ? (
+                                        `${formatQuantity(asset.amount || asset.weight)} Gram`
+                                    ) : null}
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -424,7 +455,13 @@ function HistoryRow({ item, currency, language, isDarkMode }) {
                     {currency === 'IDR' ? formatIDR(item.totalValueIDR, 0) : formatUSD(item.totalValueUSD)}
                 </td>
                 <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
-                    {item.totalInvestedIDR > 0 ? formatIDR(item.totalInvestedIDR, 0) : '-'}
+                    {currency === 'IDR' ? (
+                        item.totalInvestedIDR > 0 ? formatIDR(item.totalInvestedIDR, 0) : '-'
+                    ) : (
+                        item.totalInvestedIDR > 0
+                            ? formatUSD(item.totalInvestedIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000))
+                            : '-'
+                    )}
                 </td>
             </tr>
             {expanded && (
