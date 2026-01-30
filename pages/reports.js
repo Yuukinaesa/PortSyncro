@@ -7,7 +7,7 @@ import { useLanguage } from '../lib/languageContext';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, getDocs, where, limit, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { usePortfolioState } from '../lib/usePortfolioState';
-import { FiArrowLeft, FiCalendar, FiDownload, FiTrendingUp, FiTrendingDown, FiActivity, FiInfo, FiCamera, FiCheck, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiCalendar, FiDownload, FiTrendingUp, FiTrendingDown, FiActivity, FiInfo, FiCamera, FiCheck, FiX, FiFileText } from 'react-icons/fi';
 import { Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -547,87 +547,111 @@ export default function Reports() {
         }
     }), [currency, isDarkMode]);
 
-    // Download CSV Handler
+    // Download History Log - CSV format, asset recap per date only
     const downloadCSV = () => {
         if (!filteredData || filteredData.length === 0) return;
 
-        const currentDate = new Date().toLocaleString('id-ID', {
-            dateStyle: 'full', timeStyle: 'short'
-        });
-
-        // 1. Metadata / Header Info
         const csvRows = [];
-        csvRows.push(['PORTFOLIO HISTORY REPORT']);
-        csvRows.push(['Generated At', currentDate]);
-        csvRows.push(['Date Range', `${dateRange.start} to ${dateRange.end}`]);
-        csvRows.push(['Currency Mode', currency]);
-        csvRows.push([]); // Empty row
+        const escape = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
+        const fmtIDR = (n) => Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const fmtQty = (n) => parseFloat(n || 0).toLocaleString('id-ID', { maximumFractionDigits: 7 });
 
-        // 2. Headers - Match the display on Reports page
-        const headers = [
-            'Date',
-            'Total Portfolio (IDR)',
-            'Total Portfolio (USD)',
-            'Invested excl. Cash (IDR)',
-            'Invested excl. Cash (USD)',
-            'P/L (IDR)',
-            'P/L (USD)',
-            'P/L (%)'
-        ];
-        csvRows.push(headers);
+        // Header
+        csvRows.push(['Date', 'Day', 'Total Value', 'Invested', 'Net Profit', 'P/L %', 'Type', 'Name', 'Platform', 'Quantity', 'Value']);
 
-        const escape = (str) => {
-            if (str === null || str === undefined) return '""';
-            return `"${String(str).replace(/"/g, '""')}"`;
-        };
+        [...filteredData].reverse().forEach(item => {
+            const dateObj = parseISO(item.date);
+            const dateStr = format(dateObj, 'd MMM yyyy');
+            const dayStr = format(dateObj, 'EEEE', { locale: language === 'en' ? enUS : id });
 
-        // 3. Rows - Use same calculation as stats display (exclude cash from P/L)
-        filteredData.forEach(item => {
-            const date = format(parseISO(item.date), 'yyyy-MM-dd');
+            const invested = calculateInvestedExcludingCash(item);
+            const valueExcl = calculateValueExcludingCash(item);
+            const profit = valueExcl - invested;
+            const pct = invested > 0 ? ((profit / invested) * 100).toFixed(1) + '%' : '0%';
 
-            // Calculate implicit exchange rate from the snapshot
-            const implicitRate = (item.totalValueIDR > 0 && item.totalValueUSD > 0)
-                ? (item.totalValueIDR / item.totalValueUSD)
-                : 16000;
+            // Summary row
+            csvRows.push([dateStr, dayStr, fmtIDR(item.totalValueIDR), fmtIDR(invested), (profit >= 0 ? '+' : '') + fmtIDR(profit), pct, '', '', '', '', '']);
 
-            // Total Portfolio Value (includes cash)
-            const totalValueIDR = item.totalValueIDR || 0;
-            const totalValueUSD = item.totalValueUSD || 0;
+            // Asset rows
+            const addAssets = (assets, type) => {
+                if (!assets?.length) return;
+                assets.forEach(a => {
+                    const name = type === 'stock' ? a.ticker : type === 'crypto' ? a.symbol : type === 'gold' ? (a.ticker || a.name) : (a.ticker || a.name);
+                    const platform = a.broker || a.exchange || a.platform || '-';
+                    const qty = type === 'stock' ? `${fmtQty(a.lots)} lot` : type === 'crypto' ? `${fmtQty(a.amount)} unit` : type === 'gold' ? `${fmtQty(a.amount || a.weight)}g` : fmtIDR(a.amount);
+                    csvRows.push(['', '', '', '', '', '', type.toUpperCase(), name, platform, qty, fmtIDR(a.portoIDR)]);
+                });
+            };
 
-            // Invested EXCLUDING cash (matches Reports page logic)
-            const investedIDR = calculateInvestedExcludingCash(item);
-            const investedUSD = investedIDR > 0 ? (investedIDR / implicitRate) : 0;
-
-            // Value EXCLUDING cash for P/L calculation (matches Reports page logic)
-            const valueExclCashIDR = calculateValueExcludingCash(item);
-            const valueExclCashUSD = valueExclCashIDR > 0 ? (valueExclCashIDR / implicitRate) : 0;
-
-            // P/L = (Value without cash) - (Invested without cash)
-            const profitIDR = valueExclCashIDR - investedIDR;
-            const profitUSD = valueExclCashUSD - investedUSD;
-            const profitPct = investedIDR > 0 ? (profitIDR / investedIDR) * 100 : 0;
-
-            csvRows.push([
-                date,
-                formatIDR(totalValueIDR),
-                formatUSD(totalValueUSD),
-                formatIDR(investedIDR),
-                formatUSD(investedUSD),
-                formatIDR(profitIDR),
-                formatUSD(profitUSD),
-                profitPct.toFixed(2) + '%'
-            ]);
+            if (item.portfolio) {
+                addAssets(item.portfolio.stocks, 'stock');
+                addAssets(item.portfolio.crypto, 'crypto');
+                addAssets(item.portfolio.gold, 'gold');
+                addAssets(item.portfolio.cash, 'cash');
+            }
         });
 
-        // Add UTF-8 BOM for Excel compatibility
         const BOM = '\uFEFF';
-        const csvContent = BOM + csvRows.map(e => e.map(escape).join(",")).join("\n");
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const csv = BOM + csvRows.map(r => r.map(escape).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `PortSyncro_History_${dateRange.start}_${dateRange.end}.csv`);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `PortSyncro_History_${dateRange.start}_${dateRange.end}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    // Download Stats Summary CSV (Log button)
+    const downloadTransactionsCSV = () => {
+        if (!filteredData || filteredData.length === 0) {
+            setNotification({
+                type: 'info',
+                title: language === 'en' ? 'No Data' : 'Tidak Ada Data',
+                message: language === 'en' ? 'No snapshots in this date range.' : 'Tidak ada snapshot dalam rentang tanggal ini.'
+            });
+            return;
+        }
+
+        const fmtIDR = (n) => 'Rp' + Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const escape = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
+
+        // Calculate stats
+        const values = filteredData.map(d => currency === 'IDR' ? d.totalValueIDR : d.totalValueUSD);
+        const startVal = values[0] || 0;
+        const endVal = values[values.length - 1] || 0;
+        const netChange = endVal - startVal;
+        const netChangePct = startVal > 0 ? (netChange / startVal) * 100 : 0;
+
+        const latest = filteredData[filteredData.length - 1];
+        const invested = calculateInvestedExcludingCash(latest);
+        const valueExcl = calculateValueExcludingCash(latest);
+        const totalProfit = valueExcl - invested;
+        const totalProfitPct = invested > 0 ? (totalProfit / invested) * 100 : 0;
+
+        const high = Math.max(...values);
+        const low = Math.min(...values);
+
+        const csvRows = [];
+        csvRows.push(['PORTFOLIO STATS SUMMARY']);
+        csvRows.push(['Date Range', `${dateRange.start} to ${dateRange.end}`]);
+        csvRows.push(['Snapshots', filteredData.length]);
+        csvRows.push([]);
+        csvRows.push(['Metric', 'Value', 'Percentage']);
+        csvRows.push(['Net Change', (netChange >= 0 ? '+' : '') + fmtIDR(netChange), (netChange >= 0 ? '+' : '') + netChangePct.toFixed(1) + '%']);
+        csvRows.push(['Total Profit', (totalProfit >= 0 ? '+' : '') + fmtIDR(totalProfit), totalProfitPct.toFixed(1) + '%']);
+        csvRows.push(['Highest (ATH)', fmtIDR(high), '🏆']);
+        csvRows.push(['Lowest (ATL)', fmtIDR(low), '📉']);
+
+        const BOM = '\uFEFF';
+        const csv = BOM + csvRows.map(r => r.map(escape).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `PortSyncro_Stats_${dateRange.start}_${dateRange.end}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -816,7 +840,7 @@ export default function Reports() {
                     </div>
 
                     {/* Action Buttons Row */}
-                    <div className="grid grid-cols-3 gap-2 sm:flex sm:justify-end sm:gap-2">
+                    <div className="grid grid-cols-2 xs:grid-cols-4 gap-2 sm:flex sm:justify-end sm:gap-2">
                         {/* All Time - Mobile Only */}
                         <button
                             onClick={() => {
@@ -832,15 +856,26 @@ export default function Reports() {
                             <span>All</span>
                         </button>
 
-                        {/* Download CSV */}
+                        {/* Download History CSV */}
                         <button
                             onClick={downloadCSV}
                             disabled={!filteredData.length}
                             className="flex items-center justify-center gap-1.5 py-2.5 sm:px-4 sm:py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-semibold hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
-                            title="Download CSV"
+                            title="Download Portfolio History"
                         >
                             <FiDownload className="w-4 h-4" />
-                            <span>CSV</span>
+                            <span>History</span>
+                        </button>
+
+                        {/* Download Transactions CSV */}
+                        <button
+                            onClick={downloadTransactionsCSV}
+                            disabled={snapshotLoading}
+                            className="flex items-center justify-center gap-1.5 py-2.5 sm:px-4 sm:py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl text-xs font-semibold hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                            title="Download Transaction Log"
+                        >
+                            <FiFileText className="w-4 h-4" />
+                            <span>Log</span>
                         </button>
 
                         {/* Capture Snapshot */}

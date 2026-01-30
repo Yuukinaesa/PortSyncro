@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Mock process.env for libs if needed
-process.env.NEXT_PUBLIC_ENCRYPTION_KEY = 'test_key_must_be_32_bytes_long_exac';
+process.env.ENCRYPTION_KEY = 'test_key_must_be_32_bytes_long_exac';
 process.env.NODE_ENV = 'production';
 
 // Import Libs (We utilize require for the script, simulating ESM via typical hacks or just standard require if formats allow)
