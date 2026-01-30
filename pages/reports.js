@@ -553,7 +553,8 @@ export default function Reports() {
 
         const csvRows = [];
         const escape = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
-        const fmtIDR = (n) => Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const fmtIDR = (n) => 'Rp.' + Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const fmtUSD = (n) => '$' + parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const fmtQty = (n) => parseFloat(n || 0).toLocaleString('id-ID', { maximumFractionDigits: 7 });
 
         // Header
@@ -615,7 +616,8 @@ export default function Reports() {
             return;
         }
 
-        const fmtIDR = (n) => 'Rp' + Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const fmtIDR = (n) => 'Rp.' + Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const fmtUSD = (n) => '$' + parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const escape = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
 
         // Calculate stats
