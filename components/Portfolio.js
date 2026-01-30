@@ -878,41 +878,44 @@ export default function Portfolio({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full xl:w-auto justify-end">
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 w-full xl:w-auto" style={{ flexShrink: 0 }}>
           {/* Refresh */}
-          <button onClick={handleRefresh} className="w-10 h-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors border border-gray-200 dark:border-gray-800">
+          <button onClick={handleRefresh} className="w-11 h-11 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl flex items-center justify-center text-gray-500 dark:text-gray-400 transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95" title="Refresh">
             <FiRefreshCw className={`w-4 h-4 ${debouncedLoading ? "animate-spin text-blue-500" : ""}`} />
           </button>
 
-          {/* Export */}
-          <button onClick={(e) => exportPortfolioToCSV('all', e)} className="bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-4 h-10 rounded-xl flex items-center gap-2 text-xs font-bold transition-colors border border-gray-200 dark:border-gray-700">
-            <FiDownload className="w-3 h-3" />
-            <span className="hidden sm:inline">{t('exportPortfolio') || 'Ekspor Portofolio'}</span>
-          </button>
+          {/* Action buttons group - wrap on mobile */}
+          <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-end">
+            {/* Export */}
+            <button onClick={(e) => exportPortfolioToCSV('all', e)} className="bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-3 sm:px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border border-gray-200 dark:border-gray-700 hover:scale-105 active:scale-95">
+              <FiDownload className="w-4 h-4" />
+              <span className="hidden xs:inline">{t('exportPortfolio') || 'Ekspor'}</span>
+            </button>
 
-          {/* WA */}
-          <button onClick={copyToWhatsApp} className="bg-emerald-500 hover:bg-emerald-600 text-white w-10 sm:w-auto sm:px-4 h-10 rounded-xl flex items-center justify-center gap-2 font-bold transition-colors shadow-lg shadow-emerald-500/20">
-            <FaWhatsapp className="w-4 h-4" />
-            <span className="hidden sm:inline">Copy</span>
-          </button>
+            {/* WA */}
+            <button onClick={copyToWhatsApp} className="bg-emerald-500 hover:bg-emerald-600 text-white w-11 sm:w-auto sm:px-4 h-11 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95">
+              <FaWhatsapp className="w-4 h-4" />
+              <span className="hidden sm:inline">Copy</span>
+            </button>
 
-          {/* Snap */}
-          <button onClick={() => onSnap && onSnap()} className="bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-4 h-10 rounded-xl flex items-center gap-2 text-xs font-bold transition-colors border border-indigo-200 dark:border-indigo-800/30">
-            <FiCamera className="w-4 h-4" />
-            <span className="hidden sm:inline">Snap</span>
-          </button>
+            {/* Snap */}
+            <button onClick={() => onSnap && onSnap()} className="bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-3 sm:px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95">
+              <FiCamera className="w-4 h-4" />
+              <span className="hidden sm:inline">Snap</span>
+            </button>
 
-          {/* Settings */}
-          <button onClick={onOpenSettings} className="bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 px-4 h-10 rounded-xl flex items-center gap-2 text-xs font-bold transition-colors border border-gray-200 dark:border-gray-800">
-            <FiSettings className="w-3 h-3" />
-            <span className="hidden sm:inline">{t('settings') || 'Settings'}</span>
-          </button>
+            {/* Settings */}
+            <button onClick={onOpenSettings} className="bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 w-11 sm:w-auto sm:px-4 h-11 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95">
+              <FiSettings className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('settings') || 'Settings'}</span>
+            </button>
 
-          {/* Add */}
-          <button onClick={() => onAddAsset && onAddAsset()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 h-10 rounded-xl flex items-center gap-2 text-xs font-bold transition-colors shadow-lg shadow-blue-600/20">
-            <FiPlusCircle className="w-4 h-4" />
-            <span>{t('add') || 'Tambah'}</span>
-          </button>
+            {/* Add */}
+            <button onClick={() => onAddAsset && onAddAsset()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95">
+              <FiPlusCircle className="w-4 h-4" />
+              <span>{t('add') || 'Tambah'}</span>
+            </button>
+          </div>
         </div>
       </div>
 

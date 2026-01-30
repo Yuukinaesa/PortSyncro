@@ -788,13 +788,13 @@ export default function Reports() {
                 </div>
             </header>
 
-            <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 pb-20">
+            <main className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 pb-24 sm:pb-20">
                 {/* Controls - Mobile Optimized */}
-                <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                     {/* Header Row */}
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                        <div className="flex items-center gap-2">
-                            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-xl text-white shadow-md shadow-blue-500/25">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2.5">
+                            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 rounded-xl text-white shadow-md shadow-blue-500/25">
                                 <FiCalendar className="w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
                             <h2 className="font-bold text-sm sm:text-base">{language === 'en' ? 'Date Range' : 'Rentang Tanggal'}</h2>
@@ -809,38 +809,44 @@ export default function Reports() {
                                     setDateRange({ start: earliest, end: today });
                                 }
                             }}
-                            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-semibold hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all hover:scale-105 active:scale-95"
                         >
-                            <FiCalendar className="w-3.5 h-3.5" />
+                            <FiCalendar className="w-4 h-4" />
                             All Time
                         </button>
                     </div>
 
-                    {/* Date Inputs Row */}
-                    <div className="flex items-center gap-2 sm:gap-3 mb-3">
-                        <div className="flex-1 relative">
+                    {/* Date Inputs Row - Better mobile spacing */}
+                    <div className="flex items-center gap-3 sm:gap-4 mb-4">
+                        <div className="flex-1">
+                            <label className="block text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
+                                {language === 'en' ? 'From' : 'Dari'}
+                            </label>
                             <input
                                 type="date"
                                 value={dateRange.start}
                                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                                className="w-full px-3 py-2.5 sm:py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-xs sm:text-sm font-medium touch-target"
+                                className="w-full px-3 py-3 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm font-medium transition-all min-h-[48px] sm:min-h-[44px]"
                             />
                         </div>
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600">
-                            <span className="text-gray-500 dark:text-gray-400 text-xs">→</span>
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 mt-5 flex-shrink-0">
+                            <span className="text-gray-400 dark:text-gray-500 text-sm">→</span>
                         </div>
-                        <div className="flex-1 relative">
+                        <div className="flex-1">
+                            <label className="block text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
+                                {language === 'en' ? 'To' : 'Sampai'}
+                            </label>
                             <input
                                 type="date"
                                 value={dateRange.end}
                                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                                className="w-full px-3 py-2.5 sm:py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-xs sm:text-sm font-medium touch-target"
+                                className="w-full px-3 py-3 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm font-medium transition-all min-h-[48px] sm:min-h-[44px]"
                             />
                         </div>
                     </div>
 
-                    {/* Action Buttons Row */}
-                    <div className="grid grid-cols-2 xs:grid-cols-4 gap-2 sm:flex sm:justify-end sm:gap-2">
+                    {/* Action Buttons Row - Improved mobile grid */}
+                    <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:justify-end sm:gap-2">
                         {/* All Time - Mobile Only */}
                         <button
                             onClick={() => {
@@ -850,7 +856,7 @@ export default function Reports() {
                                     setDateRange({ start: earliest, end: today });
                                 }
                             }}
-                            className="sm:hidden flex items-center justify-center gap-1.5 py-2.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-semibold hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors touch-target"
+                            className="sm:hidden flex flex-col items-center justify-center gap-1 py-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-semibold hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all active:scale-95 min-h-[56px]"
                         >
                             <FiCalendar className="w-4 h-4" />
                             <span>All</span>
@@ -860,7 +866,7 @@ export default function Reports() {
                         <button
                             onClick={downloadCSV}
                             disabled={!filteredData.length}
-                            className="flex items-center justify-center gap-1.5 py-2.5 sm:px-4 sm:py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-semibold hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-3 sm:py-2.5 sm:px-4 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] sm:text-xs font-semibold hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] sm:min-h-[44px]"
                             title="Download Portfolio History"
                         >
                             <FiDownload className="w-4 h-4" />
@@ -871,7 +877,7 @@ export default function Reports() {
                         <button
                             onClick={downloadTransactionsCSV}
                             disabled={snapshotLoading}
-                            className="flex items-center justify-center gap-1.5 py-2.5 sm:px-4 sm:py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl text-xs font-semibold hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-3 sm:py-2.5 sm:px-4 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl text-[10px] sm:text-xs font-semibold hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] sm:min-h-[44px]"
                             title="Download Transaction Log"
                         >
                             <FiFileText className="w-4 h-4" />
@@ -882,7 +888,7 @@ export default function Reports() {
                         <button
                             onClick={captureSnapshot}
                             disabled={snapshotLoading}
-                            className="flex items-center justify-center gap-1.5 py-2.5 sm:px-4 sm:py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-3 sm:py-2.5 sm:px-4 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-[10px] sm:text-xs font-semibold hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] sm:min-h-[44px]"
                             title={language === 'en' ? 'Capture Snapshot' : 'Ambil Snapshot'}
                         >
                             {snapshotLoading ? (
@@ -895,30 +901,30 @@ export default function Reports() {
                     </div>
                 </div>
 
-                {/* Stats Grid - Professional Design */}
+                {/* Stats Grid - Professional Design with improved mobile layout */}
                 {stats && (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         {/* Net Change Card */}
-                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className={`p-1.5 rounded-md ${stats.change >= 0 ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+                            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                                <div className={`p-1.5 sm:p-2 rounded-lg ${stats.change >= 0 ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
                                     {stats.change >= 0 ? (
-                                        <FiTrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                        <FiTrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 dark:text-green-400" />
                                     ) : (
-                                        <FiTrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                        <FiTrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-600 dark:text-red-400" />
                                     )}
                                 </div>
-                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                <span className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">
                                     {language === 'en' ? 'Net Change' : 'Perubahan'}
                                 </span>
                             </div>
 
-                            <p className={`text-xl sm:text-2xl font-bold truncate ${stats.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            <p className={`text-lg sm:text-xl lg:text-2xl font-bold truncate leading-tight ${stats.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {stats.change >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.change, 0) : formatUSD(stats.change)}
                             </p>
 
-                            <div className="mt-2">
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${stats.changePct >= 0
+                            <div className="mt-2 sm:mt-3">
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-xs font-bold ${stats.changePct >= 0
                                     ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                     : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                                     }`}>
@@ -928,22 +934,22 @@ export default function Reports() {
                         </div>
 
                         {/* Total Profit Card */}
-                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30">
-                                    <FiActivity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+                            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                                <div className="p-1.5 sm:p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                    <FiActivity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />
                                 </div>
-                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                <span className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">
                                     {language === 'en' ? 'Total Profit' : 'Total Profit'}
                                 </span>
                             </div>
 
-                            <p className={`text-xl sm:text-2xl font-bold truncate ${stats.grossChange >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                            <p className={`text-lg sm:text-xl lg:text-2xl font-bold truncate leading-tight ${stats.grossChange >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
                                 {stats.grossChange >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.grossChange, 0) : formatUSD(stats.grossChange)}
                             </p>
 
-                            <div className="mt-2">
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${stats.grossChangePct >= 0
+                            <div className="mt-2 sm:mt-3">
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-xs font-bold ${stats.grossChangePct >= 0
                                     ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                                     : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                                     }`}>
@@ -953,44 +959,44 @@ export default function Reports() {
                         </div>
 
                         {/* Highest Value Card */}
-                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="p-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30">
-                                    <FiTrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+                            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                                <div className="p-1.5 sm:p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                                    <FiTrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400" />
                                 </div>
-                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                <span className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">
                                     {language === 'en' ? 'Highest' : 'Tertinggi'}
                                 </span>
                             </div>
 
-                            <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate leading-tight">
                                 {currency === 'IDR' ? formatIDR(stats.high, 0) : formatUSD(stats.high)}
                             </p>
 
-                            <div className="mt-2">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            <div className="mt-2 sm:mt-3">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                                     🏆 ATH
                                 </span>
                             </div>
                         </div>
 
                         {/* Lowest Value Card */}
-                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="p-1.5 rounded-md bg-red-100 dark:bg-red-900/30">
-                                    <FiTrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+                            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                                <div className="p-1.5 sm:p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                                    <FiTrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-600 dark:text-red-400" />
                                 </div>
-                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                <span className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">
                                     {language === 'en' ? 'Lowest' : 'Terendah'}
                                 </span>
                             </div>
 
-                            <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate leading-tight">
                                 {currency === 'IDR' ? formatIDR(stats.low, 0) : formatUSD(stats.low)}
                             </p>
 
-                            <div className="mt-2">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                            <div className="mt-2 sm:mt-3">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
                                     📉 ATL
                                 </span>
                             </div>

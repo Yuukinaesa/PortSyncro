@@ -978,13 +978,188 @@
   animation: fadeIn 0.3s ease-out;
 }
 
-/* Safe area for mobile */
+/* Safe area for mobile - enhanced for notches and dynamic islands */
 .safe-area-padding {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-top {
   padding-top: env(safe-area-inset-top);
 }
 
-/* Touch target for mobile */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Touch target for mobile - 48px for better accessibility (Google recommendation) */
 .touch-target {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+.touch-target-sm {
   min-height: 44px;
   min-width: 44px;
+}
+
+.touch-target-lg {
+  min-height: 52px;
+  min-width: 52px;
+}
+
+/* Mobile responsive container padding */
+@media (max-width: 640px) {
+  .container-mobile {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  
+  /* Mobile date input improvements */
+  input[type="date"] {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    padding: 12px;
+    min-height: 48px;
+  }
+  
+  /* Mobile action button improvements */
+  .mobile-action-btn {
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 8px;
+    min-height: 56px;
+    font-size: 10px;
+  }
+  
+  .mobile-action-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Tablet responsive adjustments */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .container-tablet {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1025px) {
+  .container-desktop {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+/* Responsive grid utilities */
+.grid-responsive-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive-2 {
+    gap: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Mobile action buttons grid - ensures 4 columns at narrow widths */
+.action-grid-mobile {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .action-grid-mobile {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}
+
+/* Responsive text utilities */
+.text-responsive-sm {
+  font-size: 10px;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-sm {
+    font-size: 12px;
+  }
+}
+
+.text-responsive-base {
+  font-size: 14px;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-base {
+    font-size: 16px;
+  }
+}
+
+/* Smooth hover states that are disabled on mobile for better touch UX */
+@media (hover: hover) and (pointer: fine) {
+  .hover-scale:hover {
+    transform: scale(1.05);
+  }
+  
+  .hover-shadow:hover {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Active states for touch interactions */
+.active-scale:active {
+  transform: scale(0.95);
+}
+
+/* Hide on mobile, show on desktop */
+.hide-mobile {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .hide-mobile {
+    display: block;
+  }
+  
+  .show-mobile-only {
+    display: none;
+  }
+}
+
+/* xs breakpoint (smaller than sm) */
+@media (min-width: 475px) {
+  .xs\:inline {
+    display: inline;
+  }
+  
+  .xs\:hidden {
+    display: none;
+  }
+  
+  .xs\:flex {
+    display: flex;
+  }
+  
+  .xs\:grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
