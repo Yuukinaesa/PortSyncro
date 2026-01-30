@@ -3097,41 +3097,41 @@ export default function Home() {
           <meta name="description" content={t('tagline')} />
         </Head>
 
-        {/* Header - Sticky & Blurred */}
-        <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 transition-all duration-300">
-          <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        {/* Header - Sticky & Blurred - Mobile Optimized */}
+        <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-[#0d1117]/90 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 transition-all duration-300 safe-area-top">
+          <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
             {/* Logo area */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20 flex-shrink-0">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">PortSyncro</h1>
-                <p className="text-[10px] font-medium text-gray-500 leading-tight max-w-[180px] sm:max-w-none">{t('tagline')}</p>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate">PortSyncro</h1>
+                <p className="text-[9px] sm:text-[10px] font-medium text-gray-500 leading-tight truncate max-w-[120px] sm:max-w-none hidden xs:block">{t('tagline')}</p>
               </div>
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+                className="p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700 touch-target-sm"
                 title={t('settings') || "Settings"}
               >
                 <FiSettings className="w-5 h-5" />
               </button>
 
-              <div className="h-8 w-[1px] bg-gray-800 mx-1 hidden sm:block"></div>
+              <div className="h-8 w-[1px] bg-gray-200 dark:bg-gray-800 mx-0.5 hidden sm:block"></div>
 
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:flex flex-col items-end">
-                  <span className="text-xs font-bold text-gray-700 dark:text-gray-200">{user?.email?.split('@')[0]}</span>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="hidden sm:flex flex-col items-end min-w-0">
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate max-w-[100px]">{user?.email?.split('@')[0]}</span>
                 </div>
                 <button
                   onClick={logout}
-                  className="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all"
+                  className="p-2.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all touch-target-sm"
                   title={t('logout')}
                 >
                   <FiLogOut className="w-5 h-5" />
@@ -3141,28 +3141,29 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="container mx-auto px-4 py-8 pb-20">
+        <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 pb-24 sm:pb-20">
 
-          {/* Navigation Controls (Sticky) */}
-          <div className="sticky top-16 z-30 flex justify-center mb-8 -mx-4 px-4 py-3 bg-gray-50/80 dark:bg-[#0d1117]/80 backdrop-blur-xl">
-            <div className="flex items-center p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20">
+          {/* Navigation Controls (Sticky) - Mobile Optimized */}
+          <div className="sticky top-14 sm:top-16 z-30 flex justify-center mb-4 sm:mb-8 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2 sm:py-3 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl">
+            <div className="flex items-center p-1 sm:p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-xl sm:rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 w-full sm:w-auto overflow-x-auto">
               {[
-                { id: 'portfolio', label: t('portfolio'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
-                { id: 'add', label: t('addAsset'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> },
-                { id: 'history', label: t('history'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
+                { id: 'portfolio', label: t('portfolio'), mobileLabel: t('portfolio'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
+                { id: 'add', label: t('addAsset'), mobileLabel: t('add'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> },
+                { id: 'history', label: t('history'), mobileLabel: t('history'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                     relative flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300
+                     relative flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2.5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex-1 sm:flex-none min-w-0
                      ${activeTab === tab.id
                       ? 'text-white bg-blue-600 shadow-lg shadow-blue-900/20'
                       : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#0d1117]'}
                    `}
                 >
                   {tab.icon}
-                  {tab.label}
+                  <span className="hidden xs:inline sm:hidden">{tab.mobileLabel}</span>
+                  <span className="hidden sm:inline">{tab.label}</span>
                 </button>
               ))}
             </div>
@@ -3176,72 +3177,74 @@ export default function Home() {
           ) : (
             <div className="animate-fade-in-up">
               {activeTab === 'add' ? (
-                <div className="space-y-8 max-w-6xl mx-auto">
-                  <div className="text-center space-y-2">
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('addAsset')}</h2>
-                    <p className="text-gray-500 dark:text-gray-400">{t('addAssetDesc') || 'Expand your portfolio by adding new assets'}</p>
+                <div className="space-y-4 sm:space-y-8 max-w-6xl mx-auto">
+                  <div className="text-center space-y-1 sm:space-y-2">
+                    <h2 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">{t('addAsset')}</h2>
+                    <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">{t('addAssetDesc') || 'Expand your portfolio by adding new assets'}</p>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
                     {/* Bank/Cash */}
-                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 hover:border-blue-500/30 transition-all duration-300 group shadow-sm">
-                      <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-green-600 group-hover:text-white transition-all text-green-600 dark:text-green-500">
-                        <FiCreditCard className="w-6 h-6" />
+                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-green-500/30 transition-all duration-300 group shadow-sm">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 dark:bg-green-900/20 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-green-600 group-hover:text-white transition-all text-green-600 dark:text-green-500">
+                        <FiCreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addCash') || 'Bank & E-Wallet'}</h3>
-                      <p className="text-sm text-gray-500 mb-6">{t('addCashDesc')}</p>
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addCash') || 'Bank & E-Wallet'}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">{t('addCashDesc')}</p>
                       <ErrorBoundary>
                         <CashInput onAdd={addCash} onComplete={() => setActiveTab('portfolio')} />
                       </ErrorBoundary>
                     </div>
 
                     {/* Stock */}
-                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 hover:border-blue-500/30 transition-all duration-300 group shadow-sm">
-                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-all text-blue-600 dark:text-blue-500">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-blue-500/30 transition-all duration-300 group shadow-sm">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/20 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-blue-600 group-hover:text-white transition-all text-blue-600 dark:text-blue-500">
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addStock')}</h3>
-                      <p className="text-sm text-gray-500 mb-6">{t('addStockDesc') || 'Indonesian & US Stocks'}</p>
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addStock')}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">{t('addStockDesc') || 'Indonesian & US Stocks'}</p>
                       <ErrorBoundary>
                         <StockInput onAdd={addStock} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
                       </ErrorBoundary>
                     </div>
 
                     {/* Crypto */}
-                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 hover:border-purple-500/30 transition-all duration-300 group shadow-sm">
-                      <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-purple-600 group-hover:text-white transition-all text-purple-600 dark:text-purple-500">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-purple-500/30 transition-all duration-300 group shadow-sm">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900/20 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-purple-600 group-hover:text-white transition-all text-purple-600 dark:text-purple-500">
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addCrypto')}</h3>
-                      <p className="text-sm text-gray-500 mb-6">{t('addCryptoDesc')}</p>
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addCrypto')}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">{t('addCryptoDesc')}</p>
                       <ErrorBoundary>
                         <CryptoInput onAdd={addCrypto} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
                       </ErrorBoundary>
                     </div>
 
                     {/* Gold */}
-                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 hover:border-yellow-500/30 transition-all duration-300 group shadow-sm">
-                      <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-yellow-600 group-hover:text-white transition-all text-yellow-600 dark:text-yellow-500">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-yellow-500/30 transition-all duration-300 group shadow-sm">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-yellow-600 group-hover:text-white transition-all text-yellow-600 dark:text-yellow-500">
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Emas (Gold)</h3>
-                      <p className="text-sm text-gray-500 mb-6">Tabungan Emas & Batangan</p>
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">Emas (Gold)</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">Tabungan Emas & Batangan</p>
                       <ErrorBoundary>
                         <GoldInput onAdd={addGold} onComplete={() => setActiveTab('portfolio')} />
                       </ErrorBoundary>
                     </div>
                   </div>
 
-                  <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-900/30 flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-gray-900 dark:text-white">{t('quickActions')}</h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{t('quickActionsDesc')}</p>
+                  {/* Quick Actions - Mobile Optimized */}
+                  <div className="mt-4 sm:mt-8 p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-900/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">{t('quickActions')}</h4>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('quickActionsDesc')}</p>
                     </div>
                     <button
                       onClick={() => setShowAverageCalculator(true)}
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20 rounded-xl"
+                      className="w-full sm:w-auto px-4 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20 text-sm flex items-center justify-center gap-2 active:scale-95"
                     >
-                      {t('averagePriceCalculator')}
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                      <span>{t('averagePriceCalculator')}</span>
                     </button>
                   </div>
                 </div>
