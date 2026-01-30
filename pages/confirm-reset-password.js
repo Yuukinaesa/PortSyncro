@@ -93,7 +93,7 @@ export default function ConfirmResetPassword() {
   return (
     <ProtectedRoute authPage={true}>
       <Head>
-        <title>{t('resetPassword')} | PortSyncro</title>
+        <title>{`${t('resetPassword')} | PortSyncro`}</title>
       </Head>
 
       <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] flex items-center justify-center px-4 relative overflow-hidden">

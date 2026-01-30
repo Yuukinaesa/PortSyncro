@@ -12,7 +12,7 @@ import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
 import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { FiLogOut, FiUser, FiCreditCard, FiSettings } from 'react-icons/fi';
+import { FiLogOut, FiUser, FiCreditCard, FiSettings, FiCheck } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
 import TransactionHistory from '../components/TransactionHistory';
@@ -3271,6 +3271,7 @@ export default function Home() {
                     isUpdatingPortfolio={portfolioLoading}
                     hideBalance={hideBalance}
                     onOpenSettings={() => setIsSettingsOpen(true)}
+                    onSnap={() => recordDailySnapshot(true)}
                   />
                 </ErrorBoundary>
               ) : activeTab === 'history' ? (
@@ -3358,29 +3359,50 @@ export default function Home() {
           type={confirmModal?.type || 'info'}
           onClose={() => setConfirmModal(null)}
         >
-          <div className="space-y-6">
-            {confirmModal?.message && (
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{confirmModal.message}</p>
-            )}
-            <div className="flex justify-end gap-3">
-              {confirmModal?.onConfirm && (
-                <button
-                  onClick={() => {
-                    if (confirmModal?.onConfirm) confirmModal.onConfirm();
-                    setConfirmModal(null);
-                  }}
-                  className={`px-6 py-2.5 font-bold rounded-xl transition-all duration-200 shadow-lg ${confirmModal?.type === 'error'
-                    ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/20'
-                    : confirmModal?.type === 'success'
-                      ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20'
-                      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20'
-                    }`}
-                >
-                  {confirmModal?.confirmText || t('ok')}
-                </button>
-              )}
+          {confirmModal?.type === 'success' ? (
+            <div className="flex flex-col items-center justify-center p-4">
+              <div className="w-16 h-16 bg-green-500/10 rounded-2xl flex items-center justify-center mb-4">
+                <FiCheck className="w-8 h-8 text-green-500" />
+              </div>
+              <h3 className="text-xl font-bold text-green-500 mb-2">
+                {confirmModal.title || 'Success'}
+              </h3>
+              <p className="text-gray-500 text-center mb-6">
+                {confirmModal.message}
+              </p>
+              <button
+                onClick={() => {
+                  if (confirmModal?.onConfirm) confirmModal.onConfirm();
+                  setConfirmModal(null);
+                }}
+                className="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-lg shadow-green-600/20 transition-all"
+              >
+                {confirmModal.confirmText || 'OK'}
+              </button>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-6">
+              {confirmModal?.message && (
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{confirmModal.message}</p>
+              )}
+              <div className="flex justify-end gap-3">
+                {confirmModal?.onConfirm && (
+                  <button
+                    onClick={() => {
+                      if (confirmModal?.onConfirm) confirmModal.onConfirm();
+                      setConfirmModal(null);
+                    }}
+                    className={`px-6 py-2.5 font-bold rounded-xl transition-all duration-200 shadow-lg ${confirmModal?.type === 'error'
+                      ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/20'
+                      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20'
+                      }`}
+                  >
+                    {confirmModal?.confirmText || t('ok')}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </Modal>
 
         {showAverageCalculator && (

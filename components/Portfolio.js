@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AssetTable from './AssetTable';
 import Notification from './Notification';
 
-import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp, FiDisc } from 'react-icons/fi';
+import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp, FiDisc, FiCamera } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { fetchExchangeRate } from '../lib/fetchPrices';
 import { formatNumber, formatIDR, formatUSD, formatNumberUSD, formatQuantity } from '../lib/utils';
@@ -39,7 +39,8 @@ export default function Portfolio({
 
   isUpdatingPortfolio = false,
   hideBalance,
-  onOpenSettings
+  onOpenSettings,
+  onSnap
 }) {
   const assetCount = useMemo(() => ({
     stocks: new Set((assets?.stocks || []).map(s => (s.ticker || '').toUpperCase())).size,
@@ -893,6 +894,12 @@ export default function Portfolio({
           <button onClick={copyToWhatsApp} className="bg-emerald-500 hover:bg-emerald-600 text-white w-10 sm:w-auto sm:px-4 h-10 rounded-xl flex items-center justify-center gap-2 font-bold transition-colors shadow-lg shadow-emerald-500/20">
             <FaWhatsapp className="w-4 h-4" />
             <span className="hidden sm:inline">Copy</span>
+          </button>
+
+          {/* Snap */}
+          <button onClick={() => onSnap && onSnap()} className="bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-4 h-10 rounded-xl flex items-center gap-2 text-xs font-bold transition-colors border border-indigo-200 dark:border-indigo-800/30">
+            <FiCamera className="w-4 h-4" />
+            <span className="hidden sm:inline">Snap</span>
           </button>
 
           {/* Settings */}

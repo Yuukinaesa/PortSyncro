@@ -6,7 +6,7 @@ import { useTheme } from '../lib/themeContext';
 import { useLanguage } from '../lib/languageContext';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, getDocs, where, limit, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import portfolioStateManager from '../lib/portfolioStateManager';
+import { usePortfolioState } from '../lib/usePortfolioState';
 import { FiArrowLeft, FiCalendar, FiDownload, FiTrendingUp, FiTrendingDown, FiActivity, FiInfo, FiCamera, FiCheck, FiX } from 'react-icons/fi';
 import { Line } from 'react-chartjs-2';
 import {
@@ -24,6 +24,7 @@ import { formatIDR, formatUSD, formatQuantity } from '../lib/utils';
 import { format, subDays, parseISO, isWithinInterval } from 'date-fns';
 import { id, enUS } from 'date-fns/locale';
 import { secureLogger } from '../lib/security';
+import Modal from '../components/Modal';
 
 // Register ChartJS components
 ChartJS.register(
@@ -103,6 +104,24 @@ export default function Reports() {
     const [snapshotLoading, setSnapshotLoading] = useState(false);
     const [notification, setNotification] = useState(null);
 
+    // Use Portfolio State to ensure consistency with Dashboard
+    const { assets, initialize: initializePortfolio, updatePrices } = usePortfolioState();
+
+    // Initialize Portfolio State (loads assets)
+    useEffect(() => {
+        const loadPortfolio = async () => {
+            if (user && getUserPortfolio) {
+                try {
+                    const portfolio = await getUserPortfolio();
+                    initializePortfolio(portfolio);
+                } catch (err) {
+                    console.error("Error initializing portfolio state:", err);
+                }
+            }
+        };
+        loadPortfolio();
+    }, [user, getUserPortfolio, initializePortfolio]);
+
     // Fetch History Data
     useEffect(() => {
         const fetchHistory = async () => {
@@ -152,7 +171,7 @@ export default function Reports() {
         return obj;
     };
 
-    // Capture Daily Snapshot
+    // Capture Daily Snapshot - MATCHING DASHBOARD LOGIC
     const captureSnapshot = useCallback(async () => {
         if (!user) {
             setNotification({
@@ -166,228 +185,223 @@ export default function Reports() {
         setSnapshotLoading(true);
 
         try {
-            // Get Live State from PortfolioStateManager (includes prices)
-            const state = portfolioStateManager.getState();
-            const prices = state.prices || {};
-            const safeExchangeRate = state.exchangeRate && state.exchangeRate > 0 ? state.exchangeRate : 16000;
+            // 1. Ensure we have Assets
+            if (!assets) {
+                throw new Error("Portfolio data not ready");
+            }
 
-            let finalAssets = { stocks: [], crypto: [], gold: [], cash: [] };
+            const stocks = assets.stocks || [];
+            const crypto = assets.crypto || [];
+            const gold = assets.gold || [];
+            const cash = assets.cash || [];
 
-            // Check if state has data
-            const hasStateData = state.isInitialized && (
-                (state.assets.stocks && state.assets.stocks.length > 0) ||
-                (state.assets.crypto && state.assets.crypto.length > 0) ||
-                (state.assets.gold && state.assets.gold.length > 0) ||
-                (state.assets.cash && state.assets.cash.length > 0)
-            );
+            // 2. Fetch LIVE PRICES (Critical for accuracy)
+            console.log('[MANUAL SNAPSHOT] Fetching live prices...');
 
-            if (hasStateData) {
-                console.log("Taking snapshot from Live State (Dashboard matches)", state.assets);
-                finalAssets = state.assets;
-            } else {
-                // Fallback: Fetch Transactions and Rebuild
-                console.log("Live State empty, rebuilding from Transactions (Source of Truth)...");
-                const txRef = collection(db, 'users', user.uid, 'transactions');
-                const q = query(txRef, orderBy('timestamp', 'asc'));
-                const querySnapshot = await getDocs(q);
+            // Prepare Tickers
+            const stockTickers = stocks.filter(stock => stock.ticker && stock.lots > 0).map(stock => {
+                if (stock.market === 'US') return stock.ticker;
+                const cleanTicker = stock.ticker.trim().toUpperCase();
+                return cleanTicker.endsWith('.JK') ? cleanTicker : `${cleanTicker}.JK`;
+            });
 
-                const transactions = querySnapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return { id: doc.id, ...data };
+            const cryptoSymbols = crypto
+                .filter(c => c.symbol && c.symbol.trim() && c.symbol.toUpperCase() !== 'INVALID')
+                .map(c => c.symbol);
+
+            let fetchedPrices = {};
+            let fetchedExchangeRate = 16000;
+
+            if (stockTickers.length > 0 || cryptoSymbols.length > 0) {
+                const token = await user.getIdToken();
+                const response = await fetch('/api/prices', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        stocks: stockTickers,
+                        crypto: cryptoSymbols,
+                        gold: gold.length > 0,
+                        userId: user.uid
+                    })
                 });
 
-                if (transactions.length > 0) {
-                    finalAssets = portfolioStateManager.buildAssetsFromTransactions(transactions, {});
+                if (response.ok) {
+                    const data = await response.json();
+                    fetchedPrices = data.prices || {};
+                    // Update local state primarily, but we use fetchedPrices variable for calculation to be safe
+                    updatePrices(fetchedPrices);
+                } else {
+                    console.warn('[MANUAL SNAPSHOT] Failed to fetch prices, using stored/empty values');
                 }
             }
 
-            const { stocks = [], crypto = [], gold = [], cash = [] } = finalAssets;
-
-            // Check if we have live prices available
-            const hasPrices = Object.keys(prices).length > 0;
-            console.log('[MANUAL SNAPSHOT] Prices available:', hasPrices, 'Price count:', Object.keys(prices).length);
-
-            let totalValueIDR = 0;
-            let totalValueUSD = 0;
-            let totalInvestedIDR = 0;
-            let enrichedPortfolio = { stocks: [], crypto: [], gold: [], cash: [] };
-
-            if (hasPrices) {
-                // ===== USE LIVE PRICES (SAME LOGIC AS index.js auto snapshot) =====
-                console.log('[MANUAL SNAPSHOT] Using LIVE PRICES for calculation');
-
-                // Calculate STOCKS using LIVE prices
-                let stocksValueIDR = 0;
-                let stocksValueUSD = 0;
-                let stocksInvestedIDR = 0;
-                const enrichedStocks = stocks.map(stock => {
-                    const priceKey = stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`;
-                    const realtimePrice = prices[priceKey];
-                    let currentPrice = stock.currentPrice || stock.entryPrice || 0;
-                    if (realtimePrice && realtimePrice.price) {
-                        currentPrice = realtimePrice.price;
-                    }
-
-                    const shareCount = stock.market === 'US' ? (stock.lots || 0) : (stock.lots || 0) * 100;
-                    const avgPrice = stock.avgPrice || stock.entryPrice || 0;
-
-                    let portoIDR, portoUSD, totalCostIDR;
-                    if (stock.market === 'US') {
-                        const valueUSD = currentPrice * shareCount;
-                        portoUSD = valueUSD;
-                        portoIDR = valueUSD * safeExchangeRate;
-                        totalCostIDR = avgPrice * shareCount * safeExchangeRate;
-                        stocksValueUSD += valueUSD;
-                        stocksValueIDR += valueUSD * safeExchangeRate;
-                    } else {
-                        const valueIDR = currentPrice * shareCount;
-                        portoIDR = valueIDR;
-                        portoUSD = valueIDR / safeExchangeRate;
-                        totalCostIDR = avgPrice * shareCount;
-                        stocksValueIDR += valueIDR;
-                        stocksValueUSD += valueIDR / safeExchangeRate;
-                    }
-                    stocksInvestedIDR += totalCostIDR;
-
-                    return {
-                        ...stock,
-                        currentPrice,
-                        porto: portoIDR,
-                        portoIDR: Math.round(portoIDR),
-                        portoUSD: Math.round(portoUSD * 100) / 100,
-                        totalCost: totalCostIDR,
-                        totalCostIDR: Math.round(totalCostIDR)
-                    };
-                });
-
-                // Calculate CRYPTO using LIVE prices
-                let cryptoValueIDR = 0;
-                let cryptoValueUSD = 0;
-                let cryptoInvestedIDR = 0;
-                const enrichedCrypto = crypto.map(c => {
-                    let price;
-                    if ((c.useManualPrice || c.isManual) && (c.manualPrice || c.price || c.avgPrice)) {
-                        price = c.manualPrice || c.price || c.avgPrice;
-                    } else {
-                        price = prices[c.symbol]?.price || c.currentPrice || 0;
-                    }
-                    const amount = parseFloat(c.amount) || 0;
-                    const avgPrice = c.avgPrice || c.entryPrice || 0;
-
-                    const valUSD = price * amount;
-                    const portoIDR = valUSD * safeExchangeRate;
-                    const totalCostIDR = avgPrice * amount * safeExchangeRate;
-
-                    cryptoValueUSD += valUSD;
-                    cryptoValueIDR += valUSD * safeExchangeRate;
-                    cryptoInvestedIDR += totalCostIDR;
-
-                    return {
-                        ...c,
-                        currentPrice: price,
-                        porto: valUSD,
-                        portoUSD: Math.round(valUSD * 100) / 100,
-                        portoIDR: Math.round(portoIDR),
-                        totalCost: avgPrice * amount,
-                        totalCostIDR: Math.round(totalCostIDR)
-                    };
-                });
-
-                // Calculate GOLD
-                let goldValueIDR = 0;
-                let goldValueUSD = 0;
-                let goldInvestedIDR = 0;
-                const enrichedGold = gold.map(g => {
-                    const price = g.currentPrice || 0;
-                    const amount = parseFloat(g.weight) || 0;
-                    const avgPrice = g.avgPrice || g.entryPrice || 0;
-
-                    const valIDR = price * amount;
-                    const totalCostIDR = avgPrice * amount;
-
-                    goldValueIDR += valIDR;
-                    goldValueUSD += valIDR / safeExchangeRate;
-                    goldInvestedIDR += totalCostIDR;
-
-                    return {
-                        ...g,
-                        porto: valIDR,
-                        portoIDR: Math.round(valIDR),
-                        portoUSD: Math.round((valIDR / safeExchangeRate) * 100) / 100,
-                        totalCost: totalCostIDR,
-                        totalCostIDR: Math.round(totalCostIDR)
-                    };
-                });
-
-                // Calculate CASH
-                let cashValueIDR = 0;
-                let cashValueUSD = 0;
-                const enrichedCash = cash.map(c => {
-                    const amount = parseFloat(c.amount) || 0;
-                    let portoIDR, portoUSD;
-                    if (c.currency === 'USD') {
-                        portoUSD = amount;
-                        portoIDR = amount * safeExchangeRate;
-                        cashValueUSD += amount;
-                        cashValueIDR += amount * safeExchangeRate;
-                    } else {
-                        portoIDR = amount;
-                        portoUSD = amount / safeExchangeRate;
-                        cashValueIDR += amount;
-                        cashValueUSD += amount / safeExchangeRate;
-                    }
-                    return {
-                        ...c,
-                        porto: portoIDR,
-                        portoIDR: Math.round(portoIDR),
-                        portoUSD: Math.round(portoUSD * 100) / 100
-                    };
-                });
-
-                totalValueIDR = stocksValueIDR + cryptoValueIDR + goldValueIDR + cashValueIDR;
-                totalValueUSD = stocksValueUSD + cryptoValueUSD + goldValueUSD + cashValueUSD;
-                totalInvestedIDR = stocksInvestedIDR + cryptoInvestedIDR + goldInvestedIDR;
-
-                enrichedPortfolio = {
-                    stocks: enrichedStocks,
-                    crypto: enrichedCrypto,
-                    gold: enrichedGold,
-                    cash: enrichedCash
-                };
-            } else {
-                // ===== NO LIVE PRICES - USE STORED VALUES FROM ASSETS =====
-                // This happens when user navigates directly to reports page without going through index.js first
-                console.log('[MANUAL SNAPSHOT] No live prices - using STORED VALUES from assets');
-
-                // Use stored portoIDR values (already calculated with live prices when they were available)
-                totalValueIDR =
-                    stocks.reduce((sum, item) => sum + (item.portoIDR || item.porto || 0), 0) +
-                    crypto.reduce((sum, item) => sum + (item.portoIDR || 0), 0) +
-                    gold.reduce((sum, item) => sum + (item.portoIDR || item.porto || 0), 0) +
-                    cash.reduce((sum, item) => sum + (item.portoIDR || item.porto || item.amount || 0), 0);
-
-                totalValueUSD =
-                    stocks.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
-                    crypto.reduce((sum, item) => sum + (item.portoUSD || item.porto || 0), 0) +
-                    gold.reduce((sum, item) => sum + (item.portoUSD || 0), 0) +
-                    cash.reduce((sum, item) => sum + (item.portoUSD || 0), 0);
-
-                // Calculate invested - EXCLUDE cash
-                totalInvestedIDR =
-                    stocks.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
-                    crypto.reduce((sum, item) => sum + (item.totalCostIDR || item.totalCost || 0), 0) +
-                    gold.reduce((sum, item) => sum + (item.totalCost || 0), 0);
-
-                // Use assets as-is (they already have correct values)
-                enrichedPortfolio = { stocks, crypto, gold, cash };
+            // Fetch Exchange Rate
+            try {
+                const rateRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+                if (rateRes.ok) {
+                    const rateData = await rateRes.json();
+                    fetchedExchangeRate = rateData.rates.IDR || 16000;
+                }
+            } catch (e) {
+                console.error("Error fetching rate:", e);
             }
 
-            console.log('[MANUAL SNAPSHOT] Final values:', {
-                totalValueIDR: Math.round(totalValueIDR),
-                totalInvestedIDR: Math.round(totalInvestedIDR),
-                hasPrices
+            const safeExchangeRate = fetchedExchangeRate;
+            const prices = fetchedPrices;
+
+            // 3. Calculate Values (EXACT DASHBOARD LOGIC)
+
+            // Calculate STOCKS
+            let stocksValueIDR = 0;
+            let stocksValueUSD = 0;
+            let stocksInvestedIDR = 0;
+            const enrichedStocks = stocks.map(stock => {
+                const priceKey = stock.market === 'US' ? stock.ticker : `${stock.ticker}.JK`;
+                const realtimePrice = prices[priceKey];
+                let currentPrice = stock.entryPrice || 0;
+                if (realtimePrice && realtimePrice.price) {
+                    currentPrice = realtimePrice.price;
+                }
+
+                const shareCount = stock.market === 'US' ? (stock.lots || 0) : (stock.lots || 0) * 100;
+                const avgPrice = stock.avgPrice || stock.entryPrice || 0;
+
+                let portoIDR, portoUSD, totalCostIDR;
+                if (stock.market === 'US') {
+                    const valueUSD = currentPrice * shareCount;
+                    portoUSD = valueUSD;
+                    portoIDR = valueUSD * safeExchangeRate;
+                    totalCostIDR = avgPrice * shareCount * safeExchangeRate;
+                } else {
+                    const valueIDR = currentPrice * shareCount;
+                    portoIDR = valueIDR;
+                    portoUSD = valueIDR / safeExchangeRate;
+                    totalCostIDR = avgPrice * shareCount;
+                }
+
+                // Add to totals
+                if (stock.market === 'US') {
+                    stocksValueUSD += portoUSD;
+                    stocksValueIDR += portoIDR;
+                    stocksInvestedIDR += totalCostIDR;
+                } else {
+                    stocksValueIDR += portoIDR;
+                    stocksValueUSD += portoUSD;
+                    stocksInvestedIDR += totalCostIDR;
+                }
+
+                return {
+                    ...stock,
+                    currentPrice,
+                    porto: portoIDR,
+                    portoIDR: Math.round(portoIDR),
+                    portoUSD: Math.round(portoUSD * 100) / 100,
+                    totalCost: totalCostIDR,
+                    totalCostIDR: Math.round(totalCostIDR)
+                };
             });
 
+            // Calculate CRYPTO
+            let cryptoValueIDR = 0;
+            let cryptoValueUSD = 0;
+            let cryptoInvestedIDR = 0;
+            const enrichedCrypto = crypto.map(c => {
+                let price;
+                if ((c.useManualPrice || c.isManual) && (c.manualPrice || c.price || c.avgPrice)) {
+                    price = c.manualPrice || c.price || c.avgPrice;
+                } else {
+                    price = prices[c.symbol]?.price || c.currentPrice || 0;
+                }
+
+                const amount = parseFloat(c.amount) || 0;
+                const avgPrice = c.avgPrice || c.entryPrice || 0;
+
+                const valUSD = price * amount;
+                const portoIDR = valUSD * safeExchangeRate;
+                const totalCostIDR = avgPrice * amount * safeExchangeRate;
+
+                cryptoValueUSD += valUSD;
+                cryptoValueIDR += portoIDR;
+                cryptoInvestedIDR += totalCostIDR;
+
+                return {
+                    ...c,
+                    currentPrice: price,
+                    porto: valUSD,
+                    portoUSD: Math.round(valUSD * 100) / 100,
+                    portoIDR: Math.round(portoIDR),
+                    totalCost: avgPrice * amount,
+                    totalCostIDR: Math.round(totalCostIDR)
+                };
+            });
+
+            // Calculate GOLD
+            let goldValueIDR = 0;
+            let goldValueUSD = 0;
+            let goldInvestedIDR = 0;
+            const enrichedGold = gold.map(g => {
+                const price = g.currentPrice || 0;
+                const amount = parseFloat(g.weight) || 0;
+                const avgPrice = g.avgPrice || g.entryPrice || 0;
+
+                const valIDR = price * amount;
+                const totalCostIDR = avgPrice * amount;
+
+                goldValueIDR += valIDR;
+                goldValueUSD += valIDR / safeExchangeRate;
+                goldInvestedIDR += totalCostIDR;
+
+                return {
+                    ...g,
+                    porto: valIDR,
+                    portoIDR: Math.round(valIDR),
+                    portoUSD: Math.round((valIDR / safeExchangeRate) * 100) / 100,
+                    totalCost: totalCostIDR,
+                    totalCostIDR: Math.round(totalCostIDR)
+                };
+            });
+
+            // Calculate CASH
+            let cashValueIDR = 0;
+            let cashValueUSD = 0;
+            const enrichedCash = cash.map(c => {
+                const amount = parseFloat(c.amount) || 0;
+                let portoIDR, portoUSD;
+                if (c.currency === 'USD') {
+                    portoUSD = amount;
+                    portoIDR = amount * safeExchangeRate;
+                    cashValueUSD += portoUSD;
+                    cashValueIDR += portoIDR;
+                } else {
+                    portoIDR = amount;
+                    portoUSD = amount / safeExchangeRate;
+                    cashValueIDR += portoIDR;
+                    cashValueUSD += portoUSD;
+                }
+                return {
+                    ...c,
+                    porto: portoIDR,
+                    portoIDR: Math.round(portoIDR),
+                    portoUSD: Math.round(portoUSD * 100) / 100
+                };
+            });
+
+            // Total Sums
+            const totalValueIDR = stocksValueIDR + cryptoValueIDR + goldValueIDR + cashValueIDR;
+            const totalValueUSD = stocksValueUSD + cryptoValueUSD + goldValueUSD + cashValueUSD;
+            const totalInvestedIDR = stocksInvestedIDR + cryptoInvestedIDR + goldInvestedIDR;
+
+            const enrichedPortfolio = {
+                stocks: enrichedStocks,
+                crypto: enrichedCrypto,
+                gold: enrichedGold,
+                cash: enrichedCash
+            };
+
+            // 4. Save to Firestore
             const today = new Date().toLocaleDateString('en-CA');
             const snapshotRef = doc(db, 'users', user.uid, 'history', today);
 
@@ -400,10 +414,9 @@ export default function Reports() {
                 portfolio: cleanUndefinedValues(enrichedPortfolio)
             };
 
-            // Use full overwrite (no merge) to prevent portfolio array duplication
             await setDoc(snapshotRef, snapshotData);
 
-            // Refresh history data
+            // Refresh history list
             const historyRef = collection(db, 'users', user.uid, 'history');
             const q = query(historyRef, orderBy('date', 'asc'));
             const snapshot = await getDocs(q);
@@ -429,7 +442,7 @@ export default function Reports() {
         } finally {
             setSnapshotLoading(false);
         }
-    }, [user, language, getUserPortfolio]);
+    }, [user, language, assets, updatePrices]);
 
     // Filter Data based on Range
     useEffect(() => {
@@ -709,7 +722,7 @@ export default function Reports() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white font-sans">
             <Head>
-                <title>{language === 'en' ? 'Portfolio Reports' : 'Laporan Portfolio'} | PortSyncro</title>
+                <title>{`${language === 'en' ? 'Portfolio Reports' : 'Laporan Portfolio'} | PortSyncro`}</title>
             </Head>
 
             {/* Header - Mobile Optimized */}
@@ -1087,65 +1100,59 @@ export default function Reports() {
                 </div>
             </main>
 
-            {/* Beautiful Notification Modal */}
-            {notification && (
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full relative animate-slideUp border border-gray-100 dark:border-gray-700">
+            {/* Modal Notification */}
+            <Modal
+                isOpen={!!notification}
+                onClose={() => setNotification(null)}
+                title="" // Hide default title since we do custom layout
+            >
+                {notification?.type === 'success' ? (
+                    <div className="flex flex-col items-center justify-center p-2">
+                        <div className="w-16 h-16 bg-green-500/10 rounded-2xl flex items-center justify-center mb-4">
+                            <FiCheck className="w-8 h-8 text-green-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-green-500 mb-2">
+                            {notification.title || 'Success'}
+                        </h3>
+                        <p className="text-gray-500 text-center mb-6">
+                            {notification.message}
+                        </p>
                         <button
                             onClick={() => setNotification(null)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                            className="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-lg shadow-green-600/20 transition-all"
                         >
-                            <FiX className="w-5 h-5" />
+                            OK
                         </button>
-
-                        <div className="text-center space-y-4">
-                            {/* Icon */}
-                            <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner ${notification.type === 'success'
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                                : notification.type === 'error'
-                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                                    : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
-                                }`}>
-                                {notification.type === 'success' ? (
-                                    <FiCheck className="w-8 h-8" />
-                                ) : notification.type === 'error' ? (
-                                    <FiX className="w-8 h-8" />
-                                ) : (
-                                    <FiInfo className="w-8 h-8" />
-                                )}
-                            </div>
-
-                            {/* Title */}
-                            <h3 className={`text-xl font-bold ${notification.type === 'success'
-                                ? 'text-green-600 dark:text-green-400'
-                                : notification.type === 'error'
-                                    ? 'text-red-600 dark:text-red-400'
-                                    : 'text-yellow-600 dark:text-yellow-400'
-                                }`}>
-                                {notification.title}
-                            </h3>
-
-                            {/* Message */}
-                            <p className="text-gray-600 dark:text-gray-300 text-sm">
-                                {notification.message}
-                            </p>
-
-                            {/* Button */}
-                            <button
-                                onClick={() => setNotification(null)}
-                                className={`w-full py-3 rounded-xl font-semibold transition-all transform hover:scale-[1.02] active:scale-[0.98] ${notification.type === 'success'
-                                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25'
-                                    : notification.type === 'error'
-                                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25'
-                                        : 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg shadow-yellow-500/25'
-                                    }`}
-                            >
-                                OK
-                            </button>
-                        </div>
                     </div>
-                </div>
-            )}
+                ) : (
+                    <div className="flex flex-col items-center justify-center p-2">
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${notification?.type === 'error' ? 'bg-red-500/10' : 'bg-blue-500/10'
+                            }`}>
+                            {notification?.type === 'error' ? (
+                                <FiX className="w-8 h-8 text-red-500" />
+                            ) : (
+                                <FiInfo className="w-8 h-8 text-blue-500" />
+                            )}
+                        </div>
+                        <h3 className={`text-xl font-bold mb-2 ${notification?.type === 'error' ? 'text-red-500' : 'text-blue-500'
+                            }`}>
+                            {notification?.title}
+                        </h3>
+                        <p className="text-gray-500 text-center mb-6">
+                            {notification?.message}
+                        </p>
+                        <button
+                            onClick={() => setNotification(null)}
+                            className={`w-full py-3 font-bold rounded-xl shadow-lg transition-all ${notification?.type === 'error'
+                                ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/20'
+                                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20'
+                                }`}
+                        >
+                            OK
+                        </button>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }

@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const withPWA = require('next-pwa')({
+const withPWA = require('@ducanh2912/next-pwa').default({
     dest: 'public',
     register: true,
     skipWaiting: true,
@@ -7,6 +7,7 @@ const withPWA = require('next-pwa')({
     buildExcludes: [
         /middleware-manifest\.json$/,
         /_middleware\.js$/,
+        /proxy\.js$/,
         /_worker\.js$/,
         /dynamic-css-manifest\.json$/
     ],
@@ -28,6 +29,7 @@ const withPWA = require('next-pwa')({
 
 const nextConfig = {
     reactStrictMode: true,
+    outputFileTracingRoot: require('path').join(__dirname),
     // swcMinify dihapus karena sudah tidak didukung
 
     // Security Headers Configuration
