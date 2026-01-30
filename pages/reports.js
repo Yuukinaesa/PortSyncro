@@ -557,8 +557,16 @@ export default function Reports() {
         const fmtUSD = (n) => '$' + parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const fmtQty = (n) => parseFloat(n || 0).toLocaleString('id-ID', { maximumFractionDigits: 7 });
 
-        // Header
-        csvRows.push(['Date', 'Day', 'Total Value', 'Invested', 'Net Profit', 'P/L %', 'Type', 'Name', 'Platform', 'Quantity', 'Value']);
+        // Format based on selected currency
+        const fmtValue = (idrVal, usdVal) => currency === 'IDR' ? fmtIDR(idrVal) : fmtUSD(usdVal);
+        const fmtSingleValue = (idrVal, exchangeRate = 16000) => {
+            if (currency === 'IDR') return fmtIDR(idrVal);
+            return fmtUSD(idrVal / exchangeRate);
+        };
+
+        // Header - show selected currency
+        const currencyLabel = currency === 'IDR' ? '(IDR)' : '(USD)';
+        csvRows.push(['Date', 'Day', `Total Value ${currencyLabel}`, `Invested ${currencyLabel}`, `Net Profit ${currencyLabel}`, 'P/L %', 'Type', 'Name', 'Platform', 'Quantity', `Value ${currencyLabel}`]);
 
         [...filteredData].reverse().forEach(item => {
             const dateObj = parseISO(item.date);
@@ -570,8 +578,17 @@ export default function Reports() {
             const profit = valueExcl - invested;
             const pct = invested > 0 ? ((profit / invested) * 100).toFixed(1) + '%' : '0%';
 
-            // Summary row
-            csvRows.push([dateStr, dayStr, fmtIDR(item.totalValueIDR), fmtIDR(invested), (profit >= 0 ? '+' : '') + fmtIDR(profit), pct, '', '', '', '', '']);
+            // Calculate implied exchange rate from item
+            const impliedRate = (item.totalValueIDR > 0 && item.totalValueUSD > 0)
+                ? (item.totalValueIDR / item.totalValueUSD)
+                : 16000;
+
+            // Summary row - use selected currency
+            const totalVal = currency === 'IDR' ? fmtIDR(item.totalValueIDR) : fmtUSD(item.totalValueUSD);
+            const investedVal = fmtSingleValue(invested, impliedRate);
+            const profitVal = (profit >= 0 ? '+' : '') + fmtSingleValue(profit, impliedRate);
+
+            csvRows.push([dateStr, dayStr, totalVal, investedVal, profitVal, pct, '', '', '', '', '']);
 
             // Asset rows
             const addAssets = (assets, type) => {
@@ -579,8 +596,24 @@ export default function Reports() {
                 assets.forEach(a => {
                     const name = type === 'stock' ? a.ticker : type === 'crypto' ? a.symbol : type === 'gold' ? (a.ticker || a.name) : (a.ticker || a.name);
                     const platform = a.broker || a.exchange || a.platform || '-';
-                    const qty = type === 'stock' ? `${fmtQty(a.lots)} lot` : type === 'crypto' ? `${fmtQty(a.amount)} unit` : type === 'gold' ? `${fmtQty(a.amount || a.weight)}g` : fmtIDR(a.amount);
-                    csvRows.push(['', '', '', '', '', '', type.toUpperCase(), name, platform, qty, fmtIDR(a.portoIDR)]);
+
+                    // Format quantity based on type
+                    let qty;
+                    if (type === 'stock') {
+                        qty = `${fmtQty(a.lots)} lot`;
+                    } else if (type === 'crypto') {
+                        qty = `${fmtQty(a.amount)} unit`;
+                    } else if (type === 'gold') {
+                        qty = `${fmtQty(a.amount || a.weight)}g`;
+                    } else {
+                        // Cash - format amount based on currency
+                        qty = currency === 'IDR' ? fmtIDR(a.amount) : fmtUSD(a.amount / impliedRate);
+                    }
+
+                    // Format value based on selected currency
+                    const assetVal = currency === 'IDR' ? fmtIDR(a.portoIDR) : fmtUSD(a.portoUSD || (a.portoIDR / impliedRate));
+
+                    csvRows.push(['', '', '', '', '', '', type.toUpperCase(), name, platform, qty, assetVal]);
                 });
             };
 
@@ -598,7 +631,7 @@ export default function Reports() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `PortSyncro_History_${dateRange.start}_${dateRange.end}.csv`;
+        link.download = `PortSyncro_History_${currency}_${dateRange.start}_${dateRange.end}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -620,7 +653,10 @@ export default function Reports() {
         const fmtUSD = (n) => '$' + parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const escape = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
 
-        // Calculate stats
+        // Format function based on selected currency
+        const fmtCurrency = (n) => currency === 'IDR' ? fmtIDR(n) : fmtUSD(n);
+
+        // Calculate stats based on selected currency
         const values = filteredData.map(d => currency === 'IDR' ? d.totalValueIDR : d.totalValueUSD);
         const startVal = values[0] || 0;
         const endVal = values[values.length - 1] || 0;
@@ -628,24 +664,35 @@ export default function Reports() {
         const netChangePct = startVal > 0 ? (netChange / startVal) * 100 : 0;
 
         const latest = filteredData[filteredData.length - 1];
-        const invested = calculateInvestedExcludingCash(latest);
-        const valueExcl = calculateValueExcludingCash(latest);
+
+        // Calculate invested and profit based on selected currency
+        const impliedRate = (latest.totalValueIDR > 0 && latest.totalValueUSD > 0)
+            ? (latest.totalValueIDR / latest.totalValueUSD)
+            : 16000;
+
+        const investedIDR = calculateInvestedExcludingCash(latest);
+        const valueExclIDR = calculateValueExcludingCash(latest);
+
+        const invested = currency === 'IDR' ? investedIDR : (investedIDR / impliedRate);
+        const valueExcl = currency === 'IDR' ? valueExclIDR : (valueExclIDR / impliedRate);
         const totalProfit = valueExcl - invested;
         const totalProfitPct = invested > 0 ? (totalProfit / invested) * 100 : 0;
 
         const high = Math.max(...values);
         const low = Math.min(...values);
 
+        const currencyLabel = currency === 'IDR' ? 'IDR' : 'USD';
         const csvRows = [];
-        csvRows.push(['PORTFOLIO STATS SUMMARY']);
+        csvRows.push([`PORTFOLIO STATS SUMMARY (${currencyLabel})`]);
         csvRows.push(['Date Range', `${dateRange.start} to ${dateRange.end}`]);
+        csvRows.push(['Currency', currencyLabel]);
         csvRows.push(['Snapshots', filteredData.length]);
         csvRows.push([]);
-        csvRows.push(['Metric', 'Value', 'Percentage']);
-        csvRows.push(['Net Change', (netChange >= 0 ? '+' : '') + fmtIDR(netChange), (netChange >= 0 ? '+' : '') + netChangePct.toFixed(1) + '%']);
-        csvRows.push(['Total Profit', (totalProfit >= 0 ? '+' : '') + fmtIDR(totalProfit), totalProfitPct.toFixed(1) + '%']);
-        csvRows.push(['Highest (ATH)', fmtIDR(high), '🏆']);
-        csvRows.push(['Lowest (ATL)', fmtIDR(low), '📉']);
+        csvRows.push(['Metric', `Value (${currencyLabel})`, 'Percentage']);
+        csvRows.push(['Net Change', (netChange >= 0 ? '+' : '') + fmtCurrency(netChange), (netChange >= 0 ? '+' : '') + netChangePct.toFixed(1) + '%']);
+        csvRows.push(['Total Profit', (totalProfit >= 0 ? '+' : '') + fmtCurrency(totalProfit), totalProfitPct.toFixed(1) + '%']);
+        csvRows.push(['Highest (ATH)', fmtCurrency(high), '🏆']);
+        csvRows.push(['Lowest (ATL)', fmtCurrency(low), '📉']);
 
         const BOM = '\uFEFF';
         const csv = BOM + csvRows.map(r => r.map(escape).join(',')).join('\n');
@@ -653,7 +700,7 @@ export default function Reports() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `PortSyncro_Stats_${dateRange.start}_${dateRange.end}.csv`;
+        link.download = `PortSyncro_Stats_${currencyLabel}_${dateRange.start}_${dateRange.end}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
