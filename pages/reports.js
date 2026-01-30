@@ -196,7 +196,7 @@ export default function Reports() {
             const cash = assets.cash || [];
 
             // 2. Fetch LIVE PRICES (Critical for accuracy)
-            console.log('[MANUAL SNAPSHOT] Fetching live prices...');
+            secureLogger.log('[MANUAL SNAPSHOT] Fetching live prices...');
 
             // Prepare Tickers
             const stockTickers = stocks.filter(stock => stock.ticker && stock.lots > 0).map(stock => {
@@ -819,28 +819,34 @@ export default function Reports() {
                     {/* Date Inputs Row - Better mobile spacing */}
                     <div className="flex items-center gap-3 sm:gap-4 mb-4">
                         <div className="flex-1">
-                            <label className="block text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
+                            <label htmlFor="date-range-start" className="block text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
                                 {language === 'en' ? 'From' : 'Dari'}
                             </label>
                             <input
+                                id="date-range-start"
+                                name="dateRangeStart"
                                 type="date"
                                 value={dateRange.start}
                                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
                                 className="w-full px-3 py-3 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm font-medium transition-all min-h-[48px] sm:min-h-[44px]"
+                                aria-label={language === 'en' ? 'Start date' : 'Tanggal mulai'}
                             />
                         </div>
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 mt-5 flex-shrink-0">
                             <span className="text-gray-400 dark:text-gray-500 text-sm">→</span>
                         </div>
                         <div className="flex-1">
-                            <label className="block text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
+                            <label htmlFor="date-range-end" className="block text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
                                 {language === 'en' ? 'To' : 'Sampai'}
                             </label>
                             <input
+                                id="date-range-end"
+                                name="dateRangeEnd"
                                 type="date"
                                 value={dateRange.end}
                                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
                                 className="w-full px-3 py-3 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm font-medium transition-all min-h-[48px] sm:min-h-[44px]"
+                                aria-label={language === 'en' ? 'End date' : 'Tanggal akhir'}
                             />
                         </div>
                     </div>

@@ -834,20 +834,20 @@ export default function Home() {
 
 
       // DEBUG: Log what we're calculating
-      console.log('[SNAPSHOT DEBUG] Using LIVE PRICES - Asset counts:', {
+      secureLogger.log('[SNAPSHOT DEBUG] Using LIVE PRICES - Asset counts:', {
         stocks: stocks.length,
         crypto: crypto.length,
         gold: gold.length,
         cash: cash.length
       });
-      console.log('[SNAPSHOT DEBUG] Value breakdown (IDR) with LIVE prices:', {
+      secureLogger.log('[SNAPSHOT DEBUG] Value breakdown (IDR) with LIVE prices:', {
         stocksValueIDR: Math.round(stocksValueIDR),
         cryptoValueIDR: Math.round(cryptoValueIDR),
         goldValueIDR: Math.round(goldValueIDR),
         cashValueIDR: Math.round(cashValueIDR),
         totalValueIDR: Math.round(totalValueIDR)
       });
-      console.log('[SNAPSHOT DEBUG] Invested breakdown (IDR):', {
+      secureLogger.log('[SNAPSHOT DEBUG] Invested breakdown (IDR):', {
         stocksInvestedIDR: Math.round(stocksInvestedIDR),
         cryptoInvestedIDR: Math.round(cryptoInvestedIDR),
         goldInvestedIDR: Math.round(goldInvestedIDR),
