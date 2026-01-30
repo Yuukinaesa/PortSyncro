@@ -3110,6 +3110,8 @@ export default function Home() {
               <div className="min-w-0">
                 <h1 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate">PortSyncro</h1>
                 <p className="text-[9px] sm:text-[10px] font-medium text-gray-500 leading-tight truncate max-w-[120px] sm:max-w-none hidden xs:block">{t('tagline')}</p>
+                {/* User email for mobile - only show on xs and below sm */}
+                <p className="text-[9px] font-medium text-blue-600 dark:text-blue-400 leading-tight truncate max-w-[200px] sm:hidden">{user?.email}</p>
               </div>
             </div>
 
@@ -3127,7 +3129,7 @@ export default function Home() {
 
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="hidden sm:flex flex-col items-end min-w-0">
-                  <span className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate max-w-[100px]">{user?.email?.split('@')[0]}</span>
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate max-w-[200px]">{user?.email}</span>
                 </div>
                 <button
                   onClick={logout}
