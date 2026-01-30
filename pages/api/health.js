@@ -9,22 +9,25 @@ export default function handler(req, res) {
 
     // Handle preflight
     if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+        res.status(200).end();
+        return;
     }
 
     // HEAD request for lightweight ping
     if (req.method === 'HEAD') {
-        return res.status(200).end();
+        res.status(200).end();
+        return;
     }
 
     // GET request returns simple status
     if (req.method === 'GET') {
-        return res.status(200).json({
+        res.status(200).json({
             status: 'ok',
             timestamp: new Date().toISOString()
         });
+        return;
     }
 
     // Method not allowed
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Method not allowed' });
 }

@@ -54,7 +54,8 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') {
     secureLogger.warn('Method not allowed:', req.method);
-    return res.status(405).json({ message: 'Method Not Allowed' });
+    res.status(405).json({ message: 'Method Not Allowed' });
+    return;
   }
 
   // Enhanced rate limiting - prefer user ID over IP for better isolation
@@ -110,17 +111,19 @@ export default async function handler(req, res) {
 
     // For now, we block ALL anonymous traffic to this internal API.
     secureLogger.warn(`Blocked unauthenticated access attempt to /api/prices from IP: ${clientIP}`);
-    return res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
+    res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
+    return;
   }
 
   if (!checkRateLimit(rateLimitIdentifier)) {
     secureLogger.warn(`Rate limit exceeded for: ${rateLimitIdentifier}`);
-    return res.status(429).json({
+    res.status(429).json({
       message: 'Too many requests. Please try again later.',
       retryAfter: 60,
       error: 'RATE_LIMIT_EXCEEDED',
       identifier: rateLimitIdentifier
     });
+    return;
   }
 
   const { stocks, crypto, gold, exchangeRate } = req.body;
@@ -129,26 +132,29 @@ export default async function handler(req, res) {
   try {
     // Validate input
     if (!stocks && !crypto && !gold) {
-      return res.status(400).json({
+      res.status(400).json({
         message: 'No stocks, crypto, or gold request provided',
         prices: {},
         timestamp: new Date().toISOString()
       });
+      return;
     }
 
     // SECURITY: Limit array size to prevent DoS (Resource Exhaustion)
     const MAX_ITEMS = 50;
     if ((stocks && stocks.length > MAX_ITEMS) || (crypto && crypto.length > MAX_ITEMS)) {
       secureLogger.warn(`Request exceeded max items limit. Stocks: ${stocks?.length}, Crypto: ${crypto?.length}`);
-      return res.status(400).json({
+      res.status(400).json({
         message: `Too many items. Maximum ${MAX_ITEMS} items allowed per category.`,
         error: 'LIMIT_EXCEEDED'
       });
+      return;
     }
 
     // Security: Ensure inputs are arrays if provided
     if ((stocks && !Array.isArray(stocks)) || (crypto && !Array.isArray(crypto))) {
-      return res.status(400).json({ message: 'Invalid input format. Stocks and crypto must be arrays.' });
+      res.status(400).json({ message: 'Invalid input format. Stocks and crypto must be arrays.' });
+      return;
     }
 
 
