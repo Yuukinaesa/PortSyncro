@@ -190,19 +190,39 @@ function buildAssetsFromTransactions(transactions, prices, currentAssets = { sto
 
     const sampleTx = txs.find(t => t.type !== 'delete') || txs[0];
     const subtype = sampleTx.subtype || 'digital';
-    const brand = sampleTx.brand || 'pegadaian';
+    let brand = sampleTx.brand || 'pegadaian';
 
-    if (subtype === 'digital') {
-      currentPrice = goldPrices.digital?.sellPrice || goldPrices.digital?.price || 0; // Use sellPrice (Buyback) for valuation? Standard is usually Sell Price.
-      // Actually valuation usually uses Buyback price (what we can sell it for).
-      // Let's use sellPrice if available, else price.
+    // Extract brand from ticker if not properly set (e.g., GOLD-ANTAM -> antam)
+    if (ticker && ticker.includes('-')) {
+      const extractedBrand = ticker.split('-')[1]?.toLowerCase();
+      if (['antam', 'ubs', 'galeri24'].includes(extractedBrand)) {
+        brand = extractedBrand;
+        secureLogger.log(`Extracted brand '${brand}' from ticker '${ticker}'`);
+      }
+    }
+
+    // Auto-detect subtype from ticker
+    const effectiveSubtype = ticker?.toUpperCase() === 'GOLD-DIGITAL' ? 'digital' :
+      (ticker?.includes('-') && ['ANTAM', 'UBS', 'GALERI24'].includes(ticker.split('-')[1]?.toUpperCase()) ? 'physical' : subtype);
+
+    if (effectiveSubtype === 'digital') {
+      currentPrice = goldPrices.digital?.sellPrice || goldPrices.digital?.price || 0;
     } else {
       const b = brand.toLowerCase();
       if (goldPrices.physical && goldPrices.physical[b]) {
         currentPrice = goldPrices.physical[b].price || 0;
-      } else {
-        currentPrice = goldPrices.digital?.sellPrice || 0;
+        secureLogger.log(`Gold ${ticker}: Using physical price for '${b}': ${currentPrice}`);
+      } else if (goldPrices.digital?.sellPrice) {
+        currentPrice = goldPrices.digital.sellPrice;
+        secureLogger.warn(`Gold ${ticker}: Physical brand '${b}' not found, using digital sellPrice: ${currentPrice}`);
       }
+    }
+
+    // Fallback: if no API prices yet, use currentPrice from latest transaction
+    if (currentPrice === 0 && txs.length > 0) {
+      const latestTx = txs[txs.length - 1];
+      currentPrice = latestTx.currentPrice || latestTx.price || 0;
+      secureLogger.log(`Gold ${ticker}: Fallback to tx.currentPrice: ${currentPrice}`);
     }
 
     // Skip delete transactions when building assets
@@ -1349,15 +1369,22 @@ export default function Home() {
       secureLogger.log('Adding gold:', gold);
       if (!user) throw new Error('User not authenticated');
 
+      // avgPrice = purchase price per gram (what user paid)
+      // price = current market price per gram (for valuation)
+      const purchasePrice = gold.avgPrice || gold.price; // Use avgPrice for cost basis
+      const currentMarketPrice = gold.price; // Current price for reference
+
       const transactionData = {
         type: 'buy',
         assetType: 'gold',
         ticker: gold.ticker,
         name: gold.name,
         amount: gold.weight, // Grams
-        price: gold.price,
-        valueIDR: gold.price * gold.weight,
-        valueUSD: (gold.price * gold.weight) / (exchangeRate || 16500),
+        price: purchasePrice, // IMPORTANT: Use purchase price for cost calculation!
+        avgPrice: purchasePrice, // Store purchase price explicitly
+        currentPrice: currentMarketPrice, // Store current market price separately
+        valueIDR: purchasePrice * gold.weight, // Cost = purchase price × weight
+        valueUSD: (purchasePrice * gold.weight) / (exchangeRate || 16500),
         date: new Date().toLocaleString('id-ID'),
         timestamp: serverTimestamp(),
         currency: 'IDR',
@@ -1366,7 +1393,10 @@ export default function Home() {
         brand: gold.brand,
         broker: gold.broker,
         status: 'completed',
-        userId: user.uid
+        userId: user.uid,
+        useManualPrice: gold.useManualPrice || false,
+        manualPrice: gold.manualPrice || null,
+        isManual: false // Never block live price updates
       };
 
       const docRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), transactionData);
@@ -2197,11 +2227,23 @@ export default function Home() {
       else if (prices.gold) {
         // Determine subtype from asset (default to digital)
         const subtype = asset.subtype || 'digital';
-        const brand = (asset.brand || '').toLowerCase();
+        let brand = (asset.brand || '').toLowerCase();
 
-        if (subtype === 'digital') {
+        // Extract brand from ticker if not properly set (e.g., GOLD-ANTAM -> antam)
+        if (ticker && ticker.includes('-')) {
+          const extractedBrand = ticker.split('-')[1]?.toLowerCase();
+          if (['antam', 'ubs', 'galeri24'].includes(extractedBrand)) {
+            brand = extractedBrand;
+          }
+        }
+
+        // Auto-detect subtype from ticker
+        const effectiveSubtype = ticker?.toUpperCase() === 'GOLD-DIGITAL' ? 'digital' :
+          (ticker?.includes('-') && ['ANTAM', 'UBS', 'GALERI24'].includes(ticker.split('-')[1]?.toUpperCase()) ? 'physical' : subtype);
+
+        if (effectiveSubtype === 'digital') {
           currentPrice = prices.gold.digital?.sellPrice || prices.gold.digital?.price || 0;
-        } else if (subtype === 'physical') {
+        } else if (effectiveSubtype === 'physical') {
           if (prices.gold.physical && prices.gold.physical[brand]) {
             currentPrice = prices.gold.physical[brand].price || 0;
           } else {

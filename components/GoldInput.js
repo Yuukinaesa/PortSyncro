@@ -96,9 +96,12 @@ export default function GoldInput({ onAdd, onComplete }) {
                 throw new Error('Harga beli tidak valid. Masukkan harga manual jika data tidak tersedia.');
             }
 
-            // If Manual Current Price is used, use it for 'price' (Current Price)
+            // If Manual Current Price is used, use it. Otherwise use live estimated price.
             const manualCurr = useManualCurrentPrice && manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : 0;
-            const currentPriceToSave = manualCurr > 0 ? manualCurr : finalPrice;
+
+            // price = Current price for valuation (not purchase price!)
+            // Priority: Manual current price > Estimated live price > Purchase price as last fallback
+            const currentPriceToSave = manualCurr > 0 ? manualCurr : (currentEstimatedPrice > 0 ? currentEstimatedPrice : finalPrice);
 
             const goldAsset = {
                 ticker: subtype === 'digital' ? 'GOLD-DIGITAL' : `GOLD-${brand.toUpperCase()}`,
@@ -106,11 +109,11 @@ export default function GoldInput({ onAdd, onComplete }) {
                 weight: weightNum,
                 subtype: subtype,
                 brand: subtype === 'physical' ? brand : 'pegadaian', // Default digital to Pegadaian
-                price: currentPriceToSave,
-                avgPrice: finalPrice,
+                price: currentPriceToSave, // Current market price for valuation
+                avgPrice: finalPrice, // Purchase price per gram
                 currency: 'IDR',
                 market: 'Gold',
-                isManual: !!avgPrice,
+                isManual: false, // isManual should not block live price updates - only useManualPrice should
                 broker: broker || (subtype === 'digital' ? 'Pegadaian' : 'Toko Emas'),
                 addedAt: new Date().toISOString(),
                 useManualPrice: useManualCurrentPrice,
@@ -210,11 +213,11 @@ export default function GoldInput({ onAdd, onComplete }) {
             <div>
                 <div className="flex justify-between items-center mb-2 ml-1">
                     <label htmlFor="avgPrice" className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        Harga Beli (per Gram)
+                        Harga Beli (per Gram) <span className="text-gray-400 font-normal normal-case">- Saat Pembelian</span>
                     </label>
                     {currentEstimatedPrice > 0 && (
                         <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
-                            Estimasi: Rp {currentEstimatedPrice.toLocaleString('id-ID')}
+                            Harga Saat Ini: Rp {currentEstimatedPrice.toLocaleString('id-ID')}
                         </span>
                     )}
                 </div>
@@ -225,13 +228,18 @@ export default function GoldInput({ onAdd, onComplete }) {
                         id="avgPrice"
                         value={avgPrice}
                         onChange={(e) => setAvgPrice(e.target.value)}
-                        placeholder={currentEstimatedPrice > 0 ? `Rp ${currentEstimatedPrice.toLocaleString('id-ID')}` : "Contoh: 1300000"}
+                        placeholder={`Contoh: 710000`}
                         className="w-full px-4 py-3.5 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500 transition-all font-medium"
                     />
                 </div>
                 <p className="text-xs text-gray-500 mt-2 ml-1">
-                    Kosongkan untuk menggunakan harga estimasi saat ini (Realtime Pegadaian/Market).
+                    <span className="font-medium">Harga per gram saat Anda membeli.</span> Kosongkan untuk menggunakan harga market saat ini sebagai harga beli.
                 </p>
+                {currentEstimatedPrice > 0 && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1 ml-1">
+                        ✓ Harga sekarang akan otomatis diambil dari market untuk valuasi.
+                    </p>
+                )}
             </div>
 
             <div>
