@@ -167,6 +167,8 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
         if (isNaN(newAmount) || newAmount < 0) return;
 
         // Construct update object cleanly
+        // IMPORTANT: When resetting to market, both useManualPrice and isManual must be false
+        const isUsingManualPrice = manualCurrentPrice ? true : false;
         const updatedAsset = {
             ...asset,
             lots: type === 'stock' ? newAmount : (asset.lots || 0),
@@ -174,10 +176,11 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
             avgPrice: type === 'cash' ? 1 : newAvgPrice,
             broker: (type === 'stock' || type === 'gold') ? broker : undefined,
             exchange: type === 'crypto' ? broker : undefined,
-            // Save manual price settings
-            useManualPrice: manualCurrentPrice ? true : false,
-            manualPrice: manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : null,
-            currentPrice: manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : asset.currentPrice
+            // Save manual price settings - both flags must be consistent
+            useManualPrice: isUsingManualPrice,
+            isManual: isUsingManualPrice, // Reset isManual when resetting to market price
+            manualPrice: isUsingManualPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : null,
+            currentPrice: isUsingManualPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : asset.currentPrice
         };
 
         // Clean up undefined/stock specific fields for crypto if strictly needed, 

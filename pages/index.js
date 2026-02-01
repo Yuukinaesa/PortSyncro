@@ -1527,8 +1527,9 @@ export default function Home() {
       userId: user.uid,
       description: 'Average price updated by user',
       broker: updatedStock.broker || null, // Save broker info
-      // Save manual price settings if present
+      // Save manual price settings if present - both flags must be consistent
       useManualPrice: updatedStock.useManualPrice || false,
+      isManual: updatedStock.isManual || false, // Reset isManual when resetting to market
       manualPrice: updatedStock.manualPrice || null
     };
 
@@ -1617,8 +1618,9 @@ export default function Home() {
       userId: user.uid,
       description: 'Average price updated by user',
       exchange: updatedCrypto.exchange || null, // Save exchange info
-      // Save manual price settings if present
+      // Save manual price settings if present - both flags must be consistent
       useManualPrice: updatedCrypto.useManualPrice || false,
+      isManual: updatedCrypto.isManual || false, // Reset isManual when resetting to market
       manualPrice: updatedCrypto.manualPrice || null
     };
     secureLogger.log('Update transaction created:', updateTransaction);
@@ -1708,7 +1710,9 @@ export default function Home() {
       broker: updatedGold.broker || null, // Broker/Location
       subtype: updatedGold.subtype || null,
       brand: updatedGold.brand || null,
+      // Save manual price settings if present - both flags must be consistent
       useManualPrice: updatedGold.useManualPrice || false,
+      isManual: updatedGold.isManual || false, // Reset isManual when resetting to market
       manualPrice: updatedGold.manualPrice || null
     };
 
