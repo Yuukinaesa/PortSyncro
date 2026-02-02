@@ -561,9 +561,29 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     avgUSD = exchangeRate ? asset.avgPrice / exchangeRate : 0;
                   }
 
-                  // Calculate Current Price in IDR and USD
+
+
+                  // Calculate Current Price in IDR and USD - USE LIVE PRICES FROM API
                   let currentIDR = 0, currentUSD = 0;
-                  const activePrice = val.price || asset.currentPrice || 0;
+
+                  // CRITICAL FIX: Use live price from memoizedPrices (API data), NOT asset.currentPrice (stale)
+                  // This is the key fix for real-time price updates
+                  let livePrice = 0;
+
+                  if (type === 'stock') {
+                    const priceKey = market === 'US' ? asset.ticker : `${asset.ticker}.JK`;
+                    livePrice = memoizedPrices[priceKey]?.price || 0;
+                  } else if (type === 'crypto') {
+                    livePrice = memoizedPrices[asset.symbol]?.price || 0;
+                  } else if (type === 'gold') {
+                    // For gold, still use asset.currentPrice as it's calculated separately
+                    livePrice = asset.currentPrice || 0;
+                  } else if (type === 'cash') {
+                    livePrice = 1; // Cash is always 1
+                  }
+
+                  // Fallback to asset price only if no live price available
+                  const activePrice = livePrice || val.price || asset.currentPrice || 0;
 
                   if ((type === 'stock' && market === 'US') || type === 'crypto') {
                     currentUSD = activePrice;
@@ -582,6 +602,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     currentIDR = activePrice;
                     currentUSD = exchangeRate ? activePrice / exchangeRate : 0;
                   }
+
 
 
                   const rowClass = isSummary
@@ -773,7 +794,22 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
             // Calculate Avg Price & Modal for Mobile -- Sync with Desktop Logic
             let avgIDR = 0, avgUSD = 0, modalIDR = 0, modalUSD = 0, currentIDR = 0, currentUSD = 0;
-            const activePrice = asset.price || asset.currentPrice || 0;
+
+            // CRITICAL FIX: Use live price from memoizedPrices (same as desktop fix)
+            let livePrice = 0;
+
+            if (type === 'stock') {
+              const priceKey = market === 'US' ? asset.ticker : `${asset.ticker}.JK`;
+              livePrice = memoizedPrices[priceKey]?.price || 0;
+            } else if (type === 'crypto') {
+              livePrice = memoizedPrices[asset.symbol]?.price || 0;
+            } else if (type === 'gold') {
+              livePrice = asset.currentPrice || 0;
+            } else if (type === 'cash') {
+              livePrice = 1;
+            }
+
+            const activePrice = livePrice || asset.price || asset.currentPrice || 0;
 
             if ((type === 'stock' && market === 'US') || type === 'crypto') {
               avgUSD = asset.avgPrice;
@@ -790,6 +826,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
               currentIDR = activePrice;
               currentUSD = exchangeRate ? activePrice / exchangeRate : 0;
             }
+
 
             const isProfit = gainIDR >= 0;
             const isChangePos = change >= 0;
