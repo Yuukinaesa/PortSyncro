@@ -531,11 +531,8 @@ export default function Home() {
 
       updatePrices(data.prices);
 
-      // Force portfolio value update after price update
-      // This ensures that existing assets display the latest prices
-      setTimeout(() => {
-        rebuildPortfolio();
-      }, 100);
+      // Note: updatePrices already calls updatePortfolioValues internally
+      // which updates all assets with current prices. No need for rebuildPortfolio here.
 
     } catch (error) {
       secureLogger.error('Error fetching prices:', error);
