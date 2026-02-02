@@ -472,7 +472,7 @@ export default function Home() {
 
       const token = user ? await user.getIdToken() : null;
 
-      const response = await fetch('/api/prices', {
+      const response = await fetch(`/api/prices?_t=${Date.now()}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
