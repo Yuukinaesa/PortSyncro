@@ -313,6 +313,7 @@ export default function Home() {
   const [resetStatus, setResetStatus] = useState('');
   const [restoreComplete, setRestoreComplete] = useState(false);
   const restoreInProgressRef = useRef(false); // Flag to prevent race condition during restore
+  const [pendingSnapshot, setPendingSnapshot] = useState(null); // Queue for snapshot: null | 'auto' | 'manual'
 
   // CRITICAL FIX: Stable ref for assets to prevent performPriceFetch from recreating
   const assetsRef = useRef(null);
@@ -769,6 +770,30 @@ export default function Home() {
   // Daily Snapshot Logic
   // Reusable Snapshot Function
   const recordDailySnapshot = useCallback(async (force = false) => {
+    // User Requirement: Wait for price update before snapshot to ensure accuracy
+    // This applies to BOTH manual and auto snapshots now
+    if (pricesLoading) {
+      if (force) {
+        secureLogger.log('Manual snapshot deferred: Waiting for price update');
+        setPendingSnapshot('manual');
+        setConfirmModal({
+          isOpen: true,
+          title: t('pleaseWait') || 'Mohon Tunggu',
+          message: language === 'en'
+            ? 'Updating prices for accuracy... Snapshot will be taken automatically.'
+            : 'Sedang memperbarui harga... Snapshot akan diambil otomatis setelah selesai.',
+          type: 'info',
+          confirmText: t('ok') || 'OK',
+          onConfirm: () => setConfirmModal(null)
+        });
+      } else {
+        // For auto-snapshot, properly queue it instead of skipping
+        secureLogger.log('Auto snapshot deferred: Waiting for price update');
+        setPendingSnapshot('auto');
+      }
+      return;
+    }
+
     if (!user || loading || authLoading || !assets || !isInitialized) {
       if (force) {
         setConfirmModal({
@@ -1073,7 +1098,21 @@ export default function Home() {
         });
       }
     }
-  }, [user, assets, prices, loading, authLoading, isInitialized, exchangeRate, t, language]);
+  }, [user, assets, prices, loading, authLoading, isInitialized, exchangeRate, t, language, pricesLoading]);
+
+  // Effect to execute pending snapshot once prices are loaded
+  useEffect(() => {
+    if (!pricesLoading && pendingSnapshot) {
+      secureLogger.log(`Price update complete, executing pending ${pendingSnapshot} snapshot`);
+      const isManual = pendingSnapshot === 'manual';
+      setPendingSnapshot(null); // Clear flag
+
+      // Wait a brief moment to ensure state is settled
+      setTimeout(() => {
+        recordDailySnapshot(isManual);
+      }, 500);
+    }
+  }, [pricesLoading, pendingSnapshot, recordDailySnapshot]);
 
   // Daily Snapshot Logic (Auto - Debounce on Change)
   useEffect(() => {

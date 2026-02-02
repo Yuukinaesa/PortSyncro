@@ -646,6 +646,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                               onChange={(e) => setNewAmount(e.target.value)}
                               className="w-32 px-2 py-1 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-gray-700 rounded text-right text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                               autoFocus
+                              aria-label={t('editAmount') || "Edit amount"}
                             />
                           ) : (
                             getMasked(formatQuantity(type === 'stock' ? asset.lots : asset.amount)) + (type === 'gold' ? 'g' : '')
