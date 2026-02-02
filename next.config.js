@@ -4,6 +4,7 @@ const withPWA = require('@ducanh2912/next-pwa').default({
     register: true,
     skipWaiting: true,
     disable: process.env.NODE_ENV === 'development',
+    disableDevLogs: true,
     buildExcludes: [
         /middleware-manifest\.json$/,
         /_middleware\.js$/,
@@ -11,52 +12,40 @@ const withPWA = require('@ducanh2912/next-pwa').default({
         /_worker\.js$/,
         /dynamic-css-manifest\.json$/
     ],
-    // CRITICAL: API routes must ABSOLUTELY NEVER be cached
-    // This was causing production to serve stale prices for 24 hours!
+    // CRITICAL FIX: Disable ALL default runtime caching
+    // next-pwa has dangerous defaults that cache /api/* for 24h
+    // We explicitly define ONLY what we need below
+    workboxOptions: {
+        // Disable all default runtime caching rules
+        runtimeCaching: []
+    },
+    // CUSTOM runtime caching - STRICT control
     runtimeCaching: [
+        // Rule 1: API routes - ABSOLUTELY NO CACHING
         {
-            // Block ALL API routes from being cached (GET requests)
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/api/'),
             handler: 'NetworkOnly',
-            method: 'GET',
             options: {
-                cacheName: 'api-no-cache',
+                cacheName: 'no-cache-apis',
                 networkTimeoutSeconds: 30,
                 plugins: [
                     {
-                        // CRITICAL: Prevent any caching whatsoever
+                        // Double safety: prevent ANY response from being cached
                         cacheWillUpdate: async () => null,
                     }
                 ]
             }
         },
+        // Rule 2: Static assets - CacheFirst is safe
         {
-            // Block ALL API routes from being cached (POST requests)
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
-            handler: 'NetworkOnly',
-            method: 'POST',
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+            handler: 'CacheFirst',
             options: {
-                cacheName: 'api-no-cache-post',
-                networkTimeoutSeconds: 30,
-                plugins: [
-                    {
-                        // CRITICAL: Prevent any caching whatsoever
-                        cacheWillUpdate: async () => null,
-                    }
-                ]
-            }
-        },
-        {
-            // All other network requests can use appropriate strategies
-            urlPattern: /^https?.*/,
-            handler: 'NetworkFirst', // Changed from NetworkOnly to allow static asset caching
-            options: {
-                cacheName: 'external-resources',
+                cacheName: 'google-fonts',
                 expiration: {
-                    maxEntries: 50,
-                    maxAgeSeconds: 3600, // 1 hour for external resources
-                },
-                networkTimeoutSeconds: 10,
+                    maxEntries: 10,
+                    maxAgeSeconds: 31536000 // 1 year
+                }
             }
         }
     ]
