@@ -514,13 +514,11 @@ export default function Home() {
 
       updatePrices(data.prices);
 
-
-
-      // Force portfolio value update after price update - Removed to prevent wiping state if transactions not ready
-      // updatePrices already calls updatePortfolioValues() internally which is safe
-      // setTimeout(() => {
-      //   rebuildPortfolio();
-      // }, 100);
+      // Force portfolio value update after price update
+      // This ensures that existing assets display the latest prices
+      setTimeout(() => {
+        rebuildPortfolio();
+      }, 100);
 
     } catch (error) {
       secureLogger.error('Error fetching prices:', error);
@@ -625,7 +623,7 @@ export default function Home() {
       fetchExchangeRateData();
 
       // Immediate price refresh when web is first opened - ONLY ONCE
-      if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
+      if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0 || assets?.gold?.length > 0) {
         secureLogger.log('IMMEDIATE REFRESH triggered (first time opening web)');
         performPriceFetch();
       } else {
@@ -642,13 +640,13 @@ export default function Home() {
       fetchExchangeRateData();
     }, 300000);
 
-    // Price refresh every 5 minutes (only if assets exist) - less frequent for idle users
+    // Price refresh every 2 minutes (only if assets exist) - optimized for better UX
     refreshIntervalRef.current = setInterval(() => {
-      if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
-        secureLogger.log('AUTOMATIC PRICE REFRESH triggered (5 minute interval)');
+      if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0 || assets?.gold?.length > 0) {
+        secureLogger.log('AUTOMATIC PRICE REFRESH triggered (2 minute interval)');
         performPriceFetch();
       }
-    }, 300000); // Refresh every 5 minutes instead of 30 seconds
+    }, 120000); // Refresh every 2 minutes for better UX
 
     // Clean up intervals on unmount
     return () => {
