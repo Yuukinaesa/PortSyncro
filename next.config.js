@@ -45,6 +45,17 @@ const nextConfig = {
     outputFileTracingRoot: require('path').join(__dirname),
     // swcMinify dihapus karena sudah tidak didukung
 
+    // Fix WebSocket HMR issues in development
+    webpack: (config, { dev, isServer }) => {
+        if (dev && !isServer) {
+            config.watchOptions = {
+                poll: 1000,
+                aggregateTimeout: 300,
+            };
+        }
+        return config;
+    },
+
     // Security Headers Configuration
     async headers() {
         const isDev = process.env.NODE_ENV === 'development';
