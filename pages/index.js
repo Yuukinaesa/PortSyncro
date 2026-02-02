@@ -466,15 +466,18 @@ export default function Home() {
         .filter(crypto => crypto && crypto.symbol && crypto.symbol.trim() && crypto.symbol.toUpperCase() !== 'INVALID')
         .map(crypto => crypto.symbol);
 
-      if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
-        secureLogger.log('No valid tickers to fetch');
+      // CRITICAL FIX: Check if we have ANY assets (stocks, crypto, OR gold)
+      const hasGold = currentAssets?.gold && currentAssets.gold.length > 0;
+
+      if (stockTickers.length === 0 && cryptoSymbols.length === 0 && !hasGold) {
+        secureLogger.log('No valid tickers/assets to fetch (no stocks, crypto, or gold)');
         return;
       }
 
       const requestData = {
         stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
         crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim()),
-        gold: (stockTickers.length > 0 || cryptoSymbols.length > 0 || (currentAssets?.gold && currentAssets.gold.length > 0) || activeTab === 'add') // Always fetch gold if we are fetching other prices, to ensure availability
+        gold: true // CRITICAL: ALWAYS fetch gold prices (needed for all gold assets + new gold input)
       };
 
       secureLogger.log('Fetching prices for:', requestData);
@@ -644,20 +647,23 @@ export default function Home() {
 
     logMessage('Setting up refresh intervals - isInitialized: ' + isInitialized);
 
-    // Initial refresh when component mounts (immediate) - ONLY ONCE
+    // CRITICAL FIX: Reset ref on component mount to ensure refresh works after page reload
+    // This ensures that when user presses F5 (page refresh), prices will be fetched again
+    if (!isInitializingRef.current) {
+      initialRefreshDoneRef.current = false;
+    }
+
+    // Initial refresh when component mounts (immediate) - EVERY TIME PAGE LOADS
     if (!initialRefreshDoneRef.current && !isInitializingRef.current) {
       isInitializingRef.current = true;
 
       logMessage('Starting initial data fetch...');
       fetchExchangeRateData();
 
-      // Immediate price refresh when web is first opened - ONLY ONCE
-      if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0 || assets?.gold?.length > 0) {
-        logMessage('IMMEDIATE REFRESH triggered (first time opening web)');
-        performPriceFetch();
-      } else {
-        logMessage('No assets available for immediate refresh, skipping');
-      }
+      // Immediate price refresh when web is opened or refreshed - ALWAYS FETCH
+      // CRITICAL: Always fetch prices on load, even if no assets yet (for gold prices)
+      logMessage('IMMEDIATE REFRESH triggered (page load/refresh)');
+      performPriceFetch();
 
       initialRefreshDoneRef.current = true;
       isInitializingRef.current = false;
@@ -671,17 +677,22 @@ export default function Home() {
       fetchExchangeRateData();
     }, 300000);
 
-    // Price refresh every 2 minutes (only if assets exist) - optimized for better UX
-    // Use a function that checks current state to avoid stale closure
+    // Price refresh every 2 minutes - optimized for better UX
+    // CRITICAL: ALWAYS refresh prices (including gold) even if no gold assets yet
+    // This ensures gold prices are available when user wants to add new gold
     logMessage('Setting up PRICE REFRESH interval (every 2 minutes)');
     refreshIntervalRef.current = setInterval(() => {
       // Access assets from REF to avoid stale closure (since assets is not in dependency)
       const currentAssets = assetsRef.current;
-      const hasAssets = (currentAssets?.stocks?.length > 0 || currentAssets?.crypto?.length > 0 || currentAssets?.gold?.length > 0);
+      const hasStocksOrCrypto = (currentAssets?.stocks?.length > 0 || currentAssets?.crypto?.length > 0);
+      const hasGold = currentAssets?.gold?.length > 0;
+      const hasAnyAssets = hasStocksOrCrypto || hasGold;
 
-      logMessage(`AUTOMATIC PRICE REFRESH check - hasAssets: ${hasAssets}`);
+      logMessage(`AUTOMATIC PRICE REFRESH check - hasAssets: ${hasAnyAssets} (stocks/crypto: ${hasStocksOrCrypto}, gold: ${hasGold})`);
 
-      if (hasAssets) {
+      // CRITICAL: Always fetch if we have ANY assets (stocks, crypto, OR gold)
+      // This ensures gold prices always stay fresh for existing gold holdings
+      if (hasAnyAssets) {
         logMessage('AUTOMATIC PRICE REFRESH triggered (2 minute interval)');
         performPriceFetch();
       } else {
