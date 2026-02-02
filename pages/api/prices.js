@@ -50,7 +50,33 @@ setInterval(() => {
 }, 60000); // Clean up every minute
 
 export default async function handler(req, res) {
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // CRITICAL: FORCE NO CACHE - DATA HARGA REAL-TIME HARUS SELALU FRESH!
+  // Aplikasi ini untuk tracking portfolio real-time, jadi TIDAK BOLEH pakai cache
+  // ═══════════════════════════════════════════════════════════════════════════════
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('CDN-Cache-Control', 'no-store');
+  res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
+  res.setHeader('Surrogate-Control', 'no-store');  // Nginx/Varnish proxy
+  res.setHeader('X-Accel-Expires', '0');            // Nginx specific
+
+
+  // Track API access for security monitoring
+  const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+
+
+  // Use secureLogger instead of enhancedSecurityMonitor.recordApiAccess (which doesn't exist)
+  secureLogger.log('API /prices Monitor:', {
+    endpoint: '/api/prices',
+    method: req.method,
+    ip: clientIP,
+    timestamp: new Date().toISOString()
+  });
+
   secureLogger.log('API /prices called with method:', req.method);
+  secureLogger.log('Client IP:', clientIP);
 
   if (req.method !== 'POST') {
     secureLogger.warn('Method not allowed:', req.method);
@@ -59,7 +85,7 @@ export default async function handler(req, res) {
   }
 
   // Enhanced rate limiting - prefer user ID over IP for better isolation
-  const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+  // clientIP already declared above for security monitoring
 
   // AUTHENTICATION VERIFICATION
   let verifiedUid = null;
