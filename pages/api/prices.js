@@ -99,6 +99,19 @@ export default async function handler(req, res) {
     return;
   }
 
+  // SECURITY: Request size limit to prevent DoS attacks
+  const MAX_REQUEST_SIZE = 1024 * 1024; // 1MB
+  const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+  if (contentLength > MAX_REQUEST_SIZE) {
+    secureLogger.warn(`Request too large: ${contentLength} bytes from ${clientIP}`);
+    res.status(413).json({
+      error: 'PAYLOAD_TOO_LARGE',
+      message: 'Request payload exceeds maximum allowed size',
+      maxSize: '1MB'
+    });
+    return;
+  }
+
   // Enhanced rate limiting - prefer user ID over IP for better isolation
   // clientIP already declared above for security monitoring
 
