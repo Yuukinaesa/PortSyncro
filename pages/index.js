@@ -683,7 +683,10 @@ export default function Home() {
         refreshIntervalRef.current = null;
       }
     };
-  }, [isInitialized, assets, fetchExchangeRateData, performPriceFetch]); // Add dependencies to ensure fresh closures
+    // CRITICAL FIX: Remove 'assets' from dependencies to prevent infinite interval resets
+    // The interval callbacks access assets via closure which is refreshed when performPriceFetch changes
+  }, [isInitialized, fetchExchangeRateData, performPriceFetch]); // Removed 'assets' to prevent cleanup loops
+
 
   // Manual refresh functions
 
