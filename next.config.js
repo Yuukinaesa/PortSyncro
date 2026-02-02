@@ -7,15 +7,31 @@ const withPWA = require('@ducanh2912/next-pwa').default({
     disableDevLogs: true,
     buildExcludes: [
         /middleware-manifest\.json$/,
+        /app-build-manifest\.json$/,
         /_middleware\.js$/,
+        /_middleware\.js\.map$/,
         /proxy\.js$/,
         /_worker\.js$/,
-        /dynamic-css-manifest\.json$/
+        /dynamic-css-manifest\.json$/,
+        /^dynamic-css-manifest\.json$/,
+        /\.map$/
     ],
     // CRITICAL FIX: Disable ALL default runtime caching
     // next-pwa has dangerous defaults that cache /api/* for 24h
     // We explicitly define ONLY what we need below
     workboxOptions: {
+        // Force exclude these files from workbox (double protection)
+        exclude: [
+            /middleware-manifest\.json$/,
+            /app-build-manifest\.json$/,
+            /_middleware\.js$/,
+            /_middleware\.js\.map$/,
+            /proxy\.js$/,
+            /_worker\.js$/,
+            /dynamic-css-manifest\.json$/,
+            /^dynamic-css-manifest\.json$/,
+            /\.map$/
+        ],
         // Disable all default runtime caching rules
         runtimeCaching: []
     },
