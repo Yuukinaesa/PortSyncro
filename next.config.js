@@ -11,30 +11,52 @@ const withPWA = require('@ducanh2912/next-pwa').default({
         /_worker\.js$/,
         /dynamic-css-manifest\.json$/
     ],
-    // Strictly disable offline fallback for data/logic
-    // "❌ Tidak boleh ada offline mode"
+    // CRITICAL: API routes must ABSOLUTELY NEVER be cached
+    // This was causing production to serve stale prices for 24 hours!
     runtimeCaching: [
         {
-            // API routes should NEVER be cached to ensure fresh data
-            urlPattern: /^\/api\/.*/,
+            // Block ALL API routes from being cached (GET requests)
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
             handler: 'NetworkOnly',
+            method: 'GET',
             options: {
-                cacheName: 'api-cache',
-                expiration: {
-                    maxEntries: 0,
-                },
+                cacheName: 'api-no-cache',
                 networkTimeoutSeconds: 30,
+                plugins: [
+                    {
+                        // CRITICAL: Prevent any caching whatsoever
+                        cacheWillUpdate: async () => null,
+                    }
+                ]
             }
         },
         {
-            // All other network requests should also use NetworkOnly
-            urlPattern: /^https?.*/,
+            // Block ALL API routes from being cached (POST requests)
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
             handler: 'NetworkOnly',
+            method: 'POST',
             options: {
-                cacheName: 'offline-cache',
+                cacheName: 'api-no-cache-post',
+                networkTimeoutSeconds: 30,
+                plugins: [
+                    {
+                        // CRITICAL: Prevent any caching whatsoever
+                        cacheWillUpdate: async () => null,
+                    }
+                ]
+            }
+        },
+        {
+            // All other network requests can use appropriate strategies
+            urlPattern: /^https?.*/,
+            handler: 'NetworkFirst', // Changed from NetworkOnly to allow static asset caching
+            options: {
+                cacheName: 'external-resources',
                 expiration: {
-                    maxEntries: 0,
+                    maxEntries: 50,
+                    maxAgeSeconds: 3600, // 1 hour for external resources
                 },
+                networkTimeoutSeconds: 10,
             }
         }
     ]
@@ -60,6 +82,32 @@ const nextConfig = {
     async headers() {
         const isDev = process.env.NODE_ENV === 'development';
         return [
+            {
+                // CRITICAL: API routes must NEVER be cached
+                source: '/api/:path*',
+                headers: [
+                    {
+                        key: 'Cache-Control',
+                        value: 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
+                    },
+                    {
+                        key: 'Pragma',
+                        value: 'no-cache',
+                    },
+                    {
+                        key: 'Expires',
+                        value: '0',
+                    },
+                    {
+                        key: 'CDN-Cache-Control',
+                        value: 'no-store',
+                    },
+                    {
+                        key: 'Vercel-CDN-Cache-Control',
+                        value: 'no-store',
+                    },
+                ],
+            },
             {
                 source: '/(.*)',
                 headers: [

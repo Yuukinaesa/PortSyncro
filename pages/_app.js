@@ -5,10 +5,29 @@ import { LanguageProvider } from '../lib/languageContext';
 import { PWAProvider } from '../lib/pwaContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import ConnectionStatus from '../components/ConnectionStatus';
+import { useEffect } from 'react';
+import { checkAndCleanupSW } from '../lib/unregisterServiceWorker';
 import Head from 'next/head';
 import '../styles/globals.css';
 
 function MyApp({ Component, pageProps }) {
+  // CRITICAL: One-time SW cleanup for this deployment
+  // This forces users to get the new non-caching service worker
+  useEffect(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+      // Version tag - increment this on each deployment that fixes SW caching
+      const SW_VERSION = 'v3-no-api-cache-2026-02-02';
+
+      checkAndCleanupSW(SW_VERSION).then(cleanupPerformed => {
+        if (cleanupPerformed) {
+          console.log('[APP] SW cleanup completed - page will reload with fresh service worker');
+        } else {
+          console.log('[APP] SW version is current - no cleanup needed');
+        }
+      });
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <AuthProvider>
@@ -33,22 +52,20 @@ function MyApp({ Component, pageProps }) {
   );
 }
 
-// Register service worker
-// Handle Service Worker
+// Handle Service Worker Registration
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   if (process.env.NODE_ENV === 'development') {
     // In development, force unregister any existing service workers to avoid caching issues
     navigator.serviceWorker.getRegistrations().then((registrations) => {
       for (let registration of registrations) {
         registration.unregister();
+        console.log('[DEV] Unregistered service worker:', registration.scope);
       }
     });
   } else {
-    // In production, let next-pwa handle registration (register: true in next.config.js)
-    // Or if you prefer manual registration:
-    // window.addEventListener('load', () => {
-    //   navigator.serviceWorker.register('/sw.js').catch(() => { });
-    // });
+    // In production, next-pwa handles registration (register: true in next.config.js)
+    // The checkAndCleanupSW in useEffect will handle version cleanup
+    console.log('[PROD] Service worker registration handled by next-pwa');
   }
 }
 
