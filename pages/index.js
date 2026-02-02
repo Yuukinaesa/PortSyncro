@@ -633,10 +633,14 @@ export default function Home() {
     if (!isInitialized) return;
 
     const logMessage = (msg) => {
-      // Log in both dev and prod for debugging auto-refresh issues
-      if (process.env.NODE_ENV === 'production') {
-        console.log('[PROD AUTO-REFRESH]', msg, new Date().toISOString());
-      } else {
+      // CRITICAL FIX: Always log in BOTH dev and production for debugging
+      // This ensures we can see auto-refresh behavior in production console
+      const timestamp = new Date().toISOString();
+      const env = process.env.NODE_ENV || 'development';
+      console.log(`[${env.toUpperCase()} AUTO-REFRESH]`, msg, timestamp);
+
+      // Also use secureLogger in development for additional verbosity
+      if (env !== 'production') {
         secureLogger.log(msg);
       }
     };
@@ -647,6 +651,7 @@ export default function Home() {
     if (!initialRefreshDoneRef.current && !isInitializingRef.current) {
       isInitializingRef.current = true;
 
+      logMessage('Starting initial data fetch...');
       fetchExchangeRateData();
 
       // Immediate price refresh when web is first opened - ONLY ONCE
@@ -659,9 +664,11 @@ export default function Home() {
 
       initialRefreshDoneRef.current = true;
       isInitializingRef.current = false;
+      logMessage('Initial setup completed');
     }
 
     // Exchange rate update every 5 minutes (less frequent)
+    logMessage('Setting up EXCHANGE RATE interval (every 5 minutes)');
     exchangeIntervalRef.current = setInterval(() => {
       logMessage('AUTOMATIC EXCHANGE RATE REFRESH triggered (5 minute interval)');
       fetchExchangeRateData();
@@ -669,6 +676,7 @@ export default function Home() {
 
     // Price refresh every 2 minutes (only if assets exist) - optimized for better UX
     // Use a function that checks current state to avoid stale closure
+    logMessage('Setting up PRICE REFRESH interval (every 2 minutes)');
     refreshIntervalRef.current = setInterval(() => {
       // Access assets from the component's current state via a fresh check
       const hasAssets = (assets?.stocks?.length > 0 || assets?.crypto?.length > 0 || assets?.gold?.length > 0);
@@ -683,6 +691,8 @@ export default function Home() {
       }
     }, 120000); // Refresh every 2 minutes for better UX
 
+    logMessage('All intervals set up successfully');
+
     // Clean up intervals on unmount
     return () => {
       logMessage('Cleaning up refresh intervals');
@@ -694,10 +704,13 @@ export default function Home() {
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
       }
+      logMessage('Interval cleanup completed');
     };
-    // CRITICAL FIX: Remove 'assets' from dependencies to prevent infinite interval resets
-    // The interval callbacks access assets via closure which is refreshed when performPriceFetch changes
-  }, [isInitialized, fetchExchangeRateData, performPriceFetch]); // Removed 'assets' to prevent cleanup loops
+    // CRITICAL FIX: 'assets' MUST NOT be in dependencies
+    // Reason: Every price update changes assets, which triggers cleanup/setup loop
+    // Result: Intervals never complete full cycle, auto-refresh NEVER works
+    // Solution: Use assetsRef.current inside callbacks for latest data
+  }, [isInitialized, fetchExchangeRateData, performPriceFetch]); // ✅ Removed 'assets'
 
 
   // Manual refresh functions
