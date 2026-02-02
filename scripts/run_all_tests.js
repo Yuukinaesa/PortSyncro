@@ -2,32 +2,43 @@ const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Scripts are located in the same directory as this runner
 const scripts = [
-    { name: 'Security Scan', file: 'scripts/audit_security_scan.js' },
-    { name: 'Environment Verify', file: 'scripts/audit_test_verify_env.js' },
-    { name: 'Logic & Calculation', file: 'scripts/audit_logic_test.js' },
-    { name: 'Precision Tests', file: 'scripts/test-precision.mjs' },
-    { name: 'Full System Audit', file: 'scripts/full_audit.js' }
+    { name: 'Security Scan', file: 'audit_security_scan.js' },
+    { name: 'Environment Verify', file: 'audit_test_verify_env.js' },
+    { name: 'Logic & Calculation', file: 'audit_logic_test.js' },
+    { name: 'Precision Tests', file: 'test-precision.mjs' },
+    { name: 'CSV Logic Test', file: 'test-csv.js' },
+    { name: 'Debug Gold Logic', file: 'debug_harga_emas_2.js' },
+    { name: 'Debug Structure', file: 'debug_he_structure.js' },
+    { name: 'Pegadaian Real Test', file: 'test_pegadaian_real.js' },
+    { name: 'Full System Audit', file: 'full_audit.js' },
+    { name: 'Integration Tests', file: 'integration_test.js' }
 ];
+
+// Determine Project Root (One level up from scripts/)
+const PROJECT_ROOT = path.join(__dirname, '..');
 
 // Header
 console.log('\x1b[36m%s\x1b[0m', '🚀 STARTING PORTSYNCRO TEST SUITE');
 console.log('==================================================');
 console.log(`Target Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`Project Root: ${PROJECT_ROOT}`);
 console.log('==================================================\n');
 
 let failedTests = 0;
 
 // Execute each script
 scripts.forEach(script => {
-    const scriptPath = path.join(process.cwd(), script.file);
+    // Resolve absolute path to the script file
+    const scriptPath = path.join(__dirname, script.file);
     const displayName = script.name.padEnd(20);
 
     console.log(`\x1b[33m▶ Running: ${script.name} (${script.file})\x1b[0m`);
 
     // Check if file exists
     if (!fs.existsSync(scriptPath)) {
-        console.log(`\x1b[31m❌ SCIPT MISSING: ${script.file}\x1b[0m\n`);
+        console.log(`\x1b[31m❌ SCRIPT MISSING: ${scriptPath}\x1b[0m\n`);
         failedTests++;
         return;
     }
@@ -35,13 +46,12 @@ scripts.forEach(script => {
     const start = Date.now();
     try {
         // Run synchronously
-        // We inherit stdio so the user sees the output of each script in real-time
-        // Construct args: Add --no-warnings for .mjs files to suppress MODULE_TYPELESS_PACKAGE_JSON warning
-        const args = script.file.endsWith('.mjs') ? ['--no-warnings', script.file] : [script.file];
+        // Ensure CWD is set to Project Root so .env and other relative paths work correctly
+        const args = script.file.endsWith('.mjs') ? ['--no-warnings', scriptPath] : [scriptPath];
 
         const result = spawnSync('node', args, {
             stdio: 'inherit',
-            cwd: process.cwd(),
+            cwd: PROJECT_ROOT,
             env: { ...process.env, FORCE_COLOR: 'true' }
         });
 

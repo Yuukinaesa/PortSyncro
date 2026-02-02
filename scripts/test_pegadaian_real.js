@@ -30,6 +30,7 @@ https.get(url, options, (res) => {
                 } else {
                     console.log('Content not found on redirected page.');
                 }
+                process.exit(0);
             });
         });
         return;
@@ -56,5 +57,6 @@ https.get(url, options, (res) => {
         if (titleIdx !== -1) {
             console.log('Found title!');
         }
+        process.exit(0);
     });
-}).on('error', e => console.error(e));
+}).on('error', e => { console.error(e); process.exit(1); });

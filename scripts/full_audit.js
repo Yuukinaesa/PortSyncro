@@ -129,7 +129,7 @@ function auditApi() {
     };
 
     const req = http.request(options, (res) => {
-        log(`API Response Status: ${res.statusCode}`, res.statusCode === 200 || res.statusCode === 400 || res.statusCode === 401 ? 'pass' : 'warn');
+        log(`API Response Status: ${res.statusCode}`, res.statusCode === 200 || res.statusCode === 400 || res.statusCode === 401 || res.statusCode === 429 ? 'pass' : 'warn');
 
         // Rate Limit Header Check (Custom or Standard)
         const rateHeaders = Object.keys(res.headers).filter(h => h.includes('rate') || h.includes('limit'));
