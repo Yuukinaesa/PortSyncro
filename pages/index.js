@@ -314,6 +314,9 @@ export default function Home() {
   const [restoreComplete, setRestoreComplete] = useState(false);
   const restoreInProgressRef = useRef(false); // Flag to prevent race condition during restore
 
+  // CRITICAL FIX: Stable ref for assets to prevent performPriceFetch from recreating
+  const assetsRef = useRef(null);
+
 
 
   // Hide Balance State (Lifted from Portfolio)
@@ -362,6 +365,11 @@ export default function Home() {
     rebuildPortfolio,
     reset
   } = usePortfolioState();
+
+  // Keep assetsRef in sync with latest assets
+  useEffect(() => {
+    assetsRef.current = assets;
+  }, [assets]);
 
   // Add refs for intervals
   const refreshIntervalRef = useRef(null);
@@ -418,13 +426,16 @@ export default function Home() {
     setPricesLoading(true);
 
     try {
-      if (!assets) {
+      // CRITICAL FIX: Use assetsRef.current to access latest assets without dependency
+      const currentAssets = assetsRef.current;
+
+      if (!currentAssets) {
         secureLogger.log('No assets to fetch prices for');
         return;
       }
 
       // Filter valid stocks and prepare tickers
-      const validStocks = (assets?.stocks || []).filter(stock => {
+      const validStocks = (currentAssets?.stocks || []).filter(stock => {
         if (!stock || !stock.ticker || !stock.ticker.trim()) return false;
         if (stock.lots <= 0) return false;
         return true;
@@ -442,7 +453,7 @@ export default function Home() {
         return cleanTicker.endsWith('.JK') ? cleanTicker : `${cleanTicker}.JK`;
       });
 
-      const cryptoSymbols = (assets?.crypto || [])
+      const cryptoSymbols = (currentAssets?.crypto || [])
         .filter(crypto => crypto && crypto.symbol && crypto.symbol.trim() && crypto.symbol.toUpperCase() !== 'INVALID')
         .map(crypto => crypto.symbol);
 
@@ -454,7 +465,7 @@ export default function Home() {
       const requestData = {
         stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
         crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim()),
-        gold: (assets?.gold?.length > 0 || activeTab === 'add') // Fetch gold if assets exist OR if on add tab (simplification)
+        gold: (currentAssets?.gold?.length > 0 || activeTab === 'add') // Fetch gold if assets exist OR if on add tab (simplification)
       };
 
       secureLogger.log('Fetching prices for:', requestData);
@@ -531,7 +542,8 @@ export default function Home() {
     } finally {
       setPricesLoading(false);
     }
-  }, [exchangeRate, assets, user?.uid, updatePrices, rebuildPortfolio, t]);
+  }, [exchangeRate, user?.uid, updatePrices, rebuildPortfolio, t, activeTab]); // Removed 'assets' - use assetsRef instead
+
 
   // Simplified price fetching function with debouncing and refresh optimizer
   const fetchPrices = useCallback(async (immediate = false) => {
