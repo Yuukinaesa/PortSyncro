@@ -1148,6 +1148,7 @@ export default function Portfolio({
               onUpdate={onUpdateCash}
               onDelete={onDeleteCash}
               onSell={onSellCash}
+              onPriceRefreshNeeded={onRefreshPrices}
             />
           </div>
         )}
@@ -1172,6 +1173,7 @@ export default function Portfolio({
               onUpdate={onUpdateStock}
               onDelete={onDeleteStock}
               onSell={onSellStock}
+              onPriceRefreshNeeded={onRefreshPrices}
             />
           </div>
         )}
@@ -1196,6 +1198,7 @@ export default function Portfolio({
               onUpdate={onUpdateCrypto}
               onDelete={onDeleteCrypto}
               onSell={onSellCrypto}
+              onPriceRefreshNeeded={onRefreshPrices}
             />
           </div>
         )}
@@ -1220,6 +1223,7 @@ export default function Portfolio({
               onUpdate={onUpdateGold}
               onDelete={onDeleteGold}
               onSell={onSellGold}
+              onPriceRefreshNeeded={onRefreshPrices}
             />
           </div>
         )}

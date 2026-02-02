@@ -10,7 +10,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
   const [symbol, setSymbol] = useState('');
 
   // Helper function to get default currency based on asset type
-  const getDefaultCurrency = (type) => type === 'crypto' ? 'USD' : 'IDR';
+  const getDefaultCurrency = (type) => type === 'crypto' ? 'USD' : 'IDR'; // Gold and Stock both use IDR
 
   // Focus Trap Logic
   const modalRef = useRef(null);
@@ -125,7 +125,13 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
           const value = shares * price;
           totalAmount += amount;
           totalValue += value;
+        } else if (assetType === 'gold') {
+          // For gold, amount is in grams, no lot conversion needed
+          const value = amount * price;
+          totalAmount += amount;
+          totalValue += value;
         } else {
+          // Crypto
           const value = amount * price;
           totalAmount += amount;
           totalValue += value;
@@ -133,7 +139,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
       });
 
       const averagePrice = totalValue / (assetType === 'stock' ? totalAmount * 100 : totalAmount);
-      const totalShares = assetType === 'stock' ? totalAmount * 100 : totalAmount;
+      const totalShares = assetType === 'stock' ? totalAmount * 100 : totalAmount; // For gold, totalAmount is grams
 
       setResult({
         averagePrice,
@@ -216,12 +222,24 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                 >
                   {t('crypto')}
                 </button>
+                <button
+                  onClick={() => {
+                    setAssetType('gold');
+                    setPurchases(purchases.map(p => ({ ...p, currency: 'IDR' })));
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${assetType === 'gold'
+                    ? 'bg-white dark:bg-[#1f2937] text-yellow-600 dark:text-yellow-400 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-600 dark:hover:text-gray-400'
+                    }`}
+                >
+                  {language === 'en' ? 'Gold' : 'Emas'}
+                </button>
               </div>
             </div>
 
             <div>
               <label htmlFor="calc-symbol" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
-                {assetType === 'stock' ? t('stockCode') : t('cryptoSymbol')}
+                {assetType === 'stock' ? t('stockCode') : assetType === 'gold' ? (language === 'en' ? 'Gold Type' : 'Jenis Emas') : t('cryptoSymbol')}
               </label>
               <input
                 type="text"
@@ -229,7 +247,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                 name="symbol"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                placeholder={assetType === 'stock' ? 'BBCA' : 'BTC'}
+                placeholder={assetType === 'stock' ? 'BBCA' : assetType === 'gold' ? 'ANTAM / UBS / DIGITAL' : 'BTC'}
                 className="w-full px-4 py-3 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-medium"
               />
             </div>
@@ -256,14 +274,14 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                       {/* Source */}
                       <div className="sm:col-span-4">
                         <label htmlFor={`purchase-source-${index}`} className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
-                          {assetType === 'stock' ? t('broker') : t('exchange')}
+                          {assetType === 'stock' ? t('broker') : assetType === 'gold' ? (language === 'en' ? 'Shop/App' : 'Toko/App') : t('exchange')}
                         </label>
                         <input
                           id={`purchase-source-${index}`}
                           type="text"
                           value={purchase.source}
                           onChange={(e) => updatePurchase(index, 'source', e.target.value)}
-                          placeholder={assetType === 'stock' ? 'Stockbit' : 'Binance'}
+                          placeholder={assetType === 'stock' ? 'Stockbit' : assetType === 'gold' ? 'Pegadaian / Toko Emas' : 'Binance'}
                           className="w-full px-3 py-2 bg-white dark:bg-[#161b22] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder-gray-500"
                         />
                       </div>
@@ -271,7 +289,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                       {/* Amount */}
                       <div className="sm:col-span-3">
                         <label htmlFor={`purchase-amount-${index}`} className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
-                          {assetType === 'stock' ? t('lots') : t('amount')}
+                          {assetType === 'stock' ? t('lots') : assetType === 'gold' ? (language === 'en' ? 'Weight (g)' : 'Berat (g)') : t('amount')}
                         </label>
                         <input
                           id={`purchase-amount-${index}`}
@@ -358,7 +376,7 @@ export default function AveragePriceCalculator({ isOpen, onClose }) {
                         {result.currency === 'IDR' ? formatIDR(result.averagePrice) : formatUSD(result.averagePrice)}
                       </p>
                       <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-mono">
-                        {assetType === 'stock' ? t('perShare') : t('perUnit')}
+                        {assetType === 'stock' ? t('perShare') : assetType === 'gold' ? (language === 'en' ? 'per gram' : 'per gram') : t('perUnit')}
                       </p>
                     </div>
                     <div className="p-4 bg-white dark:bg-[#161b22]">

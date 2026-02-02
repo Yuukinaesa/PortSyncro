@@ -8,7 +8,7 @@ import { formatNumber, formatQuantity, formatIDR, formatUSD, normalizeNumberInpu
 import { useLanguage } from '../lib/languageContext';
 import { secureLogger } from './../lib/security';
 
-export default function AssetTable({ assets, prices, exchangeRate, type, onUpdate, onSell = () => { }, onDelete = () => { }, loading = false, hideBalance = false }) {
+export default function AssetTable({ assets, prices, exchangeRate, type, onUpdate, onSell = () => { }, onDelete = () => { }, loading = false, hideBalance = false, onPriceRefreshNeeded }) {
   const [sellingAsset, setSellingAsset] = useState(null);
   const [sellingIndex, setSellingIndex] = useState(null);
   const [sellAmount, setSellAmount] = useState('');
@@ -979,6 +979,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         onSave={handleSaveAsset}
         type={type}
         exchangeRate={exchangeRate}
+        onPriceRefreshNeeded={onPriceRefreshNeeded}
       />
 
       {

@@ -4,7 +4,7 @@ import { useLanguage } from '../lib/languageContext';
 import { formatIDR, formatUSD, normalizeNumberInput } from '../lib/utils';
 import { FiRefreshCw, FiDollarSign, FiActivity, FiTrendingUp } from 'react-icons/fi';
 
-export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, exchangeRate }) {
+export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, exchangeRate, onPriceRefreshNeeded }) {
     const { t } = useLanguage();
 
     // Form State
@@ -190,6 +190,12 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
         if (type === 'stock') delete updatedAsset.amount;
 
         onSave(updatedAsset);
+
+        // Trigger price refresh if callback is provided
+        if (onPriceRefreshNeeded) {
+            onPriceRefreshNeeded();
+        }
+
         onClose();
     };
 
