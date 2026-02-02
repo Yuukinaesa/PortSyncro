@@ -933,10 +933,10 @@ export default function Reports() {
                             onClick={downloadTransactionsCSV}
                             disabled={snapshotLoading}
                             className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-3 sm:py-2.5 sm:px-4 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl text-[10px] sm:text-xs font-semibold hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] sm:min-h-[44px]"
-                            title="Download Transaction Log"
+                            title="Download Portfolio"
                         >
                             <FiFileText className="w-4 h-4" />
-                            <span>Log</span>
+                            <span>Portfolio</span>
                         </button>
 
                         {/* Capture Snapshot */}
