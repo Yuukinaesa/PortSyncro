@@ -673,8 +673,9 @@ export default function Home() {
     // Use a function that checks current state to avoid stale closure
     logMessage('Setting up PRICE REFRESH interval (every 2 minutes)');
     refreshIntervalRef.current = setInterval(() => {
-      // Access assets from the component's current state via a fresh check
-      const hasAssets = (assets?.stocks?.length > 0 || assets?.crypto?.length > 0 || assets?.gold?.length > 0);
+      // Access assets from REF to avoid stale closure (since assets is not in dependency)
+      const currentAssets = assetsRef.current;
+      const hasAssets = (currentAssets?.stocks?.length > 0 || currentAssets?.crypto?.length > 0 || currentAssets?.gold?.length > 0);
 
       logMessage(`AUTOMATIC PRICE REFRESH check - hasAssets: ${hasAssets}`);
 
