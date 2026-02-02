@@ -36,7 +36,10 @@ scripts.forEach(script => {
     try {
         // Run synchronously
         // We inherit stdio so the user sees the output of each script in real-time
-        const result = spawnSync('node', [script.file], {
+        // Construct args: Add --no-warnings for .mjs files to suppress MODULE_TYPELESS_PACKAGE_JSON warning
+        const args = script.file.endsWith('.mjs') ? ['--no-warnings', script.file] : [script.file];
+
+        const result = spawnSync('node', args, {
             stdio: 'inherit',
             cwd: process.cwd(),
             env: { ...process.env, FORCE_COLOR: 'true' }
