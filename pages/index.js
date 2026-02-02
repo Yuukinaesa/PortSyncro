@@ -2675,6 +2675,22 @@ export default function Home() {
   // Backup Portfolio to JSON
   // Backup Portfolio to JSON
   const handleBackup = async () => {
+    // 1. Check if prices are currently updating
+    if (pricesLoading) {
+      secureLogger.log('Handling Backup blocked: Prices are currently updating');
+      setConfirmModal({
+        isOpen: true,
+        title: t('pleaseWait') || 'Mohon Tunggu',
+        message: language === 'en'
+          ? 'Cannot backup while prices are updating. Please wait for the update to finish.'
+          : 'Tidak dapat melakukan backup saat harga sedang diperbarui. Mohon tunggu hingga selesai.',
+        type: 'info',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+      return;
+    }
+
     try {
       setResetStatus('Preparing backup data...');
       setResetProgress(10);
@@ -2767,6 +2783,22 @@ export default function Home() {
 
   // Restore Portfolio from JSON (supports legacy format)
   const handleRestore = async (file) => {
+    // 1. Check if prices are currently updating
+    if (pricesLoading) {
+      secureLogger.log('Handling Restore blocked: Prices are currently updating');
+      setConfirmModal({
+        isOpen: true,
+        title: t('pleaseWait') || 'Mohon Tunggu',
+        message: language === 'en'
+          ? 'Cannot restore while prices are updating. Please wait for the update to finish.'
+          : 'Tidak dapat melakukan restore saat harga sedang diperbarui. Mohon tunggu hingga selesai.',
+        type: 'info',
+        confirmText: t('ok'),
+        onConfirm: () => setConfirmModal(null)
+      });
+      return;
+    }
+
     // Set flag to prevent race condition with Firestore listener
     restoreInProgressRef.current = true;
 
