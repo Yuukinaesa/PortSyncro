@@ -22,21 +22,21 @@ PortSyncro bridges the gap between smart diversification and manageable portfoli
 
 ## Key Features
 
-✅ **Portfolio Synchronization** - Unify assets across multiple platforms
+✅ **Portfolio Synchronization** - Unify assets across multiple platforms with strict Cloud-First synchronization.
 
-✅ **Smart Average Price Calculator** - Accurate calculations regardless of where you bought each asset
+✅ **Smart Average Price Calculator** - Accurate calculations regardless of where you bought each asset.
 
-✅ **Real-time Performance Tracking** - Live updates from Yahoo Finance, Crypto APIs, & Gold Markets
+✅ **Real-time Performance Tracking** - Live updates from **Yahoo Finance**, **CoinGecko**, & **Pegadaian**.
 
-✅ **Dual Currency Support** - Gain/loss calculations in both IDR and USD
+✅ **Dual Currency Support** - Gain/loss calculations in both **IDR** and **USD** (Real-time Exchange Rates via Frankfurter API).
 
-✅ **Comprehensive Analytics** - Detailed performance insights and reporting
+✅ **Comprehensive Analytics** - Detailed performance insights and reporting.
 
-✅ **Export Functionality** - Detailed analysis and reporting capabilities
+✅ **Data Integrity** - "Restore = REPLACE" functionality ensures clean state recovery from backups.
 
-✅ **Gold Asset Management** - Track physical & digital gold prices from Antam/Pegadaian
+✅ **Gold Asset Management** - Track physical & digital gold prices from Antam/Pegadaian.
 
-✅ **Accessibility Focused** - WCAG compliant interface for inclusive access
+✅ **Enterprise-Grade Security** - Hardened logging, protected routes, and strict production safety constraints.
 
 ## Security & Reliability
 
@@ -46,15 +46,16 @@ PortSyncro bridges the gap between smart diversification and manageable portfoli
 - **Input validation & sanitization** for XSS protection
 - **Rate limiting** (30 requests/minute per user/IP)
 - **Security headers** (CSP, HSTS, X-Frame-Options)
-- **Advanced Middleware Protection** for bot detection and route security
-- **Secure Logging** with production-safe constraints
+- **Zero-knowledge Logging** (No sensitive data or debug logs exposed in Production)
+- **Strict Offline Handling** (Prevents data desynchronization)
 
 ## Data Sources
 
-- **Indonesian Stocks (IDX)** - Yahoo Finance API integration
-- **Global Cryptocurrencies** - CryptoCompare API support
-- **Gold (Emas)** - Price Reference: Pegadaian (via IndoGold), Global Trend: XAU/USD (Yahoo Finance)
-- **Exchange Rates** - Real-time USD/IDR conversion
+- **Indonesian Stocks (IDX)** - Yahoo Finance API & Google Finance (Real-time Web Scraping)
+- **US Stocks** - Google Finance (Real-time) & Yahoo Finance
+- **Global Cryptocurrencies** - CryptoCompare API (Min-API)
+- **Gold (Emas)** - Pegadaian (via IndoGold Scraping) & Yahoo Finance (GLD ETF for Global Trends)
+- **Exchange Rates** - Frankfurter API (Primary) & Exchange Rate API
 
 ## Why This Matters
 
@@ -68,10 +69,11 @@ This project represents months of development and real-world problem-solving. It
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15, React 18, Tailwind CSS
-- **Backend**: Firebase (Authentication, Database)
-- **Gold (Emas)** - Price Reference: Pegadaian (via IndoGold), Global Trend: XAU/USD (Yahoo Finance)
-- **Security**: AES-256 encryption, rate limiting, input validation
+- **Frontend**: Next.js 16, React 19, Tailwind CSS
+- **Backend**: Firebase (Authentication, Firestore Database, Functions)
+- **State Management**: React Context + Real-time Firestore Listeners
+- **PWA**: Fully offline-capable UI (with strict online data sync)
+- **Security**: Hardened Security Monitoring, AES-256
 
 ## Screenshots
 
@@ -91,5 +93,3 @@ This project represents months of development and real-world problem-solving. It
 **PortSyncro** - Sinkronisasi Portofolio yang Mudah untuk Kripto, Saham, dan Emas
 
 *Built with ❤️ for the Indonesian investment community*
-
-

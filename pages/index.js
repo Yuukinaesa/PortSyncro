@@ -630,16 +630,7 @@ export default function Home() {
     if (!isInitialized) return;
 
     const logMessage = (msg) => {
-      // CRITICAL FIX: Always log in BOTH dev and production for debugging
-      // This ensures we can see auto-refresh behavior in production console
-      const timestamp = new Date().toISOString();
-      const env = process.env.NODE_ENV || 'development';
-      console.log(`[${env.toUpperCase()} AUTO-REFRESH]`, msg, timestamp);
-
-      // Also use secureLogger in development for additional verbosity
-      if (env !== 'production') {
-        secureLogger.log(msg);
-      }
+      secureLogger.log(`[AUTO-REFRESH] ${msg}`);
     };
 
     logMessage('Setting up refresh intervals - isInitialized: ' + isInitialized);

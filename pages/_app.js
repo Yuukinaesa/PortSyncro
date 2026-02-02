@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { checkAndCleanupSW } from '../lib/unregisterServiceWorker';
 import Head from 'next/head';
 import '../styles/globals.css';
+import { secureLogger } from '../lib/security';
 
 function MyApp({ Component, pageProps }) {
   // CRITICAL: One-time SW cleanup for this deployment
@@ -20,9 +21,9 @@ function MyApp({ Component, pageProps }) {
 
       checkAndCleanupSW(SW_VERSION).then(cleanupPerformed => {
         if (cleanupPerformed) {
-          console.log('[APP] SW cleanup completed - page will reload with fresh service worker');
+          secureLogger.log('[APP] SW cleanup completed - page will reload with fresh service worker');
         } else {
-          console.log('[APP] SW version is current - no cleanup needed');
+          secureLogger.log('[APP] SW version is current - no cleanup needed');
         }
       });
     }
@@ -59,13 +60,13 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then((registrations) => {
       for (let registration of registrations) {
         registration.unregister();
-        console.log('[DEV] Unregistered service worker:', registration.scope);
+        secureLogger.log('[DEV] Unregistered service worker:', registration.scope);
       }
     });
   } else {
     // In production, next-pwa handles registration (register: true in next.config.js)
     // The checkAndCleanupSW in useEffect will handle version cleanup
-    console.log('[PROD] Service worker registration handled by next-pwa');
+    secureLogger.log('[PROD] Service worker registration handled by next-pwa');
   }
 }
 
