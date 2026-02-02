@@ -77,6 +77,7 @@ export default async function handler(req, res) {
 
   secureLogger.log('API /prices called with method:', req.method);
   secureLogger.log('Client IP:', clientIP);
+  secureLogger.log('Request Body:', typeof req.body === 'object' ? JSON.stringify(req.body).substring(0, 500) : req.body);
 
   if (req.method !== 'POST') {
     secureLogger.warn('Method not allowed:', req.method);
