@@ -423,6 +423,12 @@ export default function Home() {
 
   // Separate function for actual price fetching
   const performPriceFetch = useCallback(async () => {
+    // Prevent fetching if user is not authenticated
+    if (!user) {
+      secureLogger.log('Skip price fetch - User not authenticated');
+      return;
+    }
+
     setPricesLoading(true);
 
     try {

@@ -3,7 +3,7 @@ const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://localhost:3001';
 
 // --- COLOR OUTPUT ---
 const colors = {
@@ -23,26 +23,28 @@ function log(msg, type = 'info') {
 }
 
 // --- 1. ENCRYPTION LOGIC AUDIT ---
-// Re-implement logic from lib/encryption.js to verify it works
+// Re-implement logic from lib/encryption.js to verify it works (AES-256-GCM)
 function auditEncryption() {
     console.log('\n--- 🔐 1. Encryption Logic Audit ---');
     try {
         const key = crypto.randomBytes(32).toString('hex').substring(0, 32); // Simulate 32-char key
-        const iv = crypto.randomBytes(16);
+        const iv = crypto.randomBytes(12); // GCM standard IV is 12 bytes
         const data = JSON.stringify({ secret: "ProductionSecret123!" });
 
         // Encrypt
-        const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(key), iv);
+        const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(key), iv);
         let encrypted = cipher.update(data, 'utf8', 'hex');
         encrypted += cipher.final('hex');
+        const authTag = cipher.getAuthTag();
 
         // Decrypt
-        const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(key), iv);
+        const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(key), iv);
+        decipher.setAuthTag(authTag);
         let decrypted = decipher.update(encrypted, 'hex', 'utf8');
         decrypted += decipher.final('utf8');
 
         if (decrypted === data) {
-            log('AES-256-CBC Encryption/Decryption Cycle Loop', 'pass');
+            log('AES-256-GCM Encryption/Decryption Cycle Loop', 'pass');
         } else {
             log('Encryption/Decryption Data Mismatch', 'fail');
         }
@@ -117,7 +119,7 @@ function auditApi() {
     // We try to request a protected endpoint
     const options = {
         hostname: 'localhost',
-        port: 3000,
+        port: 3001,
         path: '/api/prices',
         method: 'POST', // standard method
         headers: {

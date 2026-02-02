@@ -156,6 +156,10 @@ const nextConfig = {
                     {
                         key: 'X-Permitted-Cross-Domain-Policies',
                         value: 'none'
+                    },
+                    {
+                        key: 'X-XSS-Protection',
+                        value: '1; mode=block'
                     }
                 ]
             }
