@@ -314,6 +314,8 @@ export default function Home() {
   const [restoreComplete, setRestoreComplete] = useState(false);
   const restoreInProgressRef = useRef(false); // Flag to prevent race condition during restore
   const [pendingSnapshot, setPendingSnapshot] = useState(null); // Queue for snapshot: null | 'auto' | 'manual'
+  const [pendingBackup, setPendingBackup] = useState(false); // Queue for backup
+  const [pendingRestore, setPendingRestore] = useState(null); // Queue for restore (holds file)
 
   // CRITICAL FIX: Stable ref for assets to prevent performPriceFetch from recreating
   const assetsRef = useRef(null);
@@ -776,7 +778,7 @@ export default function Home() {
     if (pricesLoading) {
       if (force) {
         secureLogger.log('Manual snapshot deferred: Waiting for price update');
-        setPendingSnapshot('manual');
+        setPendingSnapshot('manual'); // Manual always takes precedence/overwrites
         setConfirmModal({
           isOpen: true,
           title: t('pleaseWait') || 'Mohon Tunggu',
@@ -788,9 +790,14 @@ export default function Home() {
           onConfirm: () => setConfirmModal(null)
         });
       } else {
-        // For auto-snapshot, properly queue it instead of skipping
-        secureLogger.log('Auto snapshot deferred: Waiting for price update');
-        setPendingSnapshot('auto');
+        // For auto-snapshot, queue it only if we don't already have a manual one pending
+        // This prevents an auto-trigger from "downgrading" a pending manual request
+        if (pendingSnapshot !== 'manual') {
+          secureLogger.log('Auto snapshot deferred: Waiting for price update');
+          setPendingSnapshot('auto');
+        } else {
+          secureLogger.log('Auto snapshot skipped: Pending manual snapshot already queued');
+        }
       }
       return;
     }
@@ -2677,13 +2684,14 @@ export default function Home() {
   const handleBackup = async () => {
     // 1. Check if prices are currently updating
     if (pricesLoading) {
-      secureLogger.log('Handling Backup blocked: Prices are currently updating');
+      secureLogger.log('Handling Backup blocked: Prices are currently updating. Queueing backup...');
+      setPendingBackup(true); // Queue the backup
       setConfirmModal({
         isOpen: true,
         title: t('pleaseWait') || 'Mohon Tunggu',
         message: language === 'en'
-          ? 'Cannot backup while prices are updating. Please wait for the update to finish.'
-          : 'Tidak dapat melakukan backup saat harga sedang diperbarui. Mohon tunggu hingga selesai.',
+          ? 'Prices are updating. Backup will start automatically when finished.'
+          : 'Harga sedang diperbarui. Backup akan otomatis berjalan setelah selesai.',
         type: 'info',
         confirmText: t('ok'),
         onConfirm: () => setConfirmModal(null)
@@ -2785,13 +2793,14 @@ export default function Home() {
   const handleRestore = async (file) => {
     // 1. Check if prices are currently updating
     if (pricesLoading) {
-      secureLogger.log('Handling Restore blocked: Prices are currently updating');
+      secureLogger.log('Handling Restore blocked: Prices are currently updating. Queueing restore...');
+      setPendingRestore(file); // Queue the restore with file
       setConfirmModal({
         isOpen: true,
         title: t('pleaseWait') || 'Mohon Tunggu',
         message: language === 'en'
-          ? 'Cannot restore while prices are updating. Please wait for the update to finish.'
-          : 'Tidak dapat melakukan restore saat harga sedang diperbarui. Mohon tunggu hingga selesai.',
+          ? 'Prices are updating. Restore will start automatically when finished.'
+          : 'Harga sedang diperbarui. Restore akan otomatis berjalan setelah selesai.',
         type: 'info',
         confirmText: t('ok'),
         onConfirm: () => setConfirmModal(null)
@@ -3249,6 +3258,30 @@ export default function Home() {
       });
     }
   };
+
+  // Effect to execute pending Backup/Restore once prices are loaded
+  useEffect(() => {
+    if (!pricesLoading) {
+      // Execute Pending Backup
+      if (pendingBackup) {
+        secureLogger.log('Price update complete, executing queued Backup');
+        setPendingBackup(false);
+        setConfirmModal(null); // Close waiting modal
+        // Slight delay to allow modal close to animate/render
+        setTimeout(() => handleBackup(), 300);
+      }
+
+      // Execute Pending Restore
+      if (pendingRestore) {
+        secureLogger.log('Price update complete, executing queued Restore');
+        const file = pendingRestore;
+        setPendingRestore(null);
+        setConfirmModal(null); // Close waiting modal
+        // Slight delay
+        setTimeout(() => handleRestore(file), 300);
+      }
+    }
+  }, [pricesLoading, pendingBackup, pendingRestore]);
 
   return (
     <ErrorBoundary>
