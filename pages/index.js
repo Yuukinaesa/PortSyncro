@@ -471,7 +471,7 @@ export default function Home() {
       const requestData = {
         stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
         crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim()),
-        gold: (currentAssets?.gold?.length > 0 || activeTab === 'add') // Fetch gold if assets exist OR if on add tab (simplification)
+        gold: (stockTickers.length > 0 || cryptoSymbols.length > 0 || (currentAssets?.gold && currentAssets.gold.length > 0) || activeTab === 'add') // Always fetch gold if we are fetching other prices, to ensure availability
       };
 
       secureLogger.log('Fetching prices for:', requestData);

@@ -19,6 +19,9 @@ function checkRateLimit(identifier) {
   const requests = rateLimitMap.get(identifier);
   const validRequests = requests.filter(timestamp => timestamp > windowStart);
 
+  const remaining = Math.max(0, RATE_LIMIT_MAX_REQUESTS - validRequests.length - 1); // -1 because current request will count if allowed
+  const resetTime = Math.ceil((windowStart + RATE_LIMIT_WINDOW) / 1000); // Unix timestamp in seconds
+
   if (validRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
     // Record rate limit violation
     enhancedSecurityMonitor.recordSuspiciousPattern('RATE_LIMIT_EXCEEDED', {
@@ -26,12 +29,23 @@ function checkRateLimit(identifier) {
       endpoint: '/api/prices',
       requests: validRequests.length
     });
-    return false;
+    return {
+      allowed: false,
+      limit: RATE_LIMIT_MAX_REQUESTS,
+      remaining: 0,
+      reset: resetTime
+    };
   }
 
   validRequests.push(now);
   rateLimitMap.set(identifier, validRequests);
-  return true;
+
+  return {
+    allowed: true,
+    limit: RATE_LIMIT_MAX_REQUESTS,
+    remaining: remaining,
+    reset: resetTime
+  };
 }
 
 // Clean up old entries periodically to prevent memory leaks
@@ -126,30 +140,33 @@ export default async function handler(req, res) {
   // 2. If No Token -> Use IP. Low Limit.
   // 3. If Token Invalid -> Block.
 
-  let rateLimitIdentifier;
+  // Determine Rate Limit Identifier
+  // Strategy: Use User ID if verified, otherwise falls back to Client IP
+  // This allows us to rate limit unauthenticated spam BEFORE rejecting it with 401
+  let rateLimitIdentifier = verifiedUid ? `user_${verifiedUid}` : `ip_${clientIP}`;
 
-  if (verifiedUid) {
-    rateLimitIdentifier = `user_${verifiedUid}`;
-  } else {
-    // STRICT SECURITY MODE: Reject all unauthenticated requests.
-    // "Auth bypass -> CRITICAL" constraint.
-    // Verify if this is a demo account use-case (if valid token not presented but userId is fake demo)
-    // But secureLogger showed verifyResponse checked against Google Identity.
+  const rateLimitResult = checkRateLimit(rateLimitIdentifier);
 
-    // For now, we block ALL anonymous traffic to this internal API.
-    secureLogger.warn(`Blocked unauthenticated access attempt to /api/prices from IP: ${clientIP}`);
-    res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
-    return;
-  }
+  // Set standard Rate Limit headers for ALL requests
+  res.setHeader('X-RateLimit-Limit', rateLimitResult.limit);
+  res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining);
+  res.setHeader('X-RateLimit-Reset', rateLimitResult.reset);
 
-  if (!checkRateLimit(rateLimitIdentifier)) {
+  if (!rateLimitResult.allowed) {
     secureLogger.warn(`Rate limit exceeded for: ${rateLimitIdentifier}`);
     res.status(429).json({
       message: 'Too many requests. Please try again later.',
-      retryAfter: 60,
+      retryAfter: RATE_LIMIT_WINDOW / 1000, // Seconds
       error: 'RATE_LIMIT_EXCEEDED',
       identifier: rateLimitIdentifier
     });
+    return;
+  }
+
+  // STRICT SECURITY MODE: Reject unauthenticated requests AFTER rate limit check
+  if (!verifiedUid) {
+    secureLogger.warn(`Blocked unauthenticated access attempt to /api/prices from IP: ${clientIP}`);
+    res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
     return;
   }
 
@@ -203,7 +220,20 @@ export default async function handler(req, res) {
     const goldPromise = gold
       ? fetchGoldPrices().catch(error => {
         secureLogger.error('Error fetching gold prices:', error);
-        return {};
+        // Return valid fallback structure instead of empty object
+        const timestamp = new Date().toISOString();
+        return {
+          spot: { price: 0, currency: 'IDR' },
+          digital: { price: 0, sellPrice: 0, change: null, lastUpdate: timestamp },
+          physical: {
+            antam: { price: 0 },
+            ubs: { price: 0 },
+            galeri24: { price: 0 },
+            lastUpdate: timestamp
+          },
+          source: 'Error (Fallback)',
+          lastUpdate: timestamp
+        };
       })
       : Promise.resolve({});
 
