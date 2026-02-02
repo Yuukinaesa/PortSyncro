@@ -293,6 +293,26 @@ try {
     assert.strictEqual(res6b.totalCostIDR, 5000000, 'Test 6b: Gold TotalCostIDR incorrect');
     console.log('✅ Test 6b Passed: Gold Logic (Large Numbers)');
 
+    // TEST 7: US Stock Buy (Currency Conversion)
+    const tx7 = [
+        { id: '1', type: 'buy', assetType: 'stock', ticker: 'AAPL', amount: 10, price: 150, valueUSD: 1500, valueIDR: 22500000, timestamp: '2023-01-01', market: 'US' }
+    ];
+    // Exchange Rate 15000. Current Price 160.
+    const res7 = calculatePositionFromTransactions(tx7, 160, 15000);
+    // Value USD: 10 * 160 = 1600.
+    // Value IDR: 1600 * 15000 = 24,000,000.
+    assert.strictEqual(res7.portoUSD, 1600, 'Test 7: PortoUSD incorrect');
+    assert.strictEqual(res7.portoIDR, 24000000, 'Test 7: PortoIDR incorrect');
+    console.log('✅ Test 7 Passed: US Stock Conversion');
+
+    // TEST 8: Cash Logic
+    const tx8 = [
+        { id: '1', type: 'update', assetType: 'cash', amount: 50000000, price: 1, timestamp: '2023-01-01' }
+    ];
+    const res8 = calculatePositionFromTransactions(tx8, 1, 15000);
+    assert.strictEqual(res8.amount, 50000000, 'Test 8: Cash Amount incorrect');
+    console.log('✅ Test 8 Passed: Cash Logic');
+
 } catch (err) {
     console.error('❌ TESTS FAILED');
     console.error(err);

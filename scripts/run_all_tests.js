@@ -11,7 +11,6 @@ const scripts = [
     { name: 'CSV Logic Test', file: 'test-csv.js' },
     { name: 'Debug Gold Logic', file: 'debug_harga_emas_2.js' },
     { name: 'Debug Structure', file: 'debug_he_structure.js' },
-    { name: 'Pegadaian Real Test', file: 'test_pegadaian_real.js' },
     { name: 'Full System Audit', file: 'full_audit.js' },
     { name: 'Integration Tests', file: 'integration_test.js' }
 ];
