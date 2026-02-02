@@ -2,8 +2,8 @@
 // Health check endpoint for monitoring and load balancers
 
 export default function handler(req, res) {
-    // Only allow GET requests
-    if (req.method !== 'GET') {
+    // Allow GET and HEAD requests (HEAD is used by browsers/monitoring for preflight checks)
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
         res.status(405).json({ error: 'Method Not Allowed' });
         return;
     }
