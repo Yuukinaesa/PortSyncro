@@ -3,7 +3,7 @@ const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = 'http://localhost:3000';
 
 // --- COLOR OUTPUT ---
 const colors = {
@@ -119,7 +119,7 @@ function auditApi() {
     // We try to request a protected endpoint
     const options = {
         hostname: 'localhost',
-        port: 3001,
+        port: 3000,
         path: '/api/prices',
         method: 'POST', // standard method
         headers: {

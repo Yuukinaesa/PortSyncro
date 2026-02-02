@@ -1,5 +1,5 @@
 
-const { formatQuantity, calculateAssetValue } = require('../lib/utils');
+import { formatQuantity } from '../lib/utils.js';
 
 // Mock helpers for calculateAssetValue test since it's usually inside a React component or imports complex logic
 // We will test formatQuantity primarily as it was the root cause of precision loss.
