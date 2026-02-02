@@ -465,13 +465,19 @@ export default function Home() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // Cache-busting headers to prevent PWA/browser caching in production
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
           ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
           ...requestData,
           exchangeRate: typeof exchangeRate === 'number' ? exchangeRate : null,
           // userId is now redundant if token is verified, but keeping for backward compat if needed temporarily
-          userId: user?.uid || null
+          userId: user?.uid || null,
+          // Add timestamp to force cache busting at body level too
+          timestamp: Date.now()
         }),
       });
 
@@ -609,12 +615,21 @@ export default function Home() {
     }
   }, [assets, restoreComplete, performPriceFetch]);
 
-  // Set up intervals for exchange rate and price updates - OPTIMIZED
+  // Set up intervals for exchange rate and price updates - OPTIMIZED & PRODUCTION READY
   useEffect(() => {
     // Only set up intervals after initialization
     if (!isInitialized) return;
 
-    secureLogger.log('Setting up refresh intervals - isInitialized:', isInitialized);
+    const logMessage = (msg) => {
+      // Log in both dev and prod for debugging auto-refresh issues
+      if (process.env.NODE_ENV === 'production') {
+        console.log('[PROD AUTO-REFRESH]', msg, new Date().toISOString());
+      } else {
+        secureLogger.log(msg);
+      }
+    };
+
+    logMessage('Setting up refresh intervals - isInitialized: ' + isInitialized);
 
     // Initial refresh when component mounts (immediate) - ONLY ONCE
     if (!initialRefreshDoneRef.current && !isInitializingRef.current) {
@@ -624,10 +639,10 @@ export default function Home() {
 
       // Immediate price refresh when web is first opened - ONLY ONCE
       if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0 || assets?.gold?.length > 0) {
-        secureLogger.log('IMMEDIATE REFRESH triggered (first time opening web)');
+        logMessage('IMMEDIATE REFRESH triggered (first time opening web)');
         performPriceFetch();
       } else {
-        secureLogger.log('No assets available for immediate refresh, skipping');
+        logMessage('No assets available for immediate refresh, skipping');
       }
 
       initialRefreshDoneRef.current = true;
@@ -636,21 +651,29 @@ export default function Home() {
 
     // Exchange rate update every 5 minutes (less frequent)
     exchangeIntervalRef.current = setInterval(() => {
-      secureLogger.log('AUTOMATIC EXCHANGE RATE REFRESH triggered (5 minute interval)');
+      logMessage('AUTOMATIC EXCHANGE RATE REFRESH triggered (5 minute interval)');
       fetchExchangeRateData();
     }, 300000);
 
     // Price refresh every 2 minutes (only if assets exist) - optimized for better UX
+    // Use a function that checks current state to avoid stale closure
     refreshIntervalRef.current = setInterval(() => {
-      if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0 || assets?.gold?.length > 0) {
-        secureLogger.log('AUTOMATIC PRICE REFRESH triggered (2 minute interval)');
+      // Access assets from the component's current state via a fresh check
+      const hasAssets = (assets?.stocks?.length > 0 || assets?.crypto?.length > 0 || assets?.gold?.length > 0);
+
+      logMessage(`AUTOMATIC PRICE REFRESH check - hasAssets: ${hasAssets}`);
+
+      if (hasAssets) {
+        logMessage('AUTOMATIC PRICE REFRESH triggered (2 minute interval)');
         performPriceFetch();
+      } else {
+        logMessage('No assets to refresh, skipping automatic refresh');
       }
     }, 120000); // Refresh every 2 minutes for better UX
 
     // Clean up intervals on unmount
     return () => {
-      secureLogger.log('Cleaning up refresh intervals');
+      logMessage('Cleaning up refresh intervals');
       if (exchangeIntervalRef.current) {
         clearInterval(exchangeIntervalRef.current);
         exchangeIntervalRef.current = null;
@@ -660,7 +683,7 @@ export default function Home() {
         refreshIntervalRef.current = null;
       }
     };
-  }, [isInitialized]); // Remove dependencies that cause re-renders
+  }, [isInitialized, assets, fetchExchangeRateData, performPriceFetch]); // Add dependencies to ensure fresh closures
 
   // Manual refresh functions
 

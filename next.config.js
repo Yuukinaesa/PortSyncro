@@ -15,6 +15,19 @@ const withPWA = require('@ducanh2912/next-pwa').default({
     // "❌ Tidak boleh ada offline mode"
     runtimeCaching: [
         {
+            // API routes should NEVER be cached to ensure fresh data
+            urlPattern: /^\/api\/.*/,
+            handler: 'NetworkOnly',
+            options: {
+                cacheName: 'api-cache',
+                expiration: {
+                    maxEntries: 0,
+                },
+                networkTimeoutSeconds: 30,
+            }
+        },
+        {
+            // All other network requests should also use NetworkOnly
             urlPattern: /^https?.*/,
             handler: 'NetworkOnly',
             options: {
