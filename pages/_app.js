@@ -15,17 +15,48 @@ function MyApp({ Component, pageProps }) {
   // CRITICAL: One-time SW cleanup for this deployment
   // This forces users to get the new non-caching service worker
   useEffect(() => {
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-      // Version tag - increment this on each deployment that fixes SW caching
-      const SW_VERSION = 'v3-no-api-cache-2026-02-02';
+    if (typeof window !== 'undefined') {
+      // 1. CHUNK ERROR HANDLER (Auto-Reload on new deployment)
+      const handleChunkError = (e) => {
+        // Detect chunk loading errors (404s on old scripts)
+        const isChunkError = e.message && (e.message.includes('Loading chunk') || e.message.includes('Loading CSS chunk'));
+        // Detect script resource 404s (which don't always throw simple messages but trigger error event on link/script tags)
+        const isResourceError = e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK') && e.target.src && e.target.src.includes("_next/static/");
 
-      checkAndCleanupSW(SW_VERSION).then(cleanupPerformed => {
-        if (cleanupPerformed) {
-          secureLogger.log('[APP] SW cleanup completed - page will reload with fresh service worker');
-        } else {
-          secureLogger.log('[APP] SW version is current - no cleanup needed');
+        if (isChunkError || isResourceError) {
+          secureLogger.warn('Chunk load error detected (New Deployment?), forcing reload...');
+
+          // Prevent infinite reload loop
+          const lastReload = sessionStorage.getItem('chunk_reload_ts');
+          const now = Date.now();
+
+          // Only reload if we haven't reloaded in the last 10 seconds
+          if (!lastReload || (now - parseInt(lastReload)) > 10000) {
+            sessionStorage.setItem('chunk_reload_ts', String(now));
+            window.location.reload(true);
+          }
         }
-      });
+      };
+
+      window.addEventListener('error', handleChunkError, true); // Capture phase is essential for resource errors
+
+      // 2. SW CLEANUP
+      if (process.env.NODE_ENV === 'production') {
+        // Version tag - UPDATED to fix 03 Feb issues
+        const SW_VERSION = 'v4-fix-404-chunks-2026-02-03';
+
+        checkAndCleanupSW(SW_VERSION).then(cleanupPerformed => {
+          if (cleanupPerformed) {
+            secureLogger.log('[APP] SW cleanup completed - page will reload with fresh service worker');
+          } else {
+            secureLogger.log('[APP] SW version is current - no cleanup needed');
+          }
+        });
+      }
+
+      return () => {
+        window.removeEventListener('error', handleChunkError, true);
+      };
     }
   }, []);
 
