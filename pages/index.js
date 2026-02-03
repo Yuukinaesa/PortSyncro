@@ -425,7 +425,7 @@ export default function Home() {
   }, [user, authLoading, router, getUserPortfolio, initializePortfolio]);
 
   // Separate function for actual price fetching
-  const performPriceFetch = useCallback(async () => {
+  const performPriceFetch = useCallback(async (retryAttempt = 0) => {
     // Prevent fetching if user is not authenticated
     if (!user) {
       secureLogger.log('Skip price fetch - User not authenticated');
@@ -480,7 +480,7 @@ export default function Home() {
         gold: true // CRITICAL: ALWAYS fetch gold prices (needed for all gold assets + new gold input)
       };
 
-      secureLogger.log('Fetching prices for:', requestData);
+      secureLogger.log(`Fetching prices (Attempt ${retryAttempt}):`, requestData);
 
       const token = user ? await user.getIdToken() : null;
 
@@ -521,7 +521,7 @@ export default function Home() {
               // Retry after 30 seconds
               setTimeout(async () => {
                 try {
-                  await performPriceFetch();
+                  await performPriceFetch(0);
                 } catch (retryError) {
                   secureLogger.error('Retry failed:', retryError);
                 }
@@ -542,6 +542,21 @@ export default function Home() {
       refreshOptimizer.resetRateLimit();
 
       updatePrices(data.prices);
+
+      // Check for suspicious 0% changes (Possible stale/failed data)
+      // Only check if we haven't retried too many times
+      if (retryAttempt < 2) {
+        const hasSuspiciousZero = Object.values(data.prices || {}).some(
+          p => p.price > 0 && p.change === 0
+        );
+
+        if (hasSuspiciousZero) {
+          secureLogger.log(`Found suspicious 0% change items. Scheduling auto-retry (Attempt ${retryAttempt + 1})...`);
+          setTimeout(() => {
+            performPriceFetch(retryAttempt + 1);
+          }, 5000); // Retry after 5 seconds
+        }
+      }
 
       // Note: updatePrices already calls updatePortfolioValues internally
       // which updates all assets with current prices. No need for rebuildPortfolio here.
