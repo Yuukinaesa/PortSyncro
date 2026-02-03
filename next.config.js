@@ -19,7 +19,6 @@ const withPWA = require('@ducanh2912/next-pwa').default({
     // STRICT NO-CACHE POLICY FOR PAGE HTML
     // This ensures users always get the latest version (hashed JS files)
     // when they navigate or reload, preventing 404 chunks error.
-    skipWaiting: true,
     clientsClaim: true,
     cleanupOutdatedCaches: true,
 
@@ -44,8 +43,7 @@ const withPWA = require('@ducanh2912/next-pwa').default({
             urlPattern: /.*/,
             handler: 'NetworkOnly',
             options: {
-                cacheName: 'no-cache-all',
-                cacheWillUpdate: async () => null // Never cache
+                cacheName: 'no-cache-all'
             }
         }]
     },

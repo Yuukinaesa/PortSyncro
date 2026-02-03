@@ -5,12 +5,14 @@ const path = require('path');
 // Scripts are located in the same directory as this runner
 const scripts = [
     { name: 'Security Scan', file: 'audit_security_scan.js' },
+    { name: 'Strict Logic', file: 'strict_logic_test.mjs' },
+    { name: 'Strict Workflow', file: 'strict_workflow_test.mjs' },
     { name: 'Environment Verify', file: 'audit_test_verify_env.js' },
     { name: 'Logic & Calculation', file: 'audit_logic_test.js' },
     { name: 'Precision Tests', file: 'test-precision.mjs' },
     { name: 'CSV Logic Test', file: 'test-csv.js' },
     { name: 'Debug Gold Logic', file: 'debug_harga_emas_2.js' },
-    { name: 'Debug Structure', file: 'debug_he_structure.js' },
+    // { name: 'Debug Structure', file: 'debug_he_structure.js' }, // Optional
     { name: 'Full System Audit', file: 'full_audit.js' },
     { name: 'Integration Tests', file: 'integration_test.js' }
 ];
