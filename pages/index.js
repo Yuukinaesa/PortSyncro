@@ -403,6 +403,8 @@ export default function Home() {
     const checkAuth = async () => {
       if (!authLoading) {
         if (!user) {
+          // Clean up portfolio state handling on logout
+          reset();
           router.push('/login');
         } else {
           try {
@@ -1253,7 +1255,7 @@ export default function Home() {
       currentPrices[priceKey] = {
         price: stock.price, // Keep tracking CURRENT price for value, but cost basis is in transaction
         currency: stock.currency || (stock.market === 'US' ? 'USD' : 'IDR'),
-        change: 0,
+        change: stock.change || stock.changePercent || 0, // Use fetched change if available
         changeTime: '24h',
         lastUpdate: new Date().toISOString()
       };
@@ -1451,7 +1453,7 @@ export default function Home() {
       currentPrices[crypto.symbol] = {
         price: crypto.price,
         currency: 'USD',
-        change: 0,
+        change: crypto.change || crypto.changePercent || 0, // Use fetched change if available
         changeTime: '24h',
         lastUpdate: new Date().toISOString()
       };
