@@ -16,6 +16,13 @@ const withPWA = require('@ducanh2912/next-pwa').default({
         /^dynamic-css-manifest\.json$/,
         /\.map$/
     ],
+    // STRICT NO-CACHE POLICY FOR PAGE HTML
+    // This ensures users always get the latest version (hashed JS files)
+    // when they navigate or reload, preventing 404 chunks error.
+    skipWaiting: true,
+    clientsClaim: true,
+    cleanupOutdatedCaches: true,
+
     // CRITICAL FIX: Disable ALL default runtime caching
     // next-pwa has dangerous defaults that cache /api/* for 24h
     // We explicitly define ONLY what we need below
@@ -33,38 +40,15 @@ const withPWA = require('@ducanh2912/next-pwa').default({
             /\.map$/
         ],
         // Disable all default runtime caching rules
-        runtimeCaching: []
-    },
-    // CUSTOM runtime caching - STRICT control
-    runtimeCaching: [
-        // Rule 1: API routes - ABSOLUTELY NO CACHING
-        {
-            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/api/'),
+        runtimeCaching: [{
+            urlPattern: /.*/,
             handler: 'NetworkOnly',
             options: {
-                cacheName: 'no-cache-apis',
-                networkTimeoutSeconds: 30,
-                plugins: [
-                    {
-                        // Double safety: prevent ANY response from being cached
-                        cacheWillUpdate: async () => null,
-                    }
-                ]
+                cacheName: 'no-cache-all',
+                cacheWillUpdate: async () => null // Never cache
             }
-        },
-        // Rule 2: Static assets - CacheFirst is safe
-        {
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-                cacheName: 'google-fonts',
-                expiration: {
-                    maxEntries: 10,
-                    maxAgeSeconds: 31536000 // 1 year
-                }
-            }
-        }
-    ]
+        }]
+    },
 });
 
 const nextConfig = {
