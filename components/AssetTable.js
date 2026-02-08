@@ -832,11 +832,12 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
             const isProfit = gainIDR >= 0;
             const isChangePos = change >= 0;
 
+            const uniqueId = `mobile-${gIdx}-${idx}`;
             // Check if editing
-            const isEditing = type === 'cash' && editingAmountIndex === idx;
+            const isEditing = type === 'cash' && editingAmountIndex === uniqueId;
 
             return (
-              <div key={`mob-card-${gIdx}-${idx}`} className="bg-white dark:bg-[#161b22] rounded-3xl p-5 border border-gray-200 dark:border-gray-800 shadow-sm relative overflow-hidden group">
+              <div key={uniqueId} className="bg-white dark:bg-[#161b22] rounded-3xl p-5 border border-gray-200 dark:border-gray-800 shadow-sm relative overflow-hidden group">
                 {/* Top Row: Icon + Ticker + Actions */}
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
@@ -858,7 +859,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   <div className="flex gap-2">
                     {!isEditing && !isSummary && (
                       <>
-                        {onUpdate && <button onClick={() => type === 'cash' ? handleEditAmount(idx, asset) : openEditModal(asset)} className="p-3 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl text-blue-600 dark:text-blue-400 border border-gray-200 dark:border-gray-800 transition-colors active:scale-95"><FiEdit2 size={18} /></button>}
+                        {onUpdate && <button onClick={() => type === 'cash' ? handleEditAmount(uniqueId, asset) : openEditModal(asset)} className="p-3 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl text-blue-600 dark:text-blue-400 border border-gray-200 dark:border-gray-800 transition-colors active:scale-95"><FiEdit2 size={18} /></button>}
                         {onDelete && <button onClick={() => handleDeleteClick(idx, asset)} className="p-3 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl text-red-600 dark:text-red-500 border border-gray-200 dark:border-gray-800 transition-colors active:scale-95"><FiTrash2 size={18} /></button>}
                       </>
                     )}
@@ -883,8 +884,11 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             className="w-full px-2 py-1 bg-white dark:bg-[#161b22] border border-gray-300 dark:border-gray-700 rounded text-right text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                             aria-label={t('editAmount') || 'Edit Amount'}
                           />
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono mt-1 text-right">
+                           Est. Total Aset: {formatIDR(parseFloat(normalizeNumberInput(newAmount)) || 0)}
+                          </p>
                           <div className="flex justify-end gap-2">
-                            <button onClick={() => handleSaveAmount(idx, asset)} className="text-[10px] bg-green-600 px-2 py-1 rounded text-white">Save</button>
+                            <button onClick={() => handleSaveAmount(uniqueId, asset)} className="text-[10px] bg-green-600 px-2 py-1 rounded text-white">Save</button>
                             <button onClick={handleCancelEditAmount} className="text-[10px] bg-gray-600 px-2 py-1 rounded text-white">Cancel</button>
                           </div>
                         </div>
