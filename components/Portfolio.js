@@ -1065,40 +1065,38 @@ export default function Portfolio({
       </div>
 
       {/* BIG P/L Card */}
-      <div className="bg-white dark:bg-[#161b22] rounded-2xl p-6 border border-gray-200 dark:border-gray-800 relative overflow-hidden shadow-sm mt-4">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-gray-500 text-xs font-semibold uppercase tracking-wide">{t('totalGainLoss') || 'Total Untung/Rugi'}</h3>
+      <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm mt-4">
+        <div className="flex justify-between items-start mb-4">
+          <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('totalGainLoss') || 'Total Untung/Rugi'}</span>
           <div className="w-8 h-8 rounded-lg bg-yellow-100 dark:bg-[#1f2937] flex items-center justify-center text-yellow-600 dark:text-yellow-400">
             <FiTrendingUp className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="space-y-1 mb-6">
-          <h2 className={`text-2xl lg:text-3xl font-bold tracking-tight ${gains.totalGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
+        <div className="space-y-1 mb-2">
+          <h2 className={`text-xl font-bold tracking-tight ${gains.totalGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
             {gains.totalGainIDR >= 0 ? '+' : ''}{getMasked(formatIDR(gains.totalGainIDR))}
           </h2>
-          <p className="text-sm text-gray-500 font-mono">
+          <p className="text-xs text-gray-500 font-mono mb-2">
             {getMasked(formatUSD(gains.totalGainUSD))}
           </p>
-          <p className={`text-base lg:text-lg font-bold mt-2 ${gains.gainPercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
-            {gains.gainPercent >= 0 ? '+' : ''}{getMasked(gains.gainPercent.toFixed(1))}%
-          </p>
-        </div>
-
-        <div>
-          <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-            <div
-              style={{ width: `${Math.min(Math.abs(gains.gainPercent), 100)}%` }}
-              className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-            ></div>
-          </div>
-          <div className="flex justify-between items-end mt-4">
-            <span className="text-[10px] text-gray-500">{t('ofTotalCost') || 'dari total biaya'}</span>
-            <span className="text-xs bg-gray-100 dark:bg-[#0d1117] text-gray-500 dark:text-gray-400 px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-800">
-              {gains.totalGainIDR >= 0 ? (t('profitable') || 'Menguntungkan') : (t('loss') || 'Merugi')}
+          <div className="flex items-center gap-2 text-xs">
+            <span className={gains.gainPercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
+              {gains.gainPercent >= 0 ? '+' : ''}{getMasked(gains.gainPercent.toFixed(1))}%
+            </span>
+            <span className="text-gray-500">
+              ({gains.totalGainIDR >= 0 ? (t('profitable') || 'Menguntungkan') : (t('loss') || 'Merugi')})
             </span>
           </div>
         </div>
+
+        <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-4">
+          <div
+            style={{ width: `${Math.min(Math.abs(gains.gainPercent), 100)}%` }}
+            className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+          ></div>
+        </div>
+        <p className="text-[10px] text-gray-500 mt-2">{t('ofTotalCost') || 'dari total biaya'}</p>
       </div>
 
       {/* Floating Price Loading Indicator */}
