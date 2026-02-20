@@ -1163,3 +1163,19 @@
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+/* Fix Recharts / Browser SVG Focus Outlines */
+svg:focus,
+path:focus,
+g:focus,
+.recharts-wrapper,
+.recharts-surface,
+.recharts-pie-sector,
+.recharts-layer,
+.recharts-sector,
+.recharts-default-legend,
+.recharts-legend-item,
+.recharts-legend-item-text {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}

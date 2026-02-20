@@ -3463,7 +3463,7 @@ export default function Home() {
                       <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addCash') || 'Bank & E-Wallet'}</h3>
                       <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">{t('addCashDesc')}</p>
                       <ErrorBoundary>
-                        <CashInput onAdd={addCash} onComplete={() => setActiveTab('portfolio')} />
+                        <CashInput onAdd={wrapFeatureWithPriceCheck(addCash, 'Add Cash')} onComplete={() => setActiveTab('portfolio')} />
                       </ErrorBoundary>
                     </div>
 
@@ -3545,7 +3545,8 @@ export default function Home() {
                     isUpdatingPortfolio={portfolioLoading}
                     hideBalance={hideBalance}
                     onOpenSettings={() => setIsSettingsOpen(true)}
-                    onSnap={() => recordDailySnapshot(true)}
+                    onSnap={wrapFeatureWithPriceCheck(() => recordDailySnapshot(true), 'Snapshot')}
+                    priceCheckWrapper={wrapFeatureWithPriceCheck}
                   />
                 </ErrorBoundary>
               ) : activeTab === 'history' ? (

@@ -40,7 +40,8 @@ export default function Portfolio({
   isUpdatingPortfolio = false,
   hideBalance,
   onOpenSettings,
-  onSnap
+  onSnap,
+  priceCheckWrapper
 }) {
   const assetCount = useMemo(() => ({
     stocks: new Set((assets?.stocks || []).map(s => (s.ticker || '').toUpperCase())).size,
@@ -416,7 +417,7 @@ export default function Portfolio({
     cash: new Set((filteredAssets.cash || []).map(c => (c.ticker || '').toUpperCase())).size
   }), [filteredAssets]);
 
-  const copyToWhatsApp = () => {
+  const baseCopyToWhatsApp = () => {
     try {
       const now = new Date();
       // Format: "17 Jan 2026"
@@ -625,8 +626,10 @@ export default function Portfolio({
     }
   };
 
+  const copyToWhatsApp = priceCheckWrapper ? priceCheckWrapper(baseCopyToWhatsApp, 'Copy WhatsApp') : baseCopyToWhatsApp;
 
-  const exportPortfolioToCSV = (category = 'all', e) => {
+
+  const baseExportPortfolioToCSV = (category = 'all', e) => {
     if (e) e.stopPropagation();
     try {
       const currentDate = new Date().toLocaleString('id-ID', {
@@ -825,6 +828,8 @@ export default function Portfolio({
       setNotification({ type: 'error', title: 'Export Gagal', message: 'Gagal membuat file CSV.' });
     }
   };
+
+  const exportPortfolioToCSV = priceCheckWrapper ? priceCheckWrapper(baseExportPortfolioToCSV, 'Export Portfolio') : baseExportPortfolioToCSV;
 
   /* Helper Functions */
   const getMasked = (val, isCurrency = true) => {

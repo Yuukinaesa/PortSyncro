@@ -170,8 +170,7 @@ export default async function handler(req, res) {
     res.status(429).json({
       message: 'Too many requests. Please try again later.',
       retryAfter: RATE_LIMIT_WINDOW / 1000, // Seconds
-      error: 'RATE_LIMIT_EXCEEDED',
-      identifier: rateLimitIdentifier
+      error: 'RATE_LIMIT_EXCEEDED'
     });
     return;
   }
