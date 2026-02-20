@@ -133,6 +133,37 @@ export default function Portfolio({
     }
   }, [onRefreshPrices, onRefreshExchangeRate]);
 
+  // Generic Pending Action Handler for UI interactions during price updates
+  const pendingFeatureActionRef = useRef(null);
+
+  const wrapFeatureWithPriceCheck = useCallback((actionFn, actionName = 'Tindakan') => {
+    return (...args) => {
+      if (isPriceLoading) {
+        secureLogger.log(`${actionName} blocked: Prices are currently updating. Queueing action...`);
+        pendingFeatureActionRef.current = () => actionFn(...args);
+
+        setNotification({
+          type: 'info',
+          title: t('pleaseWait') || 'Mohon Tunggu',
+          message: language === 'en'
+            ? `Prices are updating. ${actionName} will start automatically when finished.`
+            : `Harga sedang diperbarui. ${actionName} akan otomatis berjalan setelah selesai.`
+        });
+        return;
+      }
+      return actionFn(...args);
+    };
+  }, [isPriceLoading, t, language]);
+
+  useEffect(() => {
+    if (!isPriceLoading && pendingFeatureActionRef.current) {
+      secureLogger.log('Price update complete, executing queued Feature action');
+      const actionQueue = pendingFeatureActionRef.current;
+      pendingFeatureActionRef.current = null;
+      setTimeout(() => actionQueue(), 300);
+    }
+  }, [isPriceLoading]);
+
   // Handle Sell
   const handleSellStock = (index, asset, amountToSell) => {
     onSellStock(index, asset, amountToSell);
@@ -887,31 +918,31 @@ export default function Portfolio({
           {/* Action buttons group - wrap on mobile */}
           <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-end">
             {/* Export */}
-            <button onClick={(e) => exportPortfolioToCSV('all', e)} className="bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-3 sm:px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border border-gray-200 dark:border-gray-700 hover:scale-105 active:scale-95">
+            <button onClick={(e) => wrapFeatureWithPriceCheck(exportPortfolioToCSV, 'Export')('all', e)} className="bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-3 sm:px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border border-gray-200 dark:border-gray-700 hover:scale-105 active:scale-95">
               <FiDownload className="w-4 h-4" />
               <span className="hidden xs:inline">{t('exportPortfolio') || 'Ekspor'}</span>
             </button>
 
             {/* WA */}
-            <button onClick={copyToWhatsApp} className="bg-emerald-500 hover:bg-emerald-600 text-white w-11 sm:w-auto sm:px-4 h-11 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95">
+            <button onClick={wrapFeatureWithPriceCheck(copyToWhatsApp, 'WhatsApp')} className="bg-emerald-500 hover:bg-emerald-600 text-white w-11 sm:w-auto sm:px-4 h-11 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95">
               <FaWhatsapp className="w-4 h-4" />
               <span className="hidden sm:inline">Copy</span>
             </button>
 
             {/* Snap */}
-            <button onClick={() => onSnap && onSnap()} className="bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-3 sm:px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95">
+            <button onClick={() => wrapFeatureWithPriceCheck(onSnap, 'Snap')()} className="bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-3 sm:px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95">
               <FiCamera className="w-4 h-4" />
               <span className="hidden sm:inline">Snap</span>
             </button>
 
             {/* Settings */}
-            <button onClick={onOpenSettings} className="bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 w-11 sm:w-auto sm:px-4 h-11 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95">
+            <button onClick={wrapFeatureWithPriceCheck(onOpenSettings, 'Settings')} className="bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 w-11 sm:w-auto sm:px-4 h-11 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95">
               <FiSettings className="w-4 h-4" />
               <span className="hidden sm:inline">{t('settings') || 'Settings'}</span>
             </button>
 
             {/* Add */}
-            <button onClick={() => onAddAsset && onAddAsset()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95">
+            <button onClick={() => wrapFeatureWithPriceCheck(onAddAsset, 'Add Asset')()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95">
               <FiPlusCircle className="w-4 h-4" />
               <span>{t('add') || 'Tambah'}</span>
             </button>

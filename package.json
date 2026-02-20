@@ -38,8 +38,15 @@
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",
     "autoprefixer": "^10.4.23",
-    "eslint": "^9.39.2",
-    "eslint-config-next": "^16.1.1",
+    "eslint": "^10.0.0",
+    "eslint-config-next": "^16.1.6",
     "postcss": "^8.5.6"
+  },
+  "overrides": {
+    "ajv": "^8.18.0",
+    "minimatch": "^10.2.1",
+    "cross-spawn": "^7.0.6",
+    "ejs": "^3.1.10",
+    "glob": "^11.0.0"
   }
 }

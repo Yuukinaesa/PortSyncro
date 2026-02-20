@@ -317,6 +317,8 @@ export default function Home() {
   const [pendingBackup, setPendingBackup] = useState(false); // Queue for backup
   const [pendingRestore, setPendingRestore] = useState(null); // Queue for restore (holds file)
 
+
+
   // CRITICAL FIX: Stable ref for assets to prevent performPriceFetch from recreating
   const assetsRef = useRef(null);
 
@@ -368,6 +370,41 @@ export default function Home() {
     rebuildPortfolio,
     reset
   } = usePortfolioState();
+
+  // Generic Pending Action Handler for UI interactions during price updates
+  const pendingFeatureActionRef = useRef(null);
+
+  const wrapFeatureWithPriceCheck = useCallback((actionFn, actionName = 'Tindakan') => {
+    return (...args) => {
+      if (pricesLoading || portfolioLoading) {
+        secureLogger.log(`${actionName} blocked: Prices are currently updating. Queueing action...`);
+        pendingFeatureActionRef.current = () => actionFn(...args);
+
+        setConfirmModal({
+          isOpen: true,
+          title: t('pleaseWait') || 'Mohon Tunggu',
+          message: language === 'en'
+            ? `Prices are updating. ${actionName} will start automatically when finished.`
+            : `Harga sedang diperbarui. ${actionName} akan otomatis berjalan setelah selesai.`,
+          type: 'info',
+          confirmText: t('ok'),
+          onConfirm: () => setConfirmModal(null)
+        });
+        return;
+      }
+      return actionFn(...args);
+    };
+  }, [pricesLoading, portfolioLoading, t, language]);
+
+  useEffect(() => {
+    if (!pricesLoading && !portfolioLoading && pendingFeatureActionRef.current) {
+      secureLogger.log('Price update complete, executing queued Feature action');
+      const actionQueue = pendingFeatureActionRef.current;
+      pendingFeatureActionRef.current = null;
+      setConfirmModal(null);
+      setTimeout(() => actionQueue(), 300);
+    }
+  }, [pricesLoading, portfolioLoading]);
 
   // Keep assetsRef in sync with latest assets
   useEffect(() => {
@@ -3438,7 +3475,7 @@ export default function Home() {
                       <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addStock')}</h3>
                       <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">{t('addStockDesc') || 'Indonesian & US Stocks'}</p>
                       <ErrorBoundary>
-                        <StockInput onAdd={addStock} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
+                        <StockInput onAdd={wrapFeatureWithPriceCheck(addStock, 'Add Stock')} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
                       </ErrorBoundary>
                     </div>
 
@@ -3450,7 +3487,7 @@ export default function Home() {
                       <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addCrypto')}</h3>
                       <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">{t('addCryptoDesc')}</p>
                       <ErrorBoundary>
-                        <CryptoInput onAdd={addCrypto} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
+                        <CryptoInput onAdd={wrapFeatureWithPriceCheck(addCrypto, 'Add Crypto')} onComplete={() => setActiveTab('portfolio')} exchangeRate={exchangeRate} />
                       </ErrorBoundary>
                     </div>
 
@@ -3462,7 +3499,7 @@ export default function Home() {
                       <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">Emas (Gold)</h3>
                       <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">Tabungan Emas & Batangan</p>
                       <ErrorBoundary>
-                        <GoldInput onAdd={addGold} onComplete={() => setActiveTab('portfolio')} />
+                        <GoldInput onAdd={wrapFeatureWithPriceCheck(addGold, 'Add Gold')} onComplete={() => setActiveTab('portfolio')} />
                       </ErrorBoundary>
                     </div>
                   </div>
@@ -3486,19 +3523,19 @@ export default function Home() {
                 <ErrorBoundary>
                   <Portfolio
                     assets={assets}
-                    onUpdateStock={updateStock}
-                    onUpdateCrypto={updateCrypto}
-                    onUpdateGold={updateGold}
-                    onUpdateCash={updateCash}
+                    onUpdateStock={wrapFeatureWithPriceCheck(updateStock, 'Update Stock')}
+                    onUpdateCrypto={wrapFeatureWithPriceCheck(updateCrypto, 'Update Crypto')}
+                    onUpdateGold={wrapFeatureWithPriceCheck(updateGold, 'Update Gold')}
+                    onUpdateCash={wrapFeatureWithPriceCheck(updateCash, 'Update Cash')}
                     onAddAsset={() => setActiveTab('add')}
-                    onSellStock={handleSellStock}
-                    onSellCrypto={handleSellCrypto}
-                    onSellGold={handleSellGold}
-                    onSellCash={handleWithdrawCash}
-                    onDeleteStock={deleteStock}
-                    onDeleteCrypto={deleteCrypto}
-                    onDeleteGold={deleteGold}
-                    onDeleteCash={deleteCash}
+                    onSellStock={wrapFeatureWithPriceCheck(handleSellStock, 'Sell Stock')}
+                    onSellCrypto={wrapFeatureWithPriceCheck(handleSellCrypto, 'Sell Crypto')}
+                    onSellGold={wrapFeatureWithPriceCheck(handleSellGold, 'Sell Gold')}
+                    onSellCash={wrapFeatureWithPriceCheck(handleWithdrawCash, 'Withdraw Cash')}
+                    onDeleteStock={wrapFeatureWithPriceCheck(deleteStock, 'Delete Stock')}
+                    onDeleteCrypto={wrapFeatureWithPriceCheck(deleteCrypto, 'Delete Crypto')}
+                    onDeleteGold={wrapFeatureWithPriceCheck(deleteGold, 'Delete Gold')}
+                    onDeleteCash={wrapFeatureWithPriceCheck(deleteCash, 'Delete Cash')}
                     onRefreshPrices={performPriceFetch}
                     onRefreshExchangeRate={handleRefreshExchangeRate}
                     prices={prices}
@@ -3530,7 +3567,7 @@ export default function Home() {
             onToggleHideBalance={() => setHideBalance(!hideBalance)}
             onOpenCalculator={() => setShowAverageCalculator(true)}
             onOpenAllocation={() => setIsAllocationModalOpen(true)}
-            onResetPortfolio={handleResetPortfolio}
+            onResetPortfolio={wrapFeatureWithPriceCheck(handleResetPortfolio, 'Reset Portfolio')}
             onBackup={handleBackup}
             onRestore={handleRestore}
             onLogoutAllSessions={logoutAllSessions}
