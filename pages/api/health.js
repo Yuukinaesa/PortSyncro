@@ -29,8 +29,7 @@ export default function handler(req, res) {
     if (missingEnvVars.length > 0) {
         res.status(503).json({
             status: 'unhealthy',
-            error: 'Missing critical environment variables',
-            missing: missingEnvVars,
+            error: 'Server is missing required configuration',
             timestamp: new Date().toISOString()
         });
         return;
