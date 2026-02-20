@@ -3,6 +3,7 @@ import Modal from './Modal';
 import { useLanguage } from '../lib/languageContext';
 import { formatIDR, formatUSD } from '../lib/utils';
 import { FiPieChart, FiTrendingUp, FiTarget, FiFilter } from 'react-icons/fi';
+import PortfolioDistributionChart from './PortfolioDistributionChart';
 
 export default function AssetAllocationModal({ isOpen, onClose, assets, prices, exchangeRate, hideBalance }) {
     const { t } = useLanguage();
@@ -99,7 +100,7 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
         };
     }, [assets, prices, exchangeRate]);
 
-    const displayItems = useMemo(() => {
+    const { displayItems, currentDenominator } = useMemo(() => {
         let filtered = allocationData.items;
 
         if (activeTab !== 'all') {
@@ -113,10 +114,12 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
         }
 
         // Re-calculate percentages based on the denominator
-        return filtered.map(item => ({
+        const display = filtered.map(item => ({
             ...item,
             percentage: denominator > 0 ? (item.valueIDR / denominator) * 100 : 0
         }));
+
+        return { displayItems: display, currentDenominator: denominator };
 
     }, [allocationData, activeTab, calculationBasis]);
 
@@ -153,6 +156,32 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
                     <div className="w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-300">
                         <FiPieChart className="w-5 h-5" />
                     </div>
+                </div>
+
+                {/* Pie Chart Display */}
+                <div className="mb-4">
+                    <PortfolioDistributionChart
+                        title={activeTab === 'all' ? t('assetAllocation') : `${t('assetAllocation') || 'Alokasi Aset'} - ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
+                        data={(() => {
+                            if (activeTab === 'all') {
+                                return [
+                                    { name: t('stocks') || 'Saham', value: allocationData.items.filter(i => i.type === 'stock').reduce((acc, i) => acc + i.valueIDR, 0), color: '#3b82f6' },
+                                    { name: t('crypto') || 'Kripto', value: allocationData.items.filter(i => i.type === 'crypto').reduce((acc, i) => acc + i.valueIDR, 0), color: '#a855f7' },
+                                    { name: t('gold') || 'Emas', value: allocationData.items.filter(i => i.type === 'gold').reduce((acc, i) => acc + i.valueIDR, 0), color: '#eab308' },
+                                    { name: t('bankAndWalletShort') || 'Kas', value: allocationData.items.filter(i => i.type === 'cash').reduce((acc, i) => acc + i.valueIDR, 0), color: '#10b981' }
+                                ].filter(item => item.value > 0);
+                            } else {
+                                // Specific category
+                                const colors = ['#3b82f6', '#a855f7', '#eab308', '#10b981', '#f97316', '#ec4899', '#06b6d4', '#8b5cf6', '#14b8a6', '#f43f5e'];
+                                return displayItems.filter(item => item.valueIDR > 0).map((item, index) => ({
+                                    name: item.ticker || item.name,
+                                    value: item.valueIDR,
+                                    color: colors[index % colors.length]
+                                }));
+                            }
+                        })()}
+                        totalReference={currentDenominator}
+                    />
                 </div>
 
                 {/* Filters */}

@@ -133,37 +133,6 @@ export default function Portfolio({
     }
   }, [onRefreshPrices, onRefreshExchangeRate]);
 
-  // Generic Pending Action Handler for UI interactions during price updates
-  const pendingFeatureActionRef = useRef(null);
-
-  const wrapFeatureWithPriceCheck = useCallback((actionFn, actionName = 'Tindakan') => {
-    return (...args) => {
-      if (isPriceLoading) {
-        secureLogger.log(`${actionName} blocked: Prices are currently updating. Queueing action...`);
-        pendingFeatureActionRef.current = () => actionFn(...args);
-
-        setNotification({
-          type: 'info',
-          title: t('pleaseWait') || 'Mohon Tunggu',
-          message: language === 'en'
-            ? `Prices are updating. ${actionName} will start automatically when finished.`
-            : `Harga sedang diperbarui. ${actionName} akan otomatis berjalan setelah selesai.`
-        });
-        return;
-      }
-      return actionFn(...args);
-    };
-  }, [isPriceLoading, t, language]);
-
-  useEffect(() => {
-    if (!isPriceLoading && pendingFeatureActionRef.current) {
-      secureLogger.log('Price update complete, executing queued Feature action');
-      const actionQueue = pendingFeatureActionRef.current;
-      pendingFeatureActionRef.current = null;
-      setTimeout(() => actionQueue(), 300);
-    }
-  }, [isPriceLoading]);
-
   // Handle Sell
   const handleSellStock = (index, asset, amountToSell) => {
     onSellStock(index, asset, amountToSell);
@@ -918,31 +887,31 @@ export default function Portfolio({
           {/* Action buttons group - wrap on mobile */}
           <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-end">
             {/* Export */}
-            <button onClick={(e) => wrapFeatureWithPriceCheck(exportPortfolioToCSV, 'Export')('all', e)} className="bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-3 sm:px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border border-gray-200 dark:border-gray-700 hover:scale-105 active:scale-95">
+            <button onClick={(e) => exportPortfolioToCSV('all', e)} className="bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-3 sm:px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border border-gray-200 dark:border-gray-700 hover:scale-105 active:scale-95">
               <FiDownload className="w-4 h-4" />
               <span className="hidden xs:inline">{t('exportPortfolio') || 'Ekspor'}</span>
             </button>
 
             {/* WA */}
-            <button onClick={wrapFeatureWithPriceCheck(copyToWhatsApp, 'WhatsApp')} className="bg-emerald-500 hover:bg-emerald-600 text-white w-11 sm:w-auto sm:px-4 h-11 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95">
+            <button onClick={copyToWhatsApp} className="bg-emerald-500 hover:bg-emerald-600 text-white w-11 sm:w-auto sm:px-4 h-11 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95">
               <FaWhatsapp className="w-4 h-4" />
               <span className="hidden sm:inline">Copy</span>
             </button>
 
             {/* Snap */}
-            <button onClick={() => wrapFeatureWithPriceCheck(onSnap, 'Snap')()} className="bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-3 sm:px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95">
+            <button onClick={() => onSnap && onSnap()} className="bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-3 sm:px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95">
               <FiCamera className="w-4 h-4" />
               <span className="hidden sm:inline">Snap</span>
             </button>
 
             {/* Settings */}
-            <button onClick={wrapFeatureWithPriceCheck(onOpenSettings, 'Settings')} className="bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 w-11 sm:w-auto sm:px-4 h-11 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95">
+            <button onClick={onOpenSettings} className="bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 w-11 sm:w-auto sm:px-4 h-11 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95">
               <FiSettings className="w-4 h-4" />
               <span className="hidden sm:inline">{t('settings') || 'Settings'}</span>
             </button>
 
             {/* Add */}
-            <button onClick={() => wrapFeatureWithPriceCheck(onAddAsset, 'Add Asset')()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95">
+            <button onClick={() => onAddAsset && onAddAsset()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 h-11 rounded-xl flex items-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95">
               <FiPlusCircle className="w-4 h-4" />
               <span>{t('add') || 'Tambah'}</span>
             </button>
@@ -1096,7 +1065,7 @@ export default function Portfolio({
       </div>
 
       {/* BIG P/L Card */}
-      <div className="bg-white dark:bg-[#161b22] rounded-2xl p-6 border border-gray-200 dark:border-gray-800 relative overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-[#161b22] rounded-2xl p-6 border border-gray-200 dark:border-gray-800 relative overflow-hidden shadow-sm mt-4">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-gray-500 text-xs font-semibold uppercase tracking-wide">{t('totalGainLoss') || 'Total Untung/Rugi'}</h3>
           <div className="w-8 h-8 rounded-lg bg-yellow-100 dark:bg-[#1f2937] flex items-center justify-center text-yellow-600 dark:text-yellow-400">
@@ -1105,28 +1074,30 @@ export default function Portfolio({
         </div>
 
         <div className="space-y-1 mb-6">
-          <h2 className={`text-3xl font-bold tracking-tight ${gains.totalGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
+          <h2 className={`text-2xl lg:text-3xl font-bold tracking-tight ${gains.totalGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
             {gains.totalGainIDR >= 0 ? '+' : ''}{getMasked(formatIDR(gains.totalGainIDR))}
           </h2>
           <p className="text-sm text-gray-500 font-mono">
             {getMasked(formatUSD(gains.totalGainUSD))}
           </p>
-          <p className={`text-lg font-bold mt-2 ${gains.gainPercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
+          <p className={`text-base lg:text-lg font-bold mt-2 ${gains.gainPercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
             {gains.gainPercent >= 0 ? '+' : ''}{getMasked(gains.gainPercent.toFixed(1))}%
           </p>
         </div>
 
-        <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-          <div
-            style={{ width: `${Math.min(Math.abs(gains.gainPercent), 100)}%` }}
-            className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-          ></div>
-        </div>
-        <div className="flex justify-between items-end mt-4">
-          <span className="text-[10px] text-gray-500">{t('ofTotalCost') || 'dari total biaya'}</span>
-          <span className="text-xs bg-gray-100 dark:bg-[#0d1117] text-gray-500 dark:text-gray-400 px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-800">
-            {gains.totalGainIDR >= 0 ? (t('profitable') || 'Menguntungkan') : (t('loss') || 'Merugi')}
-          </span>
+        <div>
+          <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+            <div
+              style={{ width: `${Math.min(Math.abs(gains.gainPercent), 100)}%` }}
+              className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+            ></div>
+          </div>
+          <div className="flex justify-between items-end mt-4">
+            <span className="text-[10px] text-gray-500">{t('ofTotalCost') || 'dari total biaya'}</span>
+            <span className="text-xs bg-gray-100 dark:bg-[#0d1117] text-gray-500 dark:text-gray-400 px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-800">
+              {gains.totalGainIDR >= 0 ? (t('profitable') || 'Menguntungkan') : (t('loss') || 'Merugi')}
+            </span>
+          </div>
         </div>
       </div>
 
