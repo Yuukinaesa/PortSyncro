@@ -123,7 +123,7 @@ const nextConfig = {
                             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
                             "font-src 'self' https://fonts.gstatic.com data:",
                             "img-src 'self' data: https:",
-                            "connect-src 'self' https://api.coingecko.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://min-api.cryptocompare.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebase.googleapis.com https://api.exchangerate-api.com https://api.fixer.io https://api.currencylayer.com https://*.firebaseio.com https://*.firebase.com wss://*.firebaseio.com wss://*.firebase.com https://fonts.googleapis.com https://fonts.gstatic.com",
+                            "connect-src 'self' https://api.coingecko.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://min-api.cryptocompare.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebase.googleapis.com https://api.exchangerate-api.com https://v6.exchangerate-api.com https://api.fixer.io https://api.currencylayer.com https://api.frankfurter.app https://www.indogold.id https://www.google.com https://*.firebaseio.com https://*.firebase.com wss://*.firebaseio.com wss://*.firebase.com https://fonts.googleapis.com https://fonts.gstatic.com",
                             "worker-src 'self' blob:",
                             "frame-src 'none'",
                             "object-src 'none'",

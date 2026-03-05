@@ -27,13 +27,12 @@ export default function Portfolio({
   onDeleteCash,
   onRefreshPrices,
   onRefreshExchangeRate,
-  exchangeRate: propExchangeRate,
+  exchangeRate: parentExchangeRate,
   lastExchangeRateUpdate: propLastExchangeRateUpdate,
   exchangeRateSource: propExchangeRateSource,
   exchangeRateError: propExchangeRateError,
   loadingExchangeRate: propLoadingExchangeRate,
   prices: propPrices,
-  exchangeRate: parentExchangeRate,
   sellingLoading = false,
   pricesLoading = false,
 
@@ -232,9 +231,9 @@ export default function Portfolio({
     (assets?.gold || []).forEach(gold => {
       // Gold Price (usually IDR per gram from our fetcher)
       let price = gold.currentPrice || 0;
-      // Handle manual override if we added that capability, but for now standard logic
 
-      const amount = parseFloat(gold.weight) || 0;
+      // [FIX] Use gold.amount — field set by portfolioStateManager. gold.weight is undefined.
+      const amount = parseFloat(gold.amount) || 0;
       const valIDR = price * amount;
 
       totalGoldIDR += valIDR;
@@ -242,10 +241,11 @@ export default function Portfolio({
         totalGoldUSD += valIDR / safeExchangeRate;
       }
 
-      // Include Gold in 24h Change calculation if change data is available
+      // [FIX] Use simple % change (same as stocks/crypto) for avgDayChange consistency.
+      // Previous code used weighted-by-value which mixed units with stocks % simple sum.
       if (gold.change !== null && gold.change !== undefined) {
-        avgDayChange += (gold.change * valIDR);  // Weighted by value (in IDR)
-        totalAssetsWithChange += valIDR;
+        avgDayChange += gold.change;
+        totalAssetsWithChange++;
       }
     });
 
@@ -349,7 +349,8 @@ export default function Portfolio({
     // Gold
     (assets?.gold || []).forEach(gold => {
       const price = gold.currentPrice || 0;
-      const amount = parseFloat(gold.weight) || 0;
+      // [FIX] Use gold.amount (consistent with portfolioStateManager), not gold.weight
+      const amount = parseFloat(gold.amount) || 0;
 
       const currentValue = price * amount;
       const costBasis = (parseFloat(gold.avgPrice) || 0) * amount;
