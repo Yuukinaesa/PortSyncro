@@ -90,14 +90,14 @@ export default function Portfolio({
   const [lastUpdate, setLastUpdate] = useState('');
   const [error, setError] = useState(null);
   const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
-  const [exchangeRate, setExchangeRate] = useState(parentExchangeRate || propExchangeRate);
+  const [exchangeRate, setExchangeRate] = useState(parentExchangeRate);
 
   useEffect(() => {
-    const newRate = parentExchangeRate || propExchangeRate;
+    const newRate = parentExchangeRate;
     if (newRate !== exchangeRate) {
       setExchangeRate(newRate);
     }
-  }, [parentExchangeRate, propExchangeRate, exchangeRate]);
+  }, [parentExchangeRate, exchangeRate]);
 
   const [exchangeRateError, setExchangeRateError] = useState(propExchangeRateError || null);
   const [exchangeRateSource, setExchangeRateSource] = useState(propExchangeRateSource || '');
