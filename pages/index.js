@@ -12,13 +12,12 @@ import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
 import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { FiLogOut, FiUser, FiCreditCard, FiSettings, FiCheck } from 'react-icons/fi';
+import { FiLogOut, FiCreditCard, FiSettings, FiCheck } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
 import TransactionHistory from '../components/TransactionHistory';
 import { fetchExchangeRate } from '../lib/fetchExchangeRate';
 import Modal from '../components/Modal';
-import AveragePriceCalculator from '../components/AveragePriceCalculator';
 import AssetAllocationModal from '../components/AssetAllocationModal';
 import refreshOptimizer from '../lib/refreshOptimizer';
 import { usePortfolioState } from '../lib/usePortfolioState';
@@ -305,7 +304,6 @@ export default function Home() {
   const [confirmModal, setConfirmModal] = useState(null);
   const [sellingLoading, setSellingLoading] = useState(false);
   const [pricesLoading, setPricesLoading] = useState(false);
-  const [showAverageCalculator, setShowAverageCalculator] = useState(false);
   const [rateLimitNotification, setRateLimitNotification] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
@@ -316,6 +314,8 @@ export default function Home() {
   const [pendingSnapshot, setPendingSnapshot] = useState(null); // Queue for snapshot: null | 'auto' | 'manual'
   const [pendingBackup, setPendingBackup] = useState(false); // Queue for backup
   const [pendingRestore, setPendingRestore] = useState(null); // Queue for restore (holds file)
+  // [FIX BUG-04] Debounce ref to throttle Firestore writes from saveUserPortfolio
+  const savePortfolioTimerRef = useRef(null);
 
 
 
@@ -779,10 +779,27 @@ export default function Home() {
   // Manual refresh functions
 
   // Save portfolio to Firestore whenever assets change
+  // [FIX BUG-04] Debounced saveUserPortfolio — throttle Firestore writes.
+  // Price updates fire rebuildPortfolio every 2 min → assets change → without debounce
+  // this would write to Firestore every 2 minutes even though transactions haven't changed.
   useEffect(() => {
     if (user && !loading && !authLoading && saveUserPortfolio && assets && isInitialized) {
-      saveUserPortfolio(assets);
+      // Clear any existing timer
+      if (savePortfolioTimerRef.current) {
+        clearTimeout(savePortfolioTimerRef.current);
+      }
+      // Debounce: only write to Firestore 5 seconds after assets stop changing
+      savePortfolioTimerRef.current = setTimeout(() => {
+        saveUserPortfolio(assets);
+        savePortfolioTimerRef.current = null;
+      }, 5000);
     }
+    // Cleanup on unmount
+    return () => {
+      if (savePortfolioTimerRef.current) {
+        clearTimeout(savePortfolioTimerRef.current);
+      }
+    };
   }, [assets, user, loading, authLoading, saveUserPortfolio, isInitialized]);
 
   // Fetch transactions and update portfolio state
@@ -2484,9 +2501,6 @@ export default function Home() {
 
 
 
-  // Handle average price calculator result
-
-
   const handleWithdrawCash = async (ticker, asset, amountToWithdraw) => {
     try {
       setSellingLoading(true);
@@ -3504,20 +3518,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Quick Actions - Mobile Optimized */}
-                  <div className="mt-4 sm:mt-8 p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-900/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">{t('quickActions')}</h4>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('quickActionsDesc')}</p>
-                    </div>
-                    <button
-                      onClick={() => setShowAverageCalculator(true)}
-                      className="w-full sm:w-auto px-4 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20 text-sm flex items-center justify-center gap-2 active:scale-95"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                      <span>{t('averagePriceCalculator')}</span>
-                    </button>
-                  </div>
+
                 </div>
               ) : activeTab === 'portfolio' ? (
                 <ErrorBoundary>
@@ -3566,7 +3567,6 @@ export default function Home() {
             onClose={() => setIsSettingsOpen(false)}
             hideBalance={hideBalance}
             onToggleHideBalance={() => setHideBalance(!hideBalance)}
-            onOpenCalculator={() => setShowAverageCalculator(true)}
             onOpenAllocation={() => setIsAllocationModalOpen(true)}
             onResetPortfolio={wrapFeatureWithPriceCheck(handleResetPortfolio, 'Reset Portfolio')}
             onBackup={handleBackup}
@@ -3680,12 +3680,6 @@ export default function Home() {
           )}
         </Modal>
 
-        {showAverageCalculator && (
-          <AveragePriceCalculator
-            isOpen={showAverageCalculator}
-            onClose={() => setShowAverageCalculator(false)}
-          />
-        )}
 
         {isAllocationModalOpen && (
           <AssetAllocationModal

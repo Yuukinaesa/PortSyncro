@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { secureLogger } from '../lib/security';
 
 // Add progress prop
-export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenCalculator, onOpenAllocation, onOpenReports, onResetPortfolio, onBackup, onRestore, onLogoutAllSessions, progress = 0, processingStatus = '' }) {
+export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHideBalance, onOpenAllocation, onOpenReports, onResetPortfolio, onBackup, onRestore, onLogoutAllSessions, progress = 0, processingStatus = '' }) {
     // ... existing hooks ...
     const { isDarkMode, toggleTheme } = useTheme();
     const { t, language, toggleLanguage } = useLanguage();
@@ -154,28 +154,6 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                     </div>
                 </button>
 
-                {/* Calculator Button */}
-                <button
-                    onClick={() => {
-                        if (onOpenCalculator) onOpenCalculator();
-                        onClose();
-                    }}
-                    className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-gray-100 dark:hover:bg-[#1f2937] hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 group"
-                >
-                    <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-xl bg-white dark:bg-[#161b22] text-orange-600 dark:text-orange-400 group-hover:text-orange-500 dark:group-hover:text-orange-300 transition-colors shadow-sm">
-                            <FiActivity className="w-5 h-5" />
-                        </div>
-                        <div className="text-left">
-                            <span className="block font-bold text-gray-900 dark:text-gray-200 group-hover:text-black dark:group-hover:text-white transition-colors">
-                                {t('averagePriceCalculator')}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                                {t('calculateAveragePriceDesc')}
-                            </span>
-                        </div>
-                    </div>
-                </button>
 
                 {/* Asset Allocation Button */}
                 <button
