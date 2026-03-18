@@ -427,6 +427,24 @@ export default function Portfolio({
       let text = `Rekap Keuangan — ${dateString}\n\n`;
       text += `💰 Total: ${formatIDR(totals.totalIDR)}\n\n`;
 
+      if (assets?.cash?.length) {
+        text += `Bank: ${formatIDR(totals.totalCashIDR)}\n`;
+      }
+      if (assets?.stocks?.length) {
+        text += `Saham: ${formatIDR(totals.totalStocksIDR)}\n`;
+      }
+      if (assets?.crypto?.length) {
+        text += `Crypto: ${formatIDR(totals.totalCryptoIDR)}\n`;
+      }
+      if (assets?.gold?.length) {
+        text += `Emas: ${formatIDR(totals.totalGoldIDR)}\n`;
+      }
+      
+      const hasAssets = assets?.cash?.length || assets?.stocks?.length || assets?.crypto?.length || assets?.gold?.length;
+      if (hasAssets) {
+        text += '\n';
+      }
+
       // Helper for sorting assets by value descending
       const sortByValue = (a, b) => (b.valueIDR || 0) - (a.valueIDR || 0);
 

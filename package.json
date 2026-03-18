@@ -15,7 +15,7 @@
     "test:strict": "node scripts/strict_comprehensive_test.js"
   },
   "dependencies": {
-    "@ducanh2912/next-pwa": "^10.2.9",
+    "@ducanh2912/next-pwa": "^10.2.6",
     "@vercel/analytics": "^1.6.1",
     "axios": "^1.13.2",
     "chart.js": "^4.5.1",
@@ -48,6 +48,7 @@
     "minimatch": "^10.2.1",
     "cross-spawn": "^7.0.6",
     "ejs": "^3.1.10",
-    "glob": "^11.0.0"
+    "glob": "^11.0.0",
+    "serialize-javascript": "^7.0.3"
   }
 }

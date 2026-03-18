@@ -1,12 +1,8 @@
 // pages/index.js
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
 import Portfolio from '../components/Portfolio';
-import StockInput from '../components/StockInput';
-import CryptoInput from '../components/CryptoInput';
-import GoldInput from '../components/GoldInput';
-import CashInput from '../components/CashInput';
-import SettingsModal from '../components/SettingsModal';
 import { useAuth } from '../lib/authContext';
 import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
@@ -15,13 +11,20 @@ import { db } from '../lib/firebase';
 import { FiLogOut, FiCreditCard, FiSettings, FiCheck } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
-import TransactionHistory from '../components/TransactionHistory';
 import { fetchExchangeRate } from '../lib/fetchExchangeRate';
 import Modal from '../components/Modal';
-import AssetAllocationModal from '../components/AssetAllocationModal';
 import refreshOptimizer from '../lib/refreshOptimizer';
 import { usePortfolioState } from '../lib/usePortfolioState';
 import Notification from '../components/Notification';
+
+// Enterprise Performance: Dynamic Imports / Code Splitting for non-initial heavy components
+const StockInput = dynamic(() => import('../components/StockInput'), { ssr: false });
+const CryptoInput = dynamic(() => import('../components/CryptoInput'), { ssr: false });
+const GoldInput = dynamic(() => import('../components/GoldInput'), { ssr: false });
+const CashInput = dynamic(() => import('../components/CashInput'), { ssr: false });
+const SettingsModal = dynamic(() => import('../components/SettingsModal'), { ssr: false });
+const TransactionHistory = dynamic(() => import('../components/TransactionHistory'), { ssr: false });
+const AssetAllocationModal = dynamic(() => import('../components/AssetAllocationModal'), { ssr: false });
 import { secureLogger } from './../lib/security';
 
 // Helper function to clean undefined values from objects
@@ -3430,7 +3433,7 @@ export default function Home() {
 
           {/* Navigation Controls (Sticky) - Mobile Optimized */}
           <div className="sticky top-14 sm:top-16 z-30 flex justify-center mb-4 sm:mb-8 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2 sm:py-3 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl">
-            <div className="flex items-center p-1 sm:p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-xl sm:rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 w-full sm:w-auto overflow-x-auto">
+            <div className="flex items-center p-1 sm:p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-xl sm:rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 w-full sm:w-auto overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               {[
                 { id: 'portfolio', label: t('portfolio'), mobileLabel: t('portfolio'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
                 { id: 'add', label: t('addAsset'), mobileLabel: t('add'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> },

@@ -12,6 +12,18 @@ function checkRateLimit(identifier) {
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW;
 
+  // Lazy cleanup (10% chance) to prevent memory leaks in serverless without setInterval
+  if (Math.random() < 0.1) {
+    for (const [id, reqs] of rateLimitMap.entries()) {
+      const validReqs = reqs.filter(timestamp => timestamp > windowStart);
+      if (validReqs.length === 0) {
+        rateLimitMap.delete(id);
+      } else {
+        rateLimitMap.set(id, validReqs);
+      }
+    }
+  }
+
   if (!rateLimitMap.has(identifier)) {
     rateLimitMap.set(identifier, []);
   }
@@ -19,11 +31,10 @@ function checkRateLimit(identifier) {
   const requests = rateLimitMap.get(identifier);
   const validRequests = requests.filter(timestamp => timestamp > windowStart);
 
-  const remaining = Math.max(0, RATE_LIMIT_MAX_REQUESTS - validRequests.length - 1); // -1 because current request will count if allowed
-  const resetTime = Math.ceil((windowStart + RATE_LIMIT_WINDOW) / 1000); // Unix timestamp in seconds
+  const remaining = Math.max(0, RATE_LIMIT_MAX_REQUESTS - validRequests.length - 1);
+  const resetTime = Math.ceil((windowStart + RATE_LIMIT_WINDOW) / 1000);
 
   if (validRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
-    // Record rate limit violation
     enhancedSecurityMonitor.recordSuspiciousPattern('RATE_LIMIT_EXCEEDED', {
       identifier,
       endpoint: '/api/prices',
@@ -47,21 +58,6 @@ function checkRateLimit(identifier) {
     reset: resetTime
   };
 }
-
-// Clean up old entries periodically to prevent memory leaks
-setInterval(() => {
-  const now = Date.now();
-  const windowStart = now - RATE_LIMIT_WINDOW;
-
-  for (const [identifier, requests] of rateLimitMap.entries()) {
-    const validRequests = requests.filter(timestamp => timestamp > windowStart);
-    if (validRequests.length === 0) {
-      rateLimitMap.delete(identifier);
-    } else {
-      rateLimitMap.set(identifier, validRequests);
-    }
-  }
-}, 60000); // Clean up every minute
 
 export default async function handler(req, res) {
   // ═══════════════════════════════════════════════════════════════════════════════
