@@ -193,7 +193,7 @@ export default async function handler(req, res) {
     }
 
     // SECURITY: Limit array size to prevent DoS (Resource Exhaustion)
-    const MAX_ITEMS = 50;
+    const MAX_ITEMS = 200;
     if ((stocks && stocks.length > MAX_ITEMS) || (crypto && crypto.length > MAX_ITEMS)) {
       secureLogger.warn(`Request exceeded max items limit. Stocks: ${stocks?.length}, Crypto: ${crypto?.length}`);
       res.status(400).json({
