@@ -149,8 +149,8 @@ export default function TransactionHistory({
 
     let filtered = [...transactions]; // Create a copy of transactions array
 
-    // Filter out 'update' and 'delete' transactions - hide them from history
-    filtered = filtered.filter(tx => tx.type !== 'update' && tx.type !== 'delete');
+    // Filter out 'update' transactions - hide them from history
+    filtered = filtered.filter(tx => tx.type !== 'update');
 
     // Filter out transactions that are marked as deleted from history
     filtered = filtered.filter(tx => tx.deletedFromHistory !== true);
@@ -160,7 +160,7 @@ export default function TransactionHistory({
       filtered = filtered.filter(tx => tx.ticker === assetKey || tx.symbol === assetKey);
     }
 
-    // Apply type filter (buy/sell only - delete transactions are hidden)
+    // Apply type filter (buy/sell/delete)
     if (filter !== 'all') {
       filtered = filtered.filter(tx => tx.type === filter);
     }
@@ -466,6 +466,15 @@ export default function TransactionHistory({
                   }`}
               >
                 {t('sell')}
+              </button>
+              <button
+                onClick={() => setFilter('delete')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${filter === 'delete'
+                  ? 'bg-gray-800 text-white shadow-lg shadow-gray-900/20'
+                  : 'bg-gray-100 dark:bg-[#0d1117] text-gray-500 hover:text-gray-900 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-200 dark:hover:bg-gray-800 dark:hover:text-white'
+                  }`}
+              >
+                {t('delete') || 'Delete'}
               </button>
             </div>
           </div>

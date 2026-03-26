@@ -1973,14 +1973,26 @@ export default function Home() {
         return;
       }
 
+      // Store actual asset data so delete transaction shows value in history
+      const isUS = stock.market === 'US';
+      const totalShares = isUS ? (stock.lots || 0) : ((stock.lots || 0) * 100);
+      const deletedPrice = stock.currentPrice || stock.avgPrice || 0;
+      const deletedValueIDR = stock.portoIDR || stock.porto || (deletedPrice * totalShares);
+      const deletedValueUSD = stock.portoUSD || (exchangeRate && exchangeRate > 0 ? deletedValueIDR / exchangeRate : 0);
+
       // Add delete transaction to Firestore
       const deleteTransaction = {
         assetType: 'stock',
         ticker: ticker.toUpperCase(),
         type: 'delete',
-        amount: 0,
-        price: 0,
-        total: 0,
+        amount: totalShares,
+        price: deletedPrice,
+        total: deletedPrice * totalShares,
+        avgPrice: stock.avgPrice || 0,
+        valueIDR: deletedValueIDR,
+        valueUSD: deletedValueUSD,
+        currency: isUS ? 'USD' : 'IDR',
+        market: stock.market || 'IDX',
         userId: user.uid,
         timestamp: serverTimestamp(),
         description: 'Asset deleted by user',
@@ -2026,14 +2038,24 @@ export default function Home() {
         return;
       }
 
+      // Store actual asset data so delete transaction shows value in history
+      const deletedAmount = crypto.amount || 0;
+      const deletedPrice = crypto.currentPrice || crypto.avgPrice || 0;
+      const deletedValueUSD = crypto.portoUSD || crypto.porto || (deletedPrice * deletedAmount);
+      const deletedValueIDR = crypto.portoIDR || (exchangeRate && exchangeRate > 0 ? deletedValueUSD * exchangeRate : 0);
+
       // Add delete transaction to Firestore
       const deleteTransaction = {
         assetType: 'crypto',
         symbol: symbol.toUpperCase(),
         type: 'delete',
-        amount: 0,
-        price: 0,
-        total: 0,
+        amount: deletedAmount,
+        price: deletedPrice,
+        total: deletedPrice * deletedAmount,
+        avgPrice: crypto.avgPrice || 0,
+        valueIDR: deletedValueIDR,
+        valueUSD: deletedValueUSD,
+        currency: 'USD',
         userId: user.uid,
         timestamp: serverTimestamp(),
         description: 'Asset deleted by user',
@@ -2077,13 +2099,23 @@ export default function Home() {
         return;
       }
 
+      // Store actual asset data so delete transaction shows value in history
+      const deletedAmount = gold.weight || gold.amount || 0;
+      const deletedPrice = gold.currentPrice || gold.avgPrice || 0;
+      const deletedValueIDR = gold.portoIDR || gold.porto || (deletedPrice * deletedAmount);
+      const deletedValueUSD = gold.portoUSD || (exchangeRate && exchangeRate > 0 ? deletedValueIDR / exchangeRate : 0);
+
       const deleteTransaction = {
         assetType: 'gold',
         ticker: ticker.toUpperCase(),
         type: 'delete',
-        amount: 0,
-        price: 0,
-        total: 0,
+        amount: deletedAmount,
+        price: deletedPrice,
+        total: deletedPrice * deletedAmount,
+        avgPrice: gold.avgPrice || 0,
+        valueIDR: deletedValueIDR,
+        valueUSD: deletedValueUSD,
+        currency: 'IDR',
         userId: user.uid,
         timestamp: serverTimestamp(),
         description: 'Asset deleted by user',
@@ -2636,14 +2668,23 @@ export default function Home() {
       // Check if cash asset exists
       // const cash = getAsset('cash', ticker); // getAsset might need update
 
+      // Get actual cash asset data so delete transaction shows value in history
+      const cashAsset = assets?.cash?.find(c => c.ticker?.toUpperCase() === ticker.toUpperCase());
+      const deletedAmount = cashAsset?.amount || 0;
+      const deletedValueIDR = cashAsset?.portoIDR || cashAsset?.porto || deletedAmount;
+      const deletedValueUSD = cashAsset?.portoUSD || (exchangeRate && exchangeRate > 0 ? deletedAmount / exchangeRate : 0);
+
       // Add delete transaction to Firestore
       const deleteTransaction = {
         assetType: 'cash',
         ticker: ticker.toUpperCase(), // Bank Name
         type: 'delete',
-        amount: 0,
+        amount: deletedAmount,
         price: 1,
-        total: 0,
+        total: deletedAmount,
+        valueIDR: deletedValueIDR,
+        valueUSD: deletedValueUSD,
+        currency: 'IDR',
         userId: user.uid,
         timestamp: serverTimestamp(),
         description: 'Asset deleted by user'
@@ -2721,7 +2762,7 @@ export default function Home() {
       setResetStatus('Clearing portfolio data...');
 
       // 2. Clear portfolio state and save empty portfolio
-      const emptyPortfolio = { stocks: [], crypto: [], cash: [] };
+      const emptyPortfolio = { stocks: [], crypto: [], gold: [], cash: [] };
       reset(); // Reset local state first
       initializePortfolio(emptyPortfolio);
       await saveUserPortfolio(emptyPortfolio);
@@ -3203,7 +3244,7 @@ export default function Home() {
         }
 
         // Also clear portfolio document
-        const emptyPortfolio = { stocks: [], crypto: [], cash: [] };
+        const emptyPortfolio = { stocks: [], crypto: [], gold: [], cash: [] };
         // reset(); // Clear local - Removed to prevent de-initialization issues
         await saveUserPortfolio(emptyPortfolio);
       }
