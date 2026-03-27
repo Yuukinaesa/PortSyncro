@@ -5,7 +5,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../lib/authContext';
 import { useLanguage } from '../lib/languageContext';
-import { FiLink, FiUnlink, FiCopy, FiCheck, FiRefreshCw } from 'react-icons/fi';
+import { FiLink, FiCopy, FiCheck, FiRefreshCw } from 'react-icons/fi';
+import { FaUnlink } from 'react-icons/fa';
 
 export default function TelegramLink() {
   const { user } = useAuth();
@@ -191,7 +192,7 @@ export default function TelegramLink() {
           disabled={loading}
           className="telegram-btn telegram-btn-danger"
         >
-          <FiUnlink size={16} />
+          <FaUnlink size={16} />
           {t('unlinkTelegram')}
         </button>
       ) : (
