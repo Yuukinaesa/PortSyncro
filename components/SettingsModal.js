@@ -1,4 +1,5 @@
 import Modal from './Modal';
+import TelegramLink from './TelegramLink';
 import { useTheme } from '../lib/themeContext';
 import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity, FiTrash2, FiAlertTriangle, FiDownload, FiUpload, FiLogOut, FiPieChart } from 'react-icons/fi';
 import { FaDownload, FaApple, FaTimes } from 'react-icons/fa';
@@ -256,6 +257,12 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                             className="hidden"
                         />
                     </label>
+                </div>
+
+                {/* Telegram Bot Integration */}
+                <div className="pt-4 mt-2 border-t border-gray-200 dark:border-gray-800">
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{language === 'en' ? 'Integrations' : 'Integrasi'}</p>
+                    <TelegramLink />
                 </div>
 
                 {/* Security & Danger Zone */}
