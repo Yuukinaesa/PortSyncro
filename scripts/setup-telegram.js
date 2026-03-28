@@ -204,6 +204,7 @@ async function setCommands() {
     { command: 'help', description: '📖 Daftar semua perintah' },
     { command: 'link', description: '🔗 Hubungkan akun (link KODE)' },
     { command: 'p', description: '📊 Ringkasan portfolio' },
+    { command: 'porto', description: '📋 Rekap keuangan (format WhatsApp)' },
     { command: 'stocks', description: '📈 Detail saham' },
     { command: 'crypto', description: '🪙 Detail crypto' },
     { command: 'gold', description: '🥇 Detail emas' },
@@ -215,6 +216,7 @@ async function setCommands() {
     { command: 'price', description: '💹 Cek harga real-time' },
     { command: 'history', description: '📜 Riwayat 10 transaksi terakhir' },
     { command: 'pnl', description: '📊 Profit & Loss summary' },
+    { command: 'autopilot', description: '⚙️ Kirim rekap harian otomatis' },
     { command: 'status', description: '🔗 Status koneksi akun' },
     { command: 'unlink', description: '🔓 Putuskan koneksi akun' },
   ];
