@@ -54,5 +54,5 @@ export const config = {
   api: {
     bodyParser: false,
   },
-  maxDuration: 300, // 5 minutes (Vercel Pro)
+  maxDuration: 60, // Max for Vercel Hobby plan
 };
