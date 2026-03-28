@@ -218,6 +218,7 @@ async function setCommands() {
     { command: 'pnl', description: '📊 Profit & Loss summary' },
     { command: 'autopilot', description: '⚙️ Kirim rekap harian otomatis' },
     { command: 'status', description: '🔗 Status koneksi akun' },
+    { command: 'setname', description: '👤 Ganti identitas di grup' },
     { command: 'unlink', description: '🔓 Putuskan koneksi akun' },
   ];
 
