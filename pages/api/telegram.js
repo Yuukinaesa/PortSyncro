@@ -113,4 +113,5 @@ export const config = {
       sizeLimit: '1mb',
     },
   },
+  maxDuration: 60, // Give the webhook maximum breathing room on Vercel Hobby
 };
