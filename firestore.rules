@@ -24,6 +24,15 @@ service cloud.firestore {
       }
     }
 
+    // Telegram-specific rules (Top-level)
+    match /telegram_links/{fromId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == resource.data.uid || request.auth.uid == request.resource.data.uid);
+    }
+
+    match /telegram_autopilot/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // Default deny all other access
     match /{document=**} {
       allow read, write: if false;
