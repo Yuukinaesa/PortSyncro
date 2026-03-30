@@ -56,7 +56,7 @@ async function handleCheckStatus(req, res) {
     return res.status(200).json({ linked: false });
   } catch (error) {
     console.error('[TelegramLink] Check status error:', error);
-    return res.status(500).json({ error: 'Failed to check status' });
+    return res.status(500).json({ error: 'Failed to check status', detail: error.message });
   }
 }
 
@@ -93,7 +93,7 @@ async function handleGenerateCode(req, res) {
     });
   } catch (error) {
     console.error('[TelegramLink] Generate code error:', error);
-    return res.status(500).json({ error: 'Failed to generate link code' });
+    return res.status(500).json({ error: 'Failed to generate link code', detail: error.message });
   }
 }
 
@@ -121,7 +121,7 @@ async function handleUnlink(req, res) {
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error('[TelegramLink] Unlink error:', error);
-    return res.status(500).json({ error: 'Failed to unlink' });
+    return res.status(500).json({ error: 'Failed to unlink', detail: error.message });
   }
 }
 
@@ -173,30 +173,59 @@ async function getServiceAccountToken() {
   }
 
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
-
-  // Strip surrounding quotes if present
-  if ((privateKey.startsWith('"') && privateKey.endsWith('"')) ||
-      (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
-    privateKey = privateKey.slice(1, -1);
+  if (!clientEmail) {
+    throw new Error('FIREBASE_CLIENT_EMAIL not set');
   }
+
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+  if (!privateKey) {
+    throw new Error('FIREBASE_PRIVATE_KEY not set');
+  }
+
+  // Robust private key parsing for Vercel environment variables
+  // Handle all common formats:
+  // 1. JSON string: "-----BEGIN...\\n...-----END...\\n"  
+  // 2. Raw with literal \n: -----BEGIN...\n...-----END...\n
+  // 3. Wrapped in single/double quotes
+  try {
+    // First try JSON.parse (handles Vercel's JSON-encoded env vars)
+    privateKey = JSON.parse(privateKey);
+  } catch {
+    // Not JSON - strip outer quotes manually if present
+    if ((privateKey.startsWith('"') && privateKey.endsWith('"')) ||
+        (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
+      privateKey = privateKey.slice(1, -1);
+    }
+  }
+  // Replace literal \n with actual newlines
   privateKey = privateKey.replace(/\\n/g, '\n');
 
-  // Create signed JWT for Google OAuth2
-  const now = Math.floor(Date.now() / 1000);
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-  const payload = Buffer.from(JSON.stringify({
-    iss: clientEmail,
-    sub: clientEmail,
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600,
-    scope: 'https://www.googleapis.com/auth/datastore'
-  })).toString('base64url');
+  // Validate key format
+  if (!privateKey.includes('-----BEGIN')) {
+    throw new Error('FIREBASE_PRIVATE_KEY format invalid: missing PEM header');
+  }
 
-  const signInput = `${header}.${payload}`;
-  const signature = crypto.createSign('RSA-SHA256').update(signInput).sign(privateKey, 'base64url');
-  const jwt = `${signInput}.${signature}`;
+  // Create signed JWT for Google OAuth2
+  let jwt;
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({
+      iss: clientEmail,
+      sub: clientEmail,
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now,
+      exp: now + 3600,
+      scope: 'https://www.googleapis.com/auth/datastore'
+    })).toString('base64url');
+
+    const signInput = `${header}.${payload}`;
+    const signature = crypto.createSign('RSA-SHA256').update(signInput).sign(privateKey, 'base64url');
+    jwt = `${signInput}.${signature}`;
+  } catch (signError) {
+    console.error('[TelegramLink] JWT signing failed:', signError.message);
+    throw new Error(`JWT signing failed: ${signError.message}`);
+  }
 
   // Exchange JWT for access token
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -205,12 +234,13 @@ async function getServiceAccountToken() {
     body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
   });
 
+  const tokenBody = await tokenRes.json();
   if (!tokenRes.ok) {
-    throw new Error(`Failed to get access token: ${tokenRes.status}`);
+    console.error('[TelegramLink] Token exchange failed:', tokenBody);
+    throw new Error(`Token exchange failed: ${tokenBody.error_description || tokenRes.status}`);
   }
 
-  const tokenData = await tokenRes.json();
-  cachedAccessToken = tokenData.access_token;
+  cachedAccessToken = tokenBody.access_token;
   tokenExpiresAt = Date.now() + 50 * 60 * 1000; // Cache for 50 min (tokens last 60)
   return cachedAccessToken;
 }
