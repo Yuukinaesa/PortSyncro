@@ -74,10 +74,17 @@ export default function TelegramLink() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
-      setLinkStatus(data);
+      
+      // If the API returns an error for any reason (e.g. 401 Unauthorized due to expired token), 
+      // don't assume they are unlinked.
+      if (data.error) {
+        setLinkStatus({ error: true, message: data.error });
+      } else {
+        setLinkStatus(data);
+      }
     } catch (err) {
       console.error('Error checking Telegram status:', err);
-      setLinkStatus({ linked: false });
+      setLinkStatus({ error: true, message: 'Network error. Please try again.' });
     }
   };
 
@@ -170,7 +177,12 @@ export default function TelegramLink() {
       {/* Status Badge */}
       <div className="telegram-link-status">
         <span className={`status-badge ${linkStatus?.linked ? 'status-linked' : 'status-unlinked'}`}>
-          {linkStatus?.linked ? (
+          {linkStatus?.error ? (
+            <>
+              <FiRefreshCw size={14} />
+              {language === 'en' ? 'Connection Error' : 'Gagal Memuat Status'}
+            </>
+          ) : linkStatus?.linked ? (
             <>
               <FiCheck size={14} />
               {t('linked')}
@@ -186,7 +198,16 @@ export default function TelegramLink() {
       </div>
 
       {/* Actions */}
-      {linkStatus?.linked ? (
+      {linkStatus?.error ? (
+        <button
+          onClick={checkStatus}
+          disabled={loading}
+          className="telegram-btn telegram-btn-secondary"
+        >
+          <FiRefreshCw size={16} className={loading ? 'spin' : ''} />
+          {language === 'en' ? 'Retry' : 'Coba Lagi'}
+        </button>
+      ) : linkStatus?.linked ? (
         <button
           onClick={handleUnlink}
           disabled={loading}
