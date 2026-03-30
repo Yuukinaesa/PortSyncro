@@ -216,6 +216,7 @@ async function setCommands() {
     { command: 'beli', description: '💰 Beli aset (buy TYPE TICKER QTY PRICE)' },
     { command: 'jual', description: '📤 Jual aset (sell TYPE TICKER QTY PRICE)' },
     { command: 'addcash', description: '💵 Tambah cash (addcash BANK AMOUNT)' },
+    { command: 'setcash', description: '💳 Set nominal Bank mutlak (setcash BANK AMOUNT)' },
     { command: 'addgold', description: '🥇 Beli emas (addgold TYPE GRAMS PRICE)' },
     { command: 'riwayat', description: '📜 Riwayat 10 transaksi terakhir' },
     { command: 'pnl', description: '📊 Profit & Loss summary' },
