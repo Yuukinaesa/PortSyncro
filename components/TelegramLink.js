@@ -74,10 +74,15 @@ export default function TelegramLink() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      // Handle non-JSON responses (e.g. 504 Gateway Timeout returns HTML)
+      // Handle non-OK responses but try to read JSON error details
       if (!res.ok) {
-        console.warn('Telegram status check failed:', res.status);
-        setLinkStatus({ error: true, message: `Server error (${res.status}). Coba lagi.` });
+        let errorDetail = `Server error (${res.status})`;
+        try {
+          const errData = await res.json();
+          errorDetail = errData.detail || errData.error || errorDetail;
+        } catch { /* response wasn't JSON */ }
+        console.warn('Telegram status check failed:', res.status, errorDetail);
+        setLinkStatus({ error: true, message: errorDetail });
         return;
       }
 
