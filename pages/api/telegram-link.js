@@ -156,14 +156,19 @@ async function verifyAuth(req) {
   try {
     // Use Google Identity Toolkit REST API (same approach as prices.js)
     const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
+
     const verifyResponse = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: token })
+        body: JSON.stringify({ idToken: token }),
+        signal: controller.signal
       }
     );
+    clearTimeout(timeoutId);
 
     if (verifyResponse.ok) {
       const data = await verifyResponse.json();
