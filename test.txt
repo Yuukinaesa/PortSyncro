@@ -1,0 +1,110 @@
+
+> portsyncro@0.1.0 test:strict
+> node scripts/strict_comprehensive_test.js
+
+[35m
+­ƒöÆ STARTING STRICT COMPREHENSIVE TEST SUITE[0m
+[33mTarget Port: 3001[0m
+
+============================================================
+[36m­ƒÜÇ SECTION: Static Code Analysis[0m
+============================================================
+
+--- ­ƒòÁ´©Å  CODE QUALITY AUDIT ---
+Scanning directories: pages, components, lib, hooks
+
+------------------------------------------------
+[33mÔÜá´©Å  PASSED WITH WARNINGS: Found 12 non-critical issues.[0m
+[32mÔ£à Code Quality Approved[0m
+
+============================================================
+[36m­ƒÜÇ SECTION: Unit & Logic Tests[0m
+============================================================
+Running Critical Logic Audit...
+Ô£à Test 1 Passed: Basic Stock Buy
+Ô£à Test 2 Passed: Averaging Up
+Ô£à Test 3 Passed: Partial Sell
+Ô£à Test 4 Passed: Delete and Re-buy
+Ô£à Test 5 Passed: Float Precision
+Ô£à Test 6 Passed: Update Logic
+Ô£à Test 6b Passed: Gold Logic (Large Numbers)
+Ô£à Test 7 Passed: US Stock Conversion
+Ô£à Test 8 Passed: Cash Logic
+ALL TESTS PASSED - LOGIC IS SOUND
+--- Testing formatQuantity ---
+PASS: 1 -> 1
+PASS: 0.12345678 -> 0,12345678
+PASS: 1e-8 -> 0,00000001
+PASS: 100.5 -> 100,5
+PASS: 1234.5678 -> 1.234,5678
+CHECK: 5e-9 -> 0,00000001 (Expected: 0)
+All Precision Tests Passed!
+[32mÔ£à All Logic Tests Passed[0m
+
+============================================================
+[36m­ƒÜÇ SECTION: Production Build Test[0m
+============================================================
+[0mRunning "npm run build"... this may take a moment.[0m
+
+> portsyncro@0.1.0 build
+> next build --webpack
+
+[1m[38;2;173;127;168mÔû▓ Next.js 16.1.7[39m[22m (webpack)
+- Environments: .env.local
+
+[37m[1m [22m[39m Running TypeScript ...
+[37m[1m [22m[39m Creating an optimized production build ...
+ [32m[1mÔ£ô[22m[39m (pwa) Compiling for server...
+ [32m[1mÔ£ô[22m[39m (pwa) Compiling for server...
+ [32m[1mÔ£ô[22m[39m (pwa) Compiling for client (static)...
+ [37m[1mÔùï[22m[39m (pwa) Service worker: C:\Users\arfan\Documents\GitHub\PortSyncro\public\sw.js
+ [37m[1mÔùï[22m[39m (pwa)   URL: /sw.js
+ [37m[1mÔùï[22m[39m (pwa)   Scope: /
+ [37m[1mÔùï[22m[39m (pwa) Custom runtimeCaching array found, using it instead of the default one.
+[32m[1mÔ£ô[22m[39m Compiled successfully in 8.7s
+[37m[1m [22m[39m Collecting page data using 19 workers ...
+[37m[1m [22m[39m Generating static pages using 19 workers (0/8) ...
+[37m[1m [22m[39m Generating static pages using 19 workers (2/8) 
+[37m[1m [22m[39m Generating static pages using 19 workers (4/8) 
+[37m[1m [22m[39m Generating static pages using 19 workers (6/8) 
+[32m[1mÔ£ô[22m[39m Generating static pages using 19 workers (8/8) in 1343.1ms
+[37m[1m [22m[39m Finalizing page optimization ...
+[37m[1m [22m[39m Collecting build traces ...
+
+[4mRoute (pages)[24m
+Ôöî Ôùï / ([32m740 ms[39m)
+Ôö£   /_app
+Ôö£ Ôùï /404 ([32m739 ms[39m)
+Ôö£ ãÆ /api/health
+Ôö£ ãÆ /api/prices
+Ôö£ ãÆ /api/telegram
+Ôö£ ãÆ /api/telegram-daily
+Ôö£ ãÆ /api/telegram-link
+Ôö£ Ôùï /confirm-reset-password ([32m737 ms[39m)
+Ôö£ Ôùï /login ([32m736 ms[39m)
+Ôö£ Ôùï /register ([32m735 ms[39m)
+Ôö£ Ôùï /reports ([32m740 ms[39m)
+Ôöö Ôùï /reset-password ([32m736 ms[39m)
+
+ãÆ Proxy (Middleware)
+
+Ôùï  (Static)   prerendered as static content
+ãÆ  (Dynamic)  server-rendered on demand
+
+[32mÔ£à Build Successful[0m
+
+============================================================
+[36m­ƒÜÇ SECTION: E2E Integration Test (Production Mode)[0m
+============================================================
+[0mStarting Production Server on port 3001...[0m
+[32mÔ£à Test Server Running[0m
+[0mRunning integration_test.js...[0m
+
+============================================================
+[36m­ƒº¬ PORTSYNCRO INTEGRATION TEST SUITE[0m
+============================================================
+
+[36m[Ôä╣´©Å  INFO] Checking if server is running...[0m
+[31m[ÔØî FAIL] Server is NOT running on port 3000. Please start the server first.[0m
+[36m[Ôä╣´©Å  INFO] Run: npm run dev[0m
+[31mÔØî E2E Testing Failed: Command failed with code 1[0m
