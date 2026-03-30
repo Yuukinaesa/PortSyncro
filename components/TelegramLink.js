@@ -73,10 +73,15 @@ export default function TelegramLink() {
       const res = await fetch('/api/telegram-link', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+
+      // Handle non-JSON responses (e.g. 504 Gateway Timeout returns HTML)
+      if (!res.ok) {
+        console.warn('Telegram status check failed:', res.status);
+        setLinkStatus({ error: true, message: `Server error (${res.status}). Coba lagi.` });
+        return;
+      }
+
       const data = await res.json();
-      
-      // If the API returns an error for any reason (e.g. 401 Unauthorized due to expired token), 
-      // don't assume they are unlinked.
       if (data.error) {
         setLinkStatus({ error: true, message: data.error });
       } else {
@@ -84,7 +89,7 @@ export default function TelegramLink() {
       }
     } catch (err) {
       console.error('Error checking Telegram status:', err);
-      setLinkStatus({ error: true, message: 'Network error. Please try again.' });
+      setLinkStatus({ error: true, message: 'Network error. Coba lagi.' });
     }
   };
 
@@ -104,7 +109,11 @@ export default function TelegramLink() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to generate code');
+        const errorMsg = res.status === 504 
+          ? 'Server timeout. Coba lagi dalam beberapa detik.'
+          : `Server error (${res.status}). Coba lagi.`;
+        setError(errorMsg);
+        return;
       }
 
       const data = await res.json();
