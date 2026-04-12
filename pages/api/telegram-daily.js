@@ -9,22 +9,15 @@
 import { sendDailyReports } from '../../lib/telegramBot';
 
 export default async function handler(req, res) {
-  // Security: Only allow GET with correct secret, or POST from Vercel Cron
+  // Security: Check both query parameter and Authorization header for cron secret
   const cronSecret = process.env.CRON_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET;
 
-  if (req.method === 'GET') {
-    const { secret } = req.query;
-    if (cronSecret && secret !== cronSecret) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-  } else if (req.method === 'POST') {
-    // Vercel Cron uses POST with Authorization header
-    const auth = req.headers.authorization;
-    if (cronSecret && auth !== `Bearer ${cronSecret}`) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-  } else {
-    return res.status(405).json({ error: 'Method not allowed' });
+  const authHeader = req.headers.authorization;
+  const isVercelCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
+  const isQuerySecret = cronSecret && req.query.secret === cronSecret;
+
+  if (cronSecret && !isVercelCron && !isQuerySecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   console.log('[Cron] Starting daily report send...');
