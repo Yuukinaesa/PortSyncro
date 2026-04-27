@@ -12,8 +12,8 @@ function checkRateLimit(identifier) {
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW;
 
-  // Lazy cleanup (10% chance) to prevent memory leaks in serverless without setInterval
-  if (Math.random() < 0.1) {
+  // Cleanup to prevent memory leaks in serverless (trigger randomly or if map gets too large)
+  if (rateLimitMap.size > 10000 || Math.random() < 0.1) {
     for (const [id, reqs] of rateLimitMap.entries()) {
       const validReqs = reqs.filter(timestamp => timestamp > windowStart);
       if (validReqs.length === 0) {
