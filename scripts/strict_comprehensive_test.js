@@ -140,18 +140,6 @@ async function main() {
 
         // Run Integration Script
         log('Running integration_test.js...');
-        await runCommand('node', ['scripts/integration_test.js'], PROJECT_ROOT, {
-            env: { ...process.env, PORT: TEST_PORT.toString() }
-        });
-
-        // Note: runCommand uses a separate spawn, so we need to pass env vars specifically.
-        // My helper above uses process.env + args. 
-        // I need to modify runCommand usage or the helper to accept Env override.
-        // The helper takes (command, args, cwd). I should add Env to it or just rely on global process.env
-        // But I didn't set PORT in global process.env.
-        // Let's quickly fix this by running it manually with spawnSync or modifying the helper call.
-
-        // Re-run with proper PORT env
         const testResult = spawnSync('node', ['scripts/integration_test.js'], {
             cwd: PROJECT_ROOT,
             stdio: 'inherit',

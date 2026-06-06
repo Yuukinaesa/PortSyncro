@@ -50,7 +50,13 @@ export default async function handler(req, res) {
   // SECURITY: Verify Telegram webhook secret
   // ═══════════════════════════════════════════════════════════════
   const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  const isProduction = process.env.NODE_ENV === 'production';
   
+  if (isProduction && !webhookSecret) {
+    console.error('[Telegram Webhook] TELEGRAM_WEBHOOK_SECRET not set in production');
+    return res.status(500).json({ error: 'Webhook security not configured' });
+  }
+
   if (webhookSecret) {
     const requestSecret = req.headers['x-telegram-bot-api-secret-token'];
     if (requestSecret !== webhookSecret) {

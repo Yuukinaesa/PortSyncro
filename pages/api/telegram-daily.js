@@ -7,10 +7,17 @@
 //   - External cron (e.g. cron-job.org): GET /api/telegram-daily?secret=YOUR_SECRET
 
 import { sendDailyReports } from '../../lib/telegramBot';
+import { secureLogger } from '../../lib/security';
 
 export default async function handler(req, res) {
   // Security: Check both query parameter and Authorization header for cron secret
   const cronSecret = process.env.CRON_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET;
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (isProduction && !cronSecret) {
+    secureLogger.error('[Cron] CRON_SECRET not set in production');
+    return res.status(500).json({ error: 'Cron security not configured' });
+  }
 
   const authHeader = req.headers.authorization;
   const isVercelCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
@@ -20,12 +27,12 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  console.log('[Cron] Starting daily report send...');
+  secureLogger.log('[Cron] Starting daily report send...');
 
   try {
     const result = await sendDailyReports();
 
-    console.log('[Cron] Daily report result:', result);
+    secureLogger.log('[Cron] Daily report result:', result);
 
     return res.status(200).json({
       ok: true,
@@ -33,7 +40,7 @@ export default async function handler(req, res) {
       ...result
     });
   } catch (error) {
-    console.error('[Cron] Daily report error:', error);
+    secureLogger.error('[Cron] Daily report error:', error);
     return res.status(500).json({
       ok: false,
       error: error.message
