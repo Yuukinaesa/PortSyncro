@@ -13,12 +13,14 @@ export default function ConnectionStatus() {
     const [retrying, setRetrying] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
     const retryTimeoutRef = useRef(null);
-    const lastOnlineRef = useRef(Date.now());
+    const lastOnlineRef = useRef(null);
     const pingIntervalRef = useRef(null);
+    const handleRetryRef = useRef(null);
 
     useEffect(() => {
         setMounted(true);
         setIsOnline(navigator.onLine);
+        lastOnlineRef.current = Date.now();
 
         return () => {
             setMounted(false);
@@ -151,9 +153,15 @@ export default function ConnectionStatus() {
         // Auto-retry with exponential backoff (max 60 seconds)
         if (retryCount < 5) {
             const delay = Math.min(5000 * Math.pow(2, retryCount), 60000);
-            retryTimeoutRef.current = setTimeout(handleRetry, delay);
+            retryTimeoutRef.current = setTimeout(() => {
+                handleRetryRef.current?.();
+            }, delay);
         }
     }, [checkConnectionQuality, retryCount]);
+
+    useEffect(() => {
+        handleRetryRef.current = handleRetry;
+    }, [handleRetry]);
 
     // Close modal manually
     const handleClose = () => {
