@@ -7,7 +7,7 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "build:prod": "next build --webpack",
     "start:prod": "next start",
     "test": "node scripts/run_all_tests.js",
@@ -43,12 +43,11 @@
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",
     "autoprefixer": "^10.4.23",
-    "eslint": "^9.0.0",
+    "eslint": "^9.16.0",
     "eslint-config-next": "^16.1.6",
     "postcss": "^8.5.6"
   },
   "overrides": {
-    "ajv": "^8.18.0",
     "minimatch": "^10.2.1",
     "cross-spawn": "^7.0.6",
     "ejs": "^3.1.10",
