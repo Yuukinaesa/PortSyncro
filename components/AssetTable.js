@@ -93,7 +93,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     if ((asset.useManualPrice || asset.isManual) && (asset.manualPrice || asset.price || asset.avgPrice)) {
       currentPrice = asset.manualPrice || asset.price || asset.avgPrice;
     } else {
-      currentPrice = priceData ? priceData.price : 0;
+      currentPrice = (priceData && priceData.price) ? priceData.price : (asset.currentPrice || 0);
     }
     // Value Calculation
     const amount = isStock ? (market === 'US' ? asset.lots : asset.lots * 100) : asset.amount;
