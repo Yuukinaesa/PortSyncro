@@ -1,4 +1,5 @@
 /** @type {import('tailwindcss').Config} */
+// Tailwind CSS configuration with custom theme palettes, font-families, and animation utilities
 module.exports = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
