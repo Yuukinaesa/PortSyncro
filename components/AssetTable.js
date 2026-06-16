@@ -61,7 +61,9 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     const market = asset.market || 'IDX';
 
     // Construct symbol based on market
-    const symbol = isStock ? (market === 'US' ? asset.ticker : `${asset.ticker}.JK`) : asset.symbol;
+    const symbol = isStock
+      ? (market === 'US' ? (asset.ticker || '').toUpperCase() : `${(asset.ticker || '').toUpperCase()}.JK`)
+      : (asset.symbol || '').toUpperCase();
 
     // Gold usually doesn't use the standard map unless we map it to 'gold' or ticker
     // But passed 'prices' usually has stock/crypto keys.
@@ -149,7 +151,9 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     const isCash = type === 'cash';
     const isGold = type === 'gold';
     const market = asset.market || 'IDX';
-    const symbol = isStock ? (market === 'US' ? asset.ticker : `${asset.ticker}.JK`) : asset.symbol;
+    const symbol = isStock
+      ? (market === 'US' ? (asset.ticker || '').toUpperCase() : `${(asset.ticker || '').toUpperCase()}.JK`)
+      : (asset.symbol || '').toUpperCase();
 
     if (asset.isSummary && asset.groupAssets) {
       let totalValueIDR = 0;
@@ -316,12 +320,14 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
     let price;
     if (type === 'stock') {
-      const tickerKey = `${asset.ticker}.JK`;
+      const isUS = asset.market === 'US';
+      const tickerKey = isUS ? (asset.ticker || '').toUpperCase() : `${(asset.ticker || '').toUpperCase()}.JK`;
       price = memoizedPrices[tickerKey];
     } else if (type === 'cash') {
       price = { price: 1, currency: 'IDR' };
     } else {
-      price = memoizedPrices[asset.symbol];
+      const lookupKey = (type === 'crypto' ? (asset.symbol || '') : (asset.ticker || '')).toUpperCase();
+      price = memoizedPrices[lookupKey];
     }
 
     const isIDX = type === 'stock' && price && price.currency === 'IDR';
@@ -562,7 +568,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
               {sortedGroups.map((group, groupIndex) => {
                 const renderRow = (asset, idx, isChild, isSummary) => {
                   const val = calculateAssetValue(asset, asset.currency, exchangeRate);
-                  let price = prices ? prices[type === 'stock' ? (asset.market === 'US' ? asset.ticker : `${asset.ticker}.JK`) : asset.symbol] : null;
+                  const lookupKey = type === 'stock'
+                    ? (asset.market === 'US' ? (asset.ticker || '').toUpperCase() : `${(asset.ticker || '').toUpperCase()}.JK`)
+                    : (asset.symbol || '').toUpperCase();
+                  let price = prices ? prices[lookupKey] : null;
                   if (!price) price = { price: val.price || asset.currentPrice, change: (asset.change !== undefined && asset.change !== null) ? asset.change : null };
 
                   const market = asset.market || 'IDX';
@@ -619,10 +628,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   let livePrice = 0;
 
                   if (type === 'stock') {
-                    const priceKey = market === 'US' ? asset.ticker : `${asset.ticker}.JK`;
+                    const priceKey = market === 'US' ? (asset.ticker || '').toUpperCase() : `${(asset.ticker || '').toUpperCase()}.JK`;
                     livePrice = memoizedPrices[priceKey]?.price || 0;
                   } else if (type === 'crypto') {
-                    livePrice = memoizedPrices[asset.symbol]?.price || 0;
+                    livePrice = memoizedPrices[(asset.symbol || '').toUpperCase()]?.price || 0;
                   } else if (type === 'gold') {
                     // For gold, still use asset.currentPrice as it's calculated separately
                     livePrice = asset.currentPrice || 0;
@@ -821,7 +830,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
           return mobileAssets.map((asset, idx) => {
             const isSummary = asset._isSummary;
             const assetValue = calculateAssetValue(asset, asset.currency, exchangeRate);
-            let price = prices ? prices[type === 'stock' ? (asset.market === 'US' ? asset.ticker : `${asset.ticker}.JK`) : asset.symbol] : null;
+            const lookupKey = type === 'stock'
+              ? (asset.market === 'US' ? (asset.ticker || '').toUpperCase() : `${(asset.ticker || '').toUpperCase()}.JK`)
+              : (asset.symbol || '').toUpperCase();
+            let price = prices ? prices[lookupKey] : null;
             if (!price) price = { price: assetValue.price || asset.currentPrice, change: (asset.change !== undefined && asset.change !== null) ? asset.change : null };
             const { valueIDR, valueUSD } = assetValue;
             const change = (price.change !== undefined && price.change !== null) ? price.change : null;
@@ -848,10 +860,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
             let livePrice = 0;
 
             if (type === 'stock') {
-              const priceKey = market === 'US' ? asset.ticker : `${asset.ticker}.JK`;
+              const priceKey = market === 'US' ? (asset.ticker || '').toUpperCase() : `${(asset.ticker || '').toUpperCase()}.JK`;
               livePrice = memoizedPrices[priceKey]?.price || 0;
             } else if (type === 'crypto') {
-              livePrice = memoizedPrices[asset.symbol]?.price || 0;
+              livePrice = memoizedPrices[(asset.symbol || '').toUpperCase()]?.price || 0;
             } else if (type === 'gold') {
               livePrice = asset.currentPrice || 0;
             } else if (type === 'cash') {
@@ -1105,7 +1117,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       const amount = parseFloat(normalizeNumberInput(sellAmount));
                       if (isNaN(amount) || amount <= 0) return '-';
 
-                      const price = prices && (type === 'stock' || type === 'cash' ? prices[`${sellingAsset.ticker}.JK`] || prices[sellingAsset.ticker] : prices[sellingAsset.symbol])?.price || sellingAsset.currentPrice || 1;
+                      const priceKey = type === 'stock' || type === 'cash'
+                        ? (sellingAsset.market === 'US' ? (sellingAsset.ticker || '').toUpperCase() : `${(sellingAsset.ticker || '').toUpperCase()}.JK`)
+                        : (sellingAsset.symbol || '').toUpperCase();
+                      const price = prices && prices[priceKey]?.price || sellingAsset.currentPrice || 1;
                       const multiplier = type === 'stock' && sellingAsset.market !== 'US' ? 100 : 1;
                       const totalValue = amount * multiplier * price;
 

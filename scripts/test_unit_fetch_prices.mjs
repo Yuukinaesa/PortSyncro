@@ -77,7 +77,7 @@ async function runTests() {
     // Remove Yahoo mock to force Google path OR mock Yahoo as failure
     mocks.set('yahoo.com', { json: {} }); // Invalid yahoo response
 
-    const stocks = await fetchStockPrices(['BBCA']);
+    const stocks = await fetchStockPrices(['BBCA.JK']);
     // Logic: 
     // Price = 5250
     // PrevClose = 5000
@@ -86,18 +86,28 @@ async function runTests() {
     // NOTE: The logic might try Yahoo first or parallel. 
     // If Yahoo fails (empty json above), it falls back to Google.
 
-    if (stocks['BBCA']) {
-        const s = stocks['BBCA'];
+    if (stocks['BBCA.JK']) {
+        const s = stocks['BBCA.JK'];
         assertCase('Stock Price Parsing', s.price, 5250);
         assertCase('Stock Change Calc', s.change, 5.00);
         assertCase('Currency Detection', s.currency, 'IDR');
     } else {
-        console.log('\x1b[31m❌ FAIL: Stock BBCA not returned\x1b[0m');
+        console.log('\x1b[31m❌ FAIL: Stock BBCA.JK not returned\x1b[0m');
         failed++;
     }
 
-    // --- TEST 2: Crypto Prices (CryptoCompare API) ---
-    console.log('\n--- Testing Crypto Fetch (API Mock) ---');
+    // --- TEST 2: Crypto Prices (Binance & CryptoCompare APIs) ---
+    console.log('\n--- Testing Crypto Fetch (Binance Mock) ---');
+
+    mocks.set('api.binance.com', {
+        json: [
+            {
+                symbol: 'BTCUSDT',
+                lastPrice: '50000.50',
+                priceChangePercent: '2.5'
+            }
+        ]
+    });
 
     mocks.set('cryptocompare.com', {
         json: {
