@@ -23,9 +23,11 @@ const originalFetch = global.fetch;
 const mocks = new Map();
 
 global.fetch = async (url, options) => {
-    // Check for mocks
-    for (const [key, response] of mocks.entries()) {
+    // Check for mocks sorted by length descending to match more specific rules first
+    const sortedKeys = [...mocks.keys()].sort((a, b) => b.length - a.length);
+    for (const key of sortedKeys) {
         if (url.includes(key)) {
+            const response = mocks.get(key);
             return {
                 ok: true,
                 status: 200,
@@ -143,6 +145,9 @@ async function runTests() {
     `;
 
     mocks.set('indogold.id', { text: mockIndoGoldHTML });
+
+    // Mock GC=F to fail so we fall back to PAXG as expected in this unit test
+    mocks.set('google.com/finance?q=GC=F', { text: '<html>No Price for GC=F</html>' });
 
     // Mock Proxy for Global Change
     mocks.set('PAXG', { // For fetchCryptoPrices call inside fetchIndoGoldPrices
