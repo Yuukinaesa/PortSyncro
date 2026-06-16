@@ -40,7 +40,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
   const memoizedPrices = useMemo(() => prices || {}, [prices]);
   const memoizedExchangeRate = useMemo(() => exchangeRate, [exchangeRate]);
 
-  const calculateAssetValue = useCallback((asset, currency, exchangeRateArg) => {
+  const calculateSingleAssetValue = useCallback((asset, currency, exchangeRateArg) => {
     if (!asset) {
       return {
         valueIDR: 0,
@@ -133,6 +133,50 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     };
   }, [memoizedPrices, type, t, memoizedExchangeRate]);
 
+  const calculateAssetValue = useCallback((asset, currency, exchangeRateArg) => {
+    if (!asset) {
+      return {
+        valueIDR: 0,
+        valueUSD: 0,
+        price: 0,
+        error: t('unknownAssetType')
+      };
+    }
+
+    const rateToUse = exchangeRateArg !== undefined ? exchangeRateArg : memoizedExchangeRate;
+
+    const isStock = type === 'stock';
+    const isCash = type === 'cash';
+    const isGold = type === 'gold';
+    const market = asset.market || 'IDX';
+    const symbol = isStock ? (market === 'US' ? asset.ticker : `${asset.ticker}.JK`) : asset.symbol;
+
+    if (asset.isSummary && asset.groupAssets) {
+      let totalValueIDR = 0;
+      let totalValueUSD = 0;
+      asset.groupAssets.forEach(a => {
+        const val = calculateSingleAssetValue(a, a.currency, rateToUse);
+        totalValueIDR += val.valueIDR;
+        totalValueUSD += val.valueUSD;
+      });
+
+      let priceData = isCash ? { price: 1 } : memoizedPrices[symbol];
+      if (isGold) {
+        priceData = { price: asset.currentPrice || 0 };
+      }
+      const marketPrice = (priceData && priceData.price) ? priceData.price : (asset.currentPrice || 0);
+
+      return {
+        valueIDR: totalValueIDR,
+        valueUSD: totalValueUSD,
+        price: marketPrice,
+        error: null
+      };
+    }
+
+    return calculateSingleAssetValue(asset, currency, exchangeRateArg);
+  }, [calculateSingleAssetValue, memoizedPrices, type, t, memoizedExchangeRate]);
+
   // Group and sort assets
   const sortedGroups = useMemo(() => {
     if (!memoizedAssets || !Array.isArray(memoizedAssets) || memoizedAssets.length === 0) {
@@ -167,20 +211,23 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
       // Use the first asset's price/market data for the summary
       const sampleAsset = groupAssets[0];
-      const assetValue = calculateAssetValue({ ...sampleAsset, lots: totalAmount, amount: totalAmount }, sampleAsset.currency, memoizedExchangeRate);
-
       const summary = {
         ...sampleAsset,
         lots: totalAmount,
         amount: totalAmount,
         avgPrice: weightedAvgPrice,
         isSummary: true,
+        groupAssets: groupAssets,
+        useManualPrice: false,
+        isManual: false,
         broker: type === 'cash' ? 'Gabungan' : 'Gabungan',
         exchange: 'Gabungan',
         count: groupAssets.length,
         ticker: sampleAsset.ticker,
         symbol: sampleAsset.symbol
       };
+
+      const assetValue = calculateAssetValue(summary, sampleAsset.currency, memoizedExchangeRate);
 
       // Calculate sorting values for the summary
       const costBasis = summary.avgPrice * totalShares;
@@ -521,7 +568,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   const market = asset.market || 'IDX';
                   const amount = type === 'stock' ? (market === 'US' ? asset.lots : asset.lots * 100) : asset.amount;
                   const costBasis = asset.avgPrice * amount;
-                  const currentVal = (val.price || 0) * amount;
+                  const currentVal = ((type === 'stock' && market === 'US') || type === 'crypto') ? val.valueUSD : val.valueIDR;
                   const gainRaw = currentVal - costBasis;
 
                   let gainIDR = 0, gainUSD = 0;
@@ -781,7 +828,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
             const market = asset.market || 'IDX';
             const amount = type === 'stock' ? (market === 'US' ? asset.lots : asset.lots * 100) : asset.amount;
             const costBasis = asset.avgPrice * amount;
-            const currentVal = (assetValue.price || 0) * amount;
+            const currentVal = ((type === 'stock' && market === 'US') || type === 'crypto') ? assetValue.valueUSD : assetValue.valueIDR;
             const gainRaw = currentVal - costBasis;
             let gainIDR = 0, gainUSD = 0, gainPerc = 0;
             if (costBasis > 0) gainPerc = (gainRaw / costBasis) * 100;
