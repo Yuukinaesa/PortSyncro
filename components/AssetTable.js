@@ -755,11 +755,11 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
                           {/* UNTUNG/RUGI */}
                           <td className="px-4 py-4 text-right">
-                            <div className={`font-bold ${gainIDR >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
+                            <div className={`font-bold ${gainIDR > 0 ? 'text-green-600 dark:text-green-500' : gainIDR < 0 ? 'text-red-600 dark:text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
                               {getMasked(formatIDR(gainIDR))}
                             </div>
-                            <div className={`text-xs ${gainPerc >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
-                              {getMasked(`${gainUSD >= 0 ? '+' : ''}${formatUSD(gainUSD)}`)} <span className="opacity-70">({gainPerc.toFixed(2)}%)</span>
+                            <div className={`text-xs ${gainPerc > 0 ? 'text-green-600 dark:text-green-500' : gainPerc < 0 ? 'text-red-600 dark:text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                              {getMasked(`${gainUSD > 0 ? '+' : ''}${formatUSD(gainUSD)}`)} <span className="opacity-70">({gainPerc.toFixed(2)}%)</span>
                             </div>
                           </td>
 
@@ -1025,14 +1025,14 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     <div>
                       <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-1">{t('profitLoss')?.toUpperCase() || 'P/L'}</p>
                       <div className="flex flex-col">
-                        <p className={`font-bold text-sm font-mono ${isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                          {getMasked((isProfit ? '+' : '') + formatIDR(gainIDR))}
+                        <p className={`font-bold text-sm font-mono ${gainIDR > 0 ? 'text-emerald-600 dark:text-emerald-400' : gainIDR < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                          {getMasked((gainIDR > 0 ? '+' : '') + formatIDR(gainIDR))}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <p className={`font-bold text-[10px] font-mono ${isProfit ? 'text-emerald-600/80 dark:text-emerald-400/80' : 'text-rose-600/80 dark:text-rose-400/80'}`}>
-                            {getMasked((isProfit ? '+' : '') + formatUSD(gainUSD))}
+                          <p className={`font-bold text-[10px] font-mono ${gainUSD > 0 ? 'text-emerald-600/80 dark:text-emerald-400/80' : gainUSD < 0 ? 'text-rose-600/80 dark:text-rose-400/80' : 'text-gray-500/80 dark:text-gray-400/80'}`}>
+                            {getMasked((gainUSD > 0 ? '+' : '') + formatUSD(gainUSD))}
                           </p>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isProfit ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${gainPerc > 0 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : gainPerc < 0 ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
                             {getMasked(`${gainPerc.toFixed(2)}%`, false)}
                           </span>
                         </div>

@@ -814,10 +814,10 @@ export default function Portfolio({
               {getMasked(formatUSD(totals.totalStocksUSD))}
             </p>
             <div className="flex items-center gap-2 text-xs">
-              <span className={gains.totalStockGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
-                {gains.totalStockGainIDR >= 0 ? '+' : ''}{getMasked(formatIDR(gains.totalStockGainIDR))}
+              <span className={gains.totalStockGainIDR > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.totalStockGainIDR < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                {gains.totalStockGainIDR > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalStockGainIDR))}
               </span>
-              <span className={gains.totalStockGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
+              <span className={gains.totalStockGainIDR > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.totalStockGainIDR < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
                 ({getMasked(gains.stocksGainPercent.toFixed(1))}%)
               </span>
             </div>
@@ -844,10 +844,10 @@ export default function Portfolio({
               {getMasked(formatUSD(totals.totalCryptoUSD))}
             </p>
             <div className="flex items-center gap-2 text-xs">
-              <span className={gains.totalCryptoGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
-                {gains.totalCryptoGainIDR >= 0 ? '+' : ''}{getMasked(formatIDR(gains.totalCryptoGainIDR))}
+              <span className={gains.totalCryptoGainIDR > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.totalCryptoGainIDR < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                {gains.totalCryptoGainIDR > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalCryptoGainIDR))}
               </span>
-              <span className={gains.totalCryptoGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
+              <span className={gains.totalCryptoGainIDR > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.totalCryptoGainIDR < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
                 ({getMasked(gains.cryptoGainPercent.toFixed(1))}%)
               </span>
             </div>
@@ -874,8 +874,8 @@ export default function Portfolio({
               {getMasked(formatUSD(totals.totalGoldUSD))}
             </p>
             <div className="flex items-center gap-2 text-xs">
-              <span className={gains.goldGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
-                {gains.goldGainIDR >= 0 ? '+' : ''}{getMasked(formatIDR(gains.goldGainIDR))}
+              <span className={gains.goldGainIDR > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.goldGainIDR < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                {gains.goldGainIDR > 0 ? '+' : ''}{getMasked(formatIDR(gains.goldGainIDR))}
               </span>
             </div>
           </div>
@@ -896,18 +896,18 @@ export default function Portfolio({
         </div>
 
         <div className="space-y-1 mb-2">
-          <h2 className={`text-xl font-bold tracking-tight ${gains.totalGainIDR >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}`}>
-            {gains.totalGainIDR >= 0 ? '+' : ''}{getMasked(formatIDR(gains.totalGainIDR))}
+          <h2 className={`text-xl font-bold tracking-tight ${gains.totalGainIDR > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.totalGainIDR < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}`}>
+            {gains.totalGainIDR > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalGainIDR))}
           </h2>
           <p className="text-xs text-gray-500 font-mono mb-2">
             {getMasked(formatUSD(gains.totalGainUSD))}
           </p>
           <div className="flex items-center gap-2 text-xs">
-            <span className={gains.gainPercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500'}>
-              {gains.gainPercent >= 0 ? '+' : ''}{getMasked(gains.gainPercent.toFixed(1))}%
+            <span className={gains.gainPercent > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.gainPercent < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+              {gains.gainPercent > 0 ? '+' : ''}{getMasked(gains.gainPercent.toFixed(1))}%
             </span>
             <span className="text-gray-500">
-              ({gains.totalGainIDR >= 0 ? (t('profitable') || 'Menguntungkan') : (t('loss') || 'Merugi')})
+              ({gains.totalGainIDR > 0 ? (t('profitable') || 'Menguntungkan') : gains.totalGainIDR < 0 ? (t('loss') || 'Merugi') : (t('flat') || 'Tidak Berubah')})
             </span>
           </div>
         </div>
