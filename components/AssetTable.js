@@ -79,21 +79,22 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       priceData = { price: asset.currentPrice || 0 };
     }
 
-    if (!isCash && !isStock && (!priceData || !priceData.price) && !asset.isManual && !asset.useManualPrice) {
-      return {
-        valueIDR: 0,
-        valueUSD: 0,
-        price: 0,
-        error: t('priceNotAvailable')
-      };
-    }
-
     // Check if asset has manual price - if yes, use it instead of market price
     let currentPrice;
     if ((asset.useManualPrice || asset.isManual) && (asset.manualPrice || asset.price || asset.avgPrice)) {
       currentPrice = asset.manualPrice || asset.price || asset.avgPrice;
     } else {
       currentPrice = (priceData && priceData.price) ? priceData.price : (asset.currentPrice || 0);
+    }
+
+    // Guard: Return 0 values if no price is available at all
+    if (!isCash && (!currentPrice || currentPrice <= 0)) {
+      return {
+        valueIDR: 0,
+        valueUSD: 0,
+        price: 0,
+        error: t('priceNotAvailable')
+      };
     }
     // Value Calculation
     const amount = isStock ? (market === 'US' ? asset.lots : asset.lots * 100) : asset.amount;
