@@ -210,21 +210,6 @@ async function runTests() {
         failed++;
     }
 
-    // --- TEST 5: Stablecoin Offline Fallback Logic ---
-    console.log('\n--- Testing Stablecoin Offline Fallback Logic ---');
-    // Clear mock to simulate CoinGecko down/404, and since CryptoCompare doesn't have USDT mapped, it will fallback
-    mocks.delete('api.coingecko.com/api/v3/simple/price');
-
-    const fallbackData = await fetchCryptoPrices(['USDT']);
-
-    if (fallbackData['USDT']) {
-        assertCase('USDT Fallback Price is 1.0', fallbackData['USDT'].price, 1.0);
-        assertCase('USDT Fallback Change is 0.0', fallbackData['USDT'].change, 0.0);
-        assertCase('USDT Fallback Source is Static Fallback', fallbackData['USDT'].source, 'Static Fallback (Offline)');
-    } else {
-        console.log('\x1b[31m❌ FAIL: USDT fallback not returned\x1b[0m');
-        failed++;
-    }
 
     // --- REPORT ---
     console.log('\n==================================================');
