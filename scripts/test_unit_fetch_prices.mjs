@@ -183,6 +183,49 @@ async function runTests() {
         failed++;
     }
 
+    // --- TEST 4: Stablecoin Live Real-Time Logic ---
+    console.log('\n--- Testing Stablecoin Live Real-Time Logic ---');
+    
+    // Mock CoinGecko stablecoins to return real-time floating prices
+    mocks.set('api.coingecko.com/api/v3/simple/price', {
+        json: {
+            "tether": { "usd": 0.9998, "usd_24h_change": 0.02 },
+            "usd-coin": { "usd": 1.0001, "usd_24h_change": -0.01 },
+            "ethena-usde": { "usd": 1.0000, "usd_24h_change": 0.00 }
+        }
+    });
+
+    const stablecoinsData = await fetchCryptoPrices(['USDT', 'USDC', 'USDE']);
+
+    if (stablecoinsData['USDT'] && stablecoinsData['USDC'] && stablecoinsData['USDE']) {
+        assertCase('USDT Real-time Price is 0.9998', stablecoinsData['USDT'].price, 0.9998);
+        assertCase('USDT Real-time Change is 0.02', stablecoinsData['USDT'].change, 0.02);
+        assertCase('USDT Currency is USD', stablecoinsData['USDT'].currency, 'USD');
+        assertCase('USDT Source is CoinGecko', stablecoinsData['USDT'].source, 'CoinGecko');
+        assertCase('USDC Real-time Price is 1.0001', stablecoinsData['USDC'].price, 1.0001);
+        assertCase('USDC Real-time Change is -0.01', stablecoinsData['USDC'].change, -0.01);
+        assertCase('USDE Real-time Price is 1.0000', stablecoinsData['USDE'].price, 1.0000);
+    } else {
+        console.log('\x1b[31m❌ FAIL: USDT, USDC, or USDE not returned\x1b[0m');
+        failed++;
+    }
+
+    // --- TEST 5: Stablecoin Offline Fallback Logic ---
+    console.log('\n--- Testing Stablecoin Offline Fallback Logic ---');
+    // Clear mock to simulate CoinGecko down/404, and since CryptoCompare doesn't have USDT mapped, it will fallback
+    mocks.delete('api.coingecko.com/api/v3/simple/price');
+
+    const fallbackData = await fetchCryptoPrices(['USDT']);
+
+    if (fallbackData['USDT']) {
+        assertCase('USDT Fallback Price is 1.0', fallbackData['USDT'].price, 1.0);
+        assertCase('USDT Fallback Change is 0.0', fallbackData['USDT'].change, 0.0);
+        assertCase('USDT Fallback Source is Static Fallback', fallbackData['USDT'].source, 'Static Fallback (Offline)');
+    } else {
+        console.log('\x1b[31m❌ FAIL: USDT fallback not returned\x1b[0m');
+        failed++;
+    }
+
     // --- REPORT ---
     console.log('\n==================================================');
     if (failed === 0) {
