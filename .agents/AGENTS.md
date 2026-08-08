@@ -43,11 +43,16 @@
 
 ---
 
-## ⚡ 8. MANDATORY MCP PROTOCOL & KNOWLEDGE INTEGRATION (ALL PROJECTS NOW & FUTURE)
-- **Automatic MCP Activation**: Automatically invoke and leverage available MCP tools (`memory`, `codegraph`, `context7`, `sequential-thinking`) on all current and future projects without explicit user prompts.
-- **Memory Knowledge Graph Persistence**: Automatically persist project architecture, security standards, dependencies, and code decisions into the `memory` MCP knowledge graph (`create_entities`, `add_observations`) during every session.
-- **Code Graph AST Resolution**: Use `codegraph` to trace symbol references, function callers/callees, and file relationships prior to code mutations.
-- **Context7 Live Documentation**: Automatically query `context7` whenever working with external frameworks, SDKs, or libraries to ensure non-deprecated API usage.
+## ⚡ 8. MANDATORY AUTO-APPLIED GLOBAL CONFIG & MCP EXECUTION PROTOCOL (ALL PROJECTS NOW & FUTURE)
+- **Universal Auto-Application**: Global configurations (`C:\Users\arfan\.gemini\config\AGENTS.md` and skills) MUST be automatically loaded, active, and enforced on ALL current and future projects without requiring explicit user prompts or manual per-project setup.
+- **Dynamic Auto-Discovery & Auto-On for Newly Added MCPs**: Whenever ANY NEW MCP server or tool is added to the configuration or environment (`mcp_config.json` or system MCP suite), it MUST be automatically recognized, active, auto-applied, and executed on every code change without manual toggling or reconfiguration.
+- **Auto-Run All MCP Tools (Existing & New) on Every Code Change**: Whenever code is created, modified, refactored, or debugged, the agent MUST automatically execute the entire active MCP suite adaptively:
+  1. **`sequential-thinking` MCP**: Execute step-by-step reasoning on architectural impact, edge cases, safety, and dependency boundaries before/during code edits.
+  2. **`codegraph` MCP**: Resolve AST structure, symbol references, function callers/callees, and file import graphs before making mutations, and re-verify symbols post-mutation.
+  3. **`context7` MCP**: Automatically fetch live, version-accurate documentation for any external framework, library, or API being added or modified.
+  4. **`memory` MCP**: Automatically persist codebase architecture, security controls, function contracts, dependencies, and code mutations into the memory knowledge graph (`create_entities`, `create_relations`, `add_observations`) after every code change.
+  5. **`New / Custom` MCPs**: Any newly added MCP tools are automatically invoked according to their capabilities (e.g. database schema inspection, security scanning, performance profiling, etc.) on code changes.
+- **Adaptive Execution Engine**: Dynamically detect project ecosystem (Python, Streamlit, Node/TS/React, Go, Rust, C++, SQL, Docker, etc.), framework versions, and code conventions to tailor MCP queries, code mutations, and verification steps adaptively without hardcoded assumptions.
 
 ---
 
