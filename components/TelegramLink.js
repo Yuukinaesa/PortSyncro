@@ -43,11 +43,43 @@ export default function TelegramLink() {
     return texts[id] || id;
   }, [language]);
 
+  const checkStatus = useCallback(async () => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/telegram-link', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      // Handle non-OK responses but try to read JSON error details
+      if (!res.ok) {
+        let errorDetail = `Server error (${res.status})`;
+        try {
+          const errData = await res.json();
+          errorDetail = errData.detail || errData.error || errorDetail;
+        } catch { /* response wasn't JSON */ }
+        secureLogger.warn('Telegram status check failed:', res.status, errorDetail);
+        setLinkStatus({ error: true, message: errorDetail });
+        return;
+      }
+
+      const data = await res.json();
+      if (data.error) {
+        setLinkStatus({ error: true, message: data.error });
+      } else {
+        setLinkStatus(data);
+      }
+    } catch (err) {
+      secureLogger.error('Error checking Telegram status:', err);
+      setLinkStatus({ error: true, message: 'Network error. Coba lagi.' });
+    }
+  }, [user]);
+
   // Check link status on mount
   useEffect(() => {
     if (!user) return;
     checkStatus();
-  }, [user]);
+  }, [user, checkStatus]);
 
   // Countdown timer for link code
   useEffect(() => {
@@ -66,37 +98,6 @@ export default function TelegramLink() {
 
     return () => clearInterval(timer);
   }, [linkCode, countdown]);
-
-  const checkStatus = async () => {
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch('/api/telegram-link', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      // Handle non-OK responses but try to read JSON error details
-      if (!res.ok) {
-        let errorDetail = `Server error (${res.status})`;
-        try {
-          const errData = await res.json();
-          errorDetail = errData.detail || errData.error || errorDetail;
-        } catch { /* response wasn't JSON */ }
-        console.warn('Telegram status check failed:', res.status, errorDetail);
-        setLinkStatus({ error: true, message: errorDetail });
-        return;
-      }
-
-      const data = await res.json();
-      if (data.error) {
-        setLinkStatus({ error: true, message: data.error });
-      } else {
-        setLinkStatus(data);
-      }
-    } catch (err) {
-      console.error('Error checking Telegram status:', err);
-      setLinkStatus({ error: true, message: 'Network error. Coba lagi.' });
-    }
-  };
 
   const generateCode = async () => {
     setLoading(true);

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Modal from './Modal';
 import TelegramLink from './TelegramLink';
 import { useTheme } from '../lib/themeContext';
@@ -416,7 +417,7 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
 
                         <div className="text-center space-y-4">
                             <div className="bg-gray-100 dark:bg-gray-700 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner">
-                                <img src="/img/mainlogo.png" alt="PortSyncro" className="w-12 h-12" />
+                                <Image src="/img/mainlogo.png" alt="PortSyncro" width={48} height={48} className="w-12 h-12" />
                             </div>
 
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -462,7 +463,7 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
 
                         <div className="text-center space-y-4">
                             <div className="bg-gray-100 dark:bg-gray-700 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner">
-                                <img src="/img/mainlogo.png" alt="PortSyncro" className="w-12 h-12" />
+                                <Image src="/img/mainlogo.png" alt="PortSyncro" width={48} height={48} className="w-12 h-12" />
                             </div>
 
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -508,7 +509,7 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
 
                         <div className="text-center space-y-4">
                             <div className="bg-gray-100 dark:bg-gray-700 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner">
-                                <img src="/img/mainlogo.png" alt="PortSyncro" className="w-12 h-12" />
+                                <Image src="/img/mainlogo.png" alt="PortSyncro" width={48} height={48} className="w-12 h-12" />
                             </div>
 
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">

@@ -8,21 +8,18 @@ const options = {
     }
 };
 
-https.get(url, options, (res) => {
+const req = https.get(url, { ...options, rejectUnauthorized: false }, (res) => {
     let data = '';
     res.on('data', c => data += c);
     res.on('end', () => {
-        // Look for "Pegadaian" again, maybe case sensitive?
-        // Or look for "Harga Emas Hari Ini"
         console.log('Length:', data.length);
         const lower = data.toLowerCase();
-        const idx = lower.indexOf('tabungan emas'); // specific product
+        const idx = lower.indexOf('tabungan emas');
         if (idx !== -1) {
             console.log('Found "tabungan emas" at', idx);
             console.log(data.substring(idx, idx + 2000));
         } else {
             console.log('tabungan emas NOT found.');
-            // Look for specific number "29.660" (from user screenshot, maybe it matches?)
             const priceIdx = data.indexOf('29.660');
             if (priceIdx !== -1) {
                 console.log('Found user price 29.660 at', priceIdx);
@@ -31,6 +28,10 @@ https.get(url, options, (res) => {
                 console.log('User price 29.660 NOT found.');
             }
         }
-
     });
 });
+
+req.on('error', (err) => {
+    console.warn('[Debug Gold Logic] Network request failed gracefully:', err.message);
+});
+

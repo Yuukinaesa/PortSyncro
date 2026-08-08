@@ -464,7 +464,7 @@ export default function Home() {
     };
 
     checkAuth();
-  }, [user, authLoading, router, getUserPortfolio, initializePortfolio]);
+  }, [user, authLoading, router, getUserPortfolio, initializePortfolio, reset]);
 
   // Separate function for actual price fetching
   const performPriceFetch = useCallback(async (retryAttempt = 0) => {
@@ -620,7 +620,7 @@ export default function Home() {
     } finally {
       setPricesLoading(false);
     }
-  }, [exchangeRate, user?.uid, updatePrices, rebuildPortfolio, t, activeTab]); // Removed 'assets' - use assetsRef instead
+  }, [exchangeRate, user, updatePrices, t]);
 
 
   // Simplified price fetching function with debouncing and refresh optimizer
@@ -1203,7 +1203,7 @@ export default function Home() {
         });
       }
     }
-  }, [user, assets, prices, loading, authLoading, isInitialized, exchangeRate, t, language, pricesLoading]);
+  }, [user, assets, prices, loading, authLoading, isInitialized, exchangeRate, t, language, pricesLoading, pendingSnapshot]);
 
   // Effect to execute pending snapshot once prices are loaded
   useEffect(() => {
@@ -2815,8 +2815,7 @@ export default function Home() {
   };
 
   // Backup Portfolio to JSON
-  // Backup Portfolio to JSON
-  const handleBackup = async () => {
+  const handleBackup = useCallback(async () => {
     // 1. Check if prices are currently updating
     if (pricesLoading) {
       secureLogger.log('Handling Backup blocked: Prices are currently updating. Queueing backup...');
@@ -2916,16 +2915,16 @@ export default function Home() {
       setConfirmModal({
         isOpen: true,
         title: t('error') || 'Error',
-        message: language === 'en' ? 'Failed to backup portfolio' : 'Gagal backup portfolio',
+        message: language === 'en' ? `Failed to backup portfolio: ${error.message}` : `Gagal backup portfolio: ${error.message}`,
         type: 'error',
         confirmText: t('ok'),
         onConfirm: () => setConfirmModal(null)
       });
     }
-  };
+  }, [pricesLoading, user, assets, t, language]);
 
   // Restore Portfolio from JSON (supports legacy format)
-  const handleRestore = async (file) => {
+  const handleRestore = useCallback(async (file) => {
     // 1. Check if prices are currently updating
     if (pricesLoading) {
       secureLogger.log('Handling Restore blocked: Prices are currently updating. Queueing restore...');
@@ -3392,7 +3391,7 @@ export default function Home() {
         onConfirm: () => setConfirmModal(null)
       });
     }
-  };
+  }, [pricesLoading, user, saveUserPortfolio, t, language, exchangeRate, prices, rebuildPortfolio, updateExchangeRate, updatePrices, updateTransactions]);
 
   // Effect to execute pending Backup/Restore once prices are loaded
   useEffect(() => {
@@ -3416,7 +3415,7 @@ export default function Home() {
         setTimeout(() => handleRestore(file), 300);
       }
     }
-  }, [pricesLoading, pendingBackup, pendingRestore]);
+  }, [pricesLoading, pendingBackup, pendingRestore, handleBackup, handleRestore]);
 
   return (
     <ErrorBoundary>

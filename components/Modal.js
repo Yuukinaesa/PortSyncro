@@ -42,9 +42,10 @@ export default function Modal({ isOpen, onClose, title, children, type = 'info' 
           }
         };
 
-        modalRef.current.addEventListener('keydown', handleTab);
+        const currentModal = modalRef.current;
+        currentModal.addEventListener('keydown', handleTab);
         return () => {
-          if (modalRef.current) modalRef.current.removeEventListener('keydown', handleTab);
+          if (currentModal) currentModal.removeEventListener('keydown', handleTab);
         };
       }
     }

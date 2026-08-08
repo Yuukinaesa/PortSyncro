@@ -45,7 +45,7 @@ export default function GoldInput({ onAdd, onComplete }) {
         };
 
         fetchPrice();
-    }, []);
+    }, [user]);
 
     const getEstimatedPrice = () => {
         if (!fetchedPrice) return 0;

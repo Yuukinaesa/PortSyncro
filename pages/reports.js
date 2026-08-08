@@ -38,6 +38,24 @@ ChartJS.register(
     Filler
 );
 
+// Helper to clean undefined values for Firestore (Pure utility outside component)
+const cleanUndefinedValues = (obj) => {
+    if (obj === null || obj === undefined) return null;
+    if (Array.isArray(obj)) {
+        return obj.map(cleanUndefinedValues).filter(item => item !== undefined);
+    }
+    if (typeof obj === 'object') {
+        const cleaned = {};
+        for (const [key, value] of Object.entries(obj)) {
+            if (value !== undefined) {
+                cleaned[key] = cleanUndefinedValues(value);
+            }
+        }
+        return cleaned;
+    }
+    return obj;
+};
+
 /**
  * Helper: Calculate invested amount from portfolio snapshot, EXCLUDING cash/bank
  * This ensures consistency with Portfolio main page which doesn't count bank as invested capital
@@ -152,24 +170,6 @@ export default function Reports() {
             router.push('/login');
         }
     }, [user, authLoading, router]);
-
-    // Helper to clean undefined values for Firestore
-    const cleanUndefinedValues = (obj) => {
-        if (obj === null || obj === undefined) return null;
-        if (Array.isArray(obj)) {
-            return obj.map(cleanUndefinedValues).filter(item => item !== undefined);
-        }
-        if (typeof obj === 'object') {
-            const cleaned = {};
-            for (const [key, value] of Object.entries(obj)) {
-                if (value !== undefined) {
-                    cleaned[key] = cleanUndefinedValues(value);
-                }
-            }
-            return cleaned;
-        }
-        return obj;
-    };
 
     // Capture Daily Snapshot - MATCHING DASHBOARD LOGIC
     const captureSnapshot = useCallback(async () => {
@@ -346,30 +346,39 @@ export default function Reports() {
                 const price = g.currentPrice || 0;
                 const amount = parseFloat(g.weight) || 0;
                 const avgPrice = g.avgPrice || g.entryPrice || 0;
+                const amountGram = parseFloat(g.amountGram || g.amount || 0);
+                const buyPricePerGram = parseFloat(g.buyPricePerGram || g.buyPrice || 0);
+                const goldPrices = currentPrices.gold || {};
 
-                const valIDR = price * amount;
-                const totalCostIDR = avgPrice * amount;
+                let currentPrice = buyPricePerGram;
+                if (g.subtype === 'digital') {
+                    currentPrice = goldPrices.digital?.price || buyPricePerGram;
+                } else if (g.brand && goldPrices.physical) {
+                    const brandKey = g.brand.toLowerCase();
+                    currentPrice = goldPrices.physical[brandKey]?.price || buyPricePerGram;
+                }
 
-                goldValueIDR += valIDR;
-                goldValueUSD += valIDR / safeExchangeRate;
-                goldInvestedIDR += totalCostIDR;
+                const currentValIDR = amountGram * currentPrice;
+                const investedValIDR = amountGram * buyPricePerGram;
+                const portoUSD = currentValIDR / safeExchangeRate;
+
+                goldValueIDR += currentValIDR;
+                goldValueUSD += portoUSD;
+                goldInvestedIDR += investedValIDR;
 
                 return {
                     ...g,
-                    porto: valIDR,
-                    portoIDR: Math.round(valIDR),
-                    portoUSD: Math.round((valIDR / safeExchangeRate) * 100) / 100,
-                    totalCost: totalCostIDR,
-                    totalCostIDR: Math.round(totalCostIDR)
+                    currentPrice,
+                    porto: currentValIDR,
+                    portoIDR: Math.round(currentValIDR),
+                    portoUSD: Math.round(portoUSD * 100) / 100
                 };
             });
 
-            // Calculate CASH
-            let cashValueIDR = 0;
-            let cashValueUSD = 0;
+            // Cash
             const enrichedCash = cash.map(c => {
-                const amount = parseFloat(c.amount) || 0;
-                let portoIDR, portoUSD;
+                const amount = parseFloat(c.amount || 0);
+                let portoIDR = 0, portoUSD = 0;
                 if (c.currency === 'USD') {
                     portoUSD = amount;
                     portoIDR = amount * safeExchangeRate;
@@ -433,7 +442,7 @@ export default function Reports() {
             });
 
         } catch (error) {
-            console.error('Error capturing snapshot:', error);
+            secureLogger.error('Error capturing snapshot:', error);
             setNotification({
                 type: 'error',
                 title: language === 'en' ? 'Error' : 'Gagal',
