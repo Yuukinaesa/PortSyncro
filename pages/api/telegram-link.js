@@ -228,11 +228,14 @@ async function getServiceAccountToken() {
   }
 
   // Exchange JWT for access token
+  const tokenController = new AbortController();
+  const tokenTimeout = setTimeout(() => tokenController.abort(), 8000);
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
-  });
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+    signal: tokenController.signal
+  }).finally(() => clearTimeout(tokenTimeout));
 
   const tokenBody = await tokenRes.json();
   if (!tokenRes.ok) {
@@ -248,9 +251,12 @@ async function getServiceAccountToken() {
 // Read a single document
 async function firestoreGet(collection, docId) {
   const token = await getServiceAccountToken();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
   const res = await fetch(`${FIRESTORE_BASE}/${collection}/${docId}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+    headers: { 'Authorization': `Bearer ${token}` },
+    signal: controller.signal
+  }).finally(() => clearTimeout(timeout));
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Firestore GET ${collection}/${docId} failed: ${res.status}`);
   return parseFirestoreDoc(await res.json());
@@ -259,24 +265,30 @@ async function firestoreGet(collection, docId) {
 // Create a document with auto-generated ID
 async function firestoreAdd(collection, fields) {
   const token = await getServiceAccountToken();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
   const res = await fetch(`${FIRESTORE_BASE}/${collection}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ fields: toFirestoreFields(fields) })
-  });
+    body: JSON.stringify({ fields: toFirestoreFields(fields) }),
+    signal: controller.signal
+  }).finally(() => clearTimeout(timeout));
   if (!res.ok) throw new Error(`Firestore ADD to ${collection} failed: ${res.status}`);
 }
 
 // Delete a document
 async function firestoreDelete(collection, docId) {
   const token = await getServiceAccountToken();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
   const res = await fetch(`${FIRESTORE_BASE}/${collection}/${docId}`, {
     method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+    headers: { 'Authorization': `Bearer ${token}` },
+    signal: controller.signal
+  }).finally(() => clearTimeout(timeout));
   // 404 is OK (already deleted), other errors should throw
   if (!res.ok && res.status !== 404) {
     throw new Error(`Firestore DELETE ${collection}/${docId} failed: ${res.status}`);
@@ -286,6 +298,8 @@ async function firestoreDelete(collection, docId) {
 // Delete specific fields from a document (equivalent to FieldValue.delete())
 async function firestoreDeleteFields(collection, docId, fieldNames) {
   const token = await getServiceAccountToken();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
   const params = fieldNames.map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join('&');
   const res = await fetch(`${FIRESTORE_BASE}/${collection}/${docId}?${params}`, {
     method: 'PATCH',
@@ -293,8 +307,9 @@ async function firestoreDeleteFields(collection, docId, fieldNames) {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ fields: {} }) // Empty fields = delete those in updateMask
-  });
+    body: JSON.stringify({ fields: {} }), // Empty fields = delete those in updateMask
+    signal: controller.signal
+  }).finally(() => clearTimeout(timeout));
   if (!res.ok) throw new Error(`Firestore DELETE FIELDS ${collection}/${docId} failed: ${res.status}`);
 }
 
