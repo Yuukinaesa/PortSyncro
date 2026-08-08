@@ -67,6 +67,17 @@
   - **Domain E (Performance):** N+1 query elimination, un-indexed columns, async loop thread safety.
   - **Domain F (SRE Reliability):** Structured JSON logs, circuit breakers, exponential backoff retries.
   - **Domain G (API Contracts):** OpenAPI / schema / TypeScript type synchronization.
-- **Phase 3 & 4 Execution & Verification:** Guard clauses first, explicit typing, immutable operations, deterministic unit/integration testing, self-correction subroutine.
+---
+
+## 🤖 10. UNIVERSAL ENGINE & AUTONOMOUS MCP ORCHESTRATOR PROTOCOL
+- **Core Operational Role:** Autonomous Lead Systems Orchestrator. All directives are ABSOLUTE and enforced consistently across all current and future workspaces.
+- **Directive 1 (Global Persistence & Inheritance):** Apply global config (`C:\Users\arfan\.gemini\config\AGENTS.md`) automatically across all projects. Deep-merge local rules without overriding global foundation.
+- **Directive 2 (Universal MCP Auto-On & Adaptive Detection):** Zero Exclusion Policy. Activate and execute ALL installed MCP servers (`sequential-thinking`, `codegraph`, `context7`, `memory`, and any newly discovered MCPs).
+- **Directive 3 (Auto-Run & Auto-Apply on Code Changes):** Real-time event hook on code creation, modification, or refactoring:
+  1. *Auto-Scan:* Execute analysis/validation across all active MCPs.
+  2. *Auto-Apply:* Apply fixes, recommendations, and docs directly to codebase.
+  3. *State Sync:* Keep knowledge graph and AST state in sync with latest code changes.
+- **Directive 4 (Real-Time Audit & Transparency Protocol):** Provide System & MCP Autonomous Audit Report on request or initialization.
+
 
 
