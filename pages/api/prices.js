@@ -8,12 +8,15 @@ const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 30; // Reduced from 100 to 30 requests per minute for better protection
 
+let lastCleanupTime = Date.now();
+
 function checkRateLimit(identifier) {
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW;
 
-  // Cleanup to prevent memory leaks in serverless (trigger randomly or if map gets too large)
-  if (rateLimitMap.size > 10000 || Math.random() < 0.1) {
+  // Cleanup to prevent memory leaks in serverless (trigger periodically or if map gets too large)
+  if (rateLimitMap.size > 1000 || (now - lastCleanupTime) > RATE_LIMIT_WINDOW) {
+    lastCleanupTime = now;
     for (const [id, reqs] of rateLimitMap.entries()) {
       const validReqs = reqs.filter(timestamp => timestamp > windowStart);
       if (validReqs.length === 0) {

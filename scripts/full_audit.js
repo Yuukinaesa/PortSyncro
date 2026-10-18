@@ -30,7 +30,7 @@ function auditEncryption() {
     try {
         const key = crypto.randomBytes(32).toString('hex').substring(0, 32); // Simulate 32-char key
         const iv = crypto.randomBytes(12); // GCM standard IV is 12 bytes
-        const data = JSON.stringify({ secret: "ProductionSecret123!" });
+        const data = JSON.stringify({ payload: crypto.randomBytes(16).toString('hex') });
 
         // Encrypt
         const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(key), iv);
