@@ -1,6 +1,6 @@
 const { spawn, spawnSync, execSync } = require('child_process');
 const path = require('path');
-const http = require('http');
+const net = require('net');
 
 // CONFIG
 const TEST_PORT = 3001;
@@ -27,8 +27,8 @@ function divider(title) {
 }
 
 function checkPortFree(port) {
-    return new Promise((resolve, reject) => {
-        const server = http.createServer();
+    return new Promise((resolve) => {
+        const server = net.createServer();
         server.listen(port, () => {
             server.close(() => resolve(true));
         });
@@ -55,14 +55,9 @@ async function waitForServer(url, timeoutMs = 30000) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
         try {
-            await new Promise((resolve, reject) => {
-                http.get(url, (res) => {
-                    if (res.statusCode === 200) resolve();
-                    else reject(new Error(`Status ${res.statusCode}`));
-                }).on('error', reject);
-            });
-            return true;
-        } catch (e) {
+            const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+            if (res.status === 200) return true;
+        } catch {
             await new Promise(r => setTimeout(r, 1000));
         }
     }

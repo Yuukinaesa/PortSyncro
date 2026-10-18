@@ -17,7 +17,7 @@ const TESTS = [
 // ANSI COLORS
 const colors = {
     reset: "\x1b[0m",
-    pass: "\x1b[32m",
+    success: "\x1b[32m",
     fail: "\x1b[31m",
     warn: "\x1b[33m",
     info: "\x1b[36m",
@@ -29,11 +29,12 @@ function log(msg, type = 'info') {
 }
 
 async function checkServer() {
-    return new Promise((resolve) => {
-        const req = http.get(`http://localhost:${SERVER_PORT}/api/health`, (res) => {
-            resolve(res.statusCode === 200);
-        }).on('error', () => resolve(false));
-    });
+    try {
+        const res = await fetch(`http://localhost:${SERVER_PORT}/api/health`, { signal: AbortSignal.timeout(2000) });
+        return res.status === 200;
+    } catch {
+        return false;
+    }
 }
 
 async function runSuite() {
@@ -86,7 +87,7 @@ ${colors.reset}`);
         const duration = ((Date.now() - start) / 1000).toFixed(2);
 
         if (result.status === 0) {
-            console.log(`${colors.pass}   ✅ PASSED (${duration}s)${colors.reset}\n`);
+            console.log(`${colors.success}   ✅ PASSED (${duration}s)${colors.reset}\n`);
             summary.push({ name: test.name, status: 'PASS', time: duration });
         } else {
             console.log(`${colors.fail}   ❌ FAILED (Exit Code: ${result.status})${colors.reset}\n`);
@@ -103,13 +104,13 @@ ${colors.reset}`);
 ${colors.reset}`);
 
     summary.forEach(s => {
-        const statusColor = s.status === 'PASS' ? colors.pass : s.status === 'SKIPPED' ? colors.warn : colors.fail;
+        const statusColor = s.status === 'PASS' ? colors.success : s.status === 'SKIPPED' ? colors.warn : colors.fail;
         console.log(`${s.name.padEnd(25)} : ${statusColor}${s.status}${colors.reset} ${s.time ? `(${s.time}s)` : ''}`);
     });
 
     console.log('\n');
     if (failureCount === 0) {
-        console.log(`${colors.pass}✨ ALL SYSTEMS OPERATIONAL. READY FOR DEPLOYMENT.${colors.reset}`);
+        console.log(`${colors.success}✨ ALL SYSTEMS OPERATIONAL. READY FOR DEPLOYMENT.${colors.reset}`);
         process.exit(0);
     } else {
         console.log(`${colors.fail}💀 ${failureCount} CRITICAL TEST(S) FAILED. DO NOT DEPLOY.${colors.reset}`);

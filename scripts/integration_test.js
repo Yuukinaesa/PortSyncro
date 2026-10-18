@@ -2,7 +2,6 @@
 //  🧪 INTEGRATION TEST SUITE - PortSyncro Production Validation
 // This script performs comprehensive integration tests to validate production readiness
 
-const http = require('http');
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
@@ -33,32 +32,27 @@ function log(msg, type = 'info') {
     console.log(`${color}[${prefix}] ${msg}${colors.reset}`);
 }
 
-// Helper: HTTP request wrapper
-function makeRequest(options, body = null) {
-    return new Promise((resolve, reject) => {
-        const req = http.request(options, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                resolve({
-                    statusCode: res.statusCode,
-                    headers: res.headers,
-                    body: data
-                });
-            });
+// Helper: HTTP request wrapper using fetch
+async function makeRequest(options, body = null) {
+    const url = `http://${options.hostname || 'localhost'}:${options.port || PORT}${options.path || '/'}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TEST_TIMEOUT);
+    try {
+        const res = await fetch(url, {
+            method: options.method || 'GET',
+            headers: options.headers || {},
+            body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+            signal: controller.signal
         });
-
-        req.on('error', reject);
-        req.setTimeout(TEST_TIMEOUT, () => {
-            req.destroy();
-            reject(new Error('Request timeout'));
-        });
-
-        if (body) {
-            req.write(typeof body === 'string' ? body : JSON.stringify(body));
-        }
-        req.end();
-    });
+        const data = await res.text();
+        return {
+            statusCode: res.status,
+            headers: Object.fromEntries(res.headers.entries()),
+            body: data
+        };
+    } finally {
+        clearTimeout(timeout);
+    }
 }
 
 // Test 1: Health Check Endpoint

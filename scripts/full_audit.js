@@ -1,6 +1,4 @@
 
-const http = require('http');
-const https = require('https');
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
@@ -79,10 +77,11 @@ function auditValidation() {
 }
 
 // --- 3. SERVER SECURITY HEADERS AUDIT ---
-function auditHeaders() {
+async function auditHeaders() {
     console.log('\n--- 🌐 3. Security Headers Audit (Middleware) ---');
-    http.get(BASE_URL, (res) => {
-        const headers = res.headers;
+    try {
+        const res = await fetch(BASE_URL, { signal: AbortSignal.timeout(2000) });
+        const headers = Object.fromEntries(res.headers.entries());
 
         // Check X-Frame-Options
         if (headers['x-frame-options'] === 'DENY') log('X-Frame-Options: DENY present', 'pass');
@@ -107,42 +106,32 @@ function auditHeaders() {
         // Check Standard Headers
         if (headers['x-content-type-options'] === 'nosniff') log('X-Content-Type-Options: nosniff present', 'pass');
         else log('X-Content-Type-Options Missing', 'fail');
-
-    }).on('error', (e) => {
+    } catch (e) {
         log(`Server Request Failed: ${e.message} - Is server running?`, 'fail');
-    });
+    }
 }
 
 // --- 4. API RATE LIMIT & PROTECTION ---
-function auditApi() {
+async function auditApi() {
     console.log('\n--- ⚡ 4. API Security Audit ---');
+    try {
+        const res = await fetch(`http://localhost:${PORT}/api/prices`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stocks: [] }),
+            signal: AbortSignal.timeout(2000)
+        });
+        log(`API Response Status: ${res.status}`, res.status === 200 || res.status === 400 || res.status === 401 || res.status === 429 ? 'pass' : 'warn');
 
-    // We try to request a protected endpoint
-    const options = {
-        hostname: 'localhost',
-        port: PORT,
-        path: '/api/prices',
-        method: 'POST', // standard method
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    };
-
-    const req = http.request(options, (res) => {
-        log(`API Response Status: ${res.statusCode}`, res.statusCode === 200 || res.statusCode === 400 || res.statusCode === 401 || res.statusCode === 429 ? 'pass' : 'warn');
-
-        // Rate Limit Header Check (Custom or Standard)
-        const rateHeaders = Object.keys(res.headers).filter(h => h.includes('rate') || h.includes('limit'));
+        const rateHeaders = Array.from(res.headers.keys()).filter(h => h.includes('rate') || h.includes('limit'));
         if (rateHeaders.length > 0) {
             log(`Rate Limit Headers detected: ${rateHeaders.join(', ')}`, 'pass');
         } else {
             log('No explicit Rate Limit headers found on response (Might be internal only)', 'warn');
         }
-    });
-
-    req.on('error', e => log(`API Request Failed: ${e.message}`, 'fail'));
-    req.write(JSON.stringify({ stocks: [] }));
-    req.end();
+    } catch (e) {
+        log(`API Request Failed: ${e.message}`, 'fail');
+    }
 }
 
 // EXECUTE

@@ -133,21 +133,17 @@ export default function TelegramLink() {
   };
 
   const handleCopy = async () => {
-    if (!linkCode) return;
+    if (!linkCode?.code) return;
+    const cleanCode = String(linkCode.code).replace(/[^a-zA-Z0-9_-]/g, '');
+    const copyText = `/link ${cleanCode}`;
     try {
-      await navigator.clipboard.writeText(`/link ${linkCode.code}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = `/link ${linkCode.code}`;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(copyText);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch (err) {
+      secureLogger.error('Failed to copy to clipboard', err);
     }
   };
 
