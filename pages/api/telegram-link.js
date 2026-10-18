@@ -3,6 +3,7 @@
 // Does NOT import firebase-admin to avoid gRPC hanging on Vercel serverless (504 errors)
 
 import crypto from 'crypto';
+import { secureLogger } from '../../lib/security';
 
 // ═══════════════════════════════════════════════════════════════
 // ACCESS TOKEN CACHE (persists across warm invocations)
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
     }
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
-    console.error('[TelegramLink] Unhandled error:', error);
+    secureLogger.error('[TelegramLink] Unhandled error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
@@ -55,7 +56,7 @@ async function handleCheckStatus(req, res) {
     }
     return res.status(200).json({ linked: false });
   } catch (error) {
-    console.error('[TelegramLink] Check status error:', error);
+    secureLogger.error('[TelegramLink] Check status error:', error);
     return res.status(500).json({ error: 'Failed to check status', detail: error.message });
   }
 }
@@ -92,7 +93,7 @@ async function handleGenerateCode(req, res) {
       instructions: `Kirim perintah ini ke Telegram Bot PortSyncro:\n/link ${code}`
     });
   } catch (error) {
-    console.error('[TelegramLink] Generate code error:', error);
+    secureLogger.error('[TelegramLink] Generate code error:', error);
     return res.status(500).json({ error: 'Failed to generate link code', detail: error.message });
   }
 }
@@ -120,7 +121,7 @@ async function handleUnlink(req, res) {
 
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error('[TelegramLink] Unlink error:', error);
+    secureLogger.error('[TelegramLink] Unlink error:', error);
     return res.status(500).json({ error: 'Failed to unlink', detail: error.message });
   }
 }
@@ -157,7 +158,7 @@ async function verifyUserToken(req) {
     }
     return null;
   } catch (error) {
-    console.error('[TelegramLink] Auth error:', error.name === 'AbortError' ? 'Timeout' : error);
+    secureLogger.error('[TelegramLink] Auth error:', error.name === 'AbortError' ? 'Timeout' : error);
     return null;
   }
 }
@@ -223,7 +224,7 @@ async function getServiceAccountToken() {
     const signature = crypto.createSign('RSA-SHA256').update(signInput).sign(privateKey, 'base64url');
     jwt = `${signInput}.${signature}`;
   } catch (signError) {
-    console.error('[TelegramLink] JWT signing failed:', signError.message);
+    secureLogger.error('[TelegramLink] JWT signing failed:', signError.message);
     throw new Error(`JWT signing failed: ${signError.message}`);
   }
 
@@ -239,7 +240,7 @@ async function getServiceAccountToken() {
 
   const tokenBody = await tokenRes.json();
   if (!tokenRes.ok) {
-    console.error('[TelegramLink] Token exchange failed:', tokenBody);
+    secureLogger.error('[TelegramLink] Token exchange failed:', tokenBody);
     throw new Error(`Token exchange failed: ${tokenBody.error_description || tokenRes.status}`);
   }
 

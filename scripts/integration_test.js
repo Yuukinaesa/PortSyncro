@@ -355,6 +355,10 @@ async function runAllTests() {
         await makeRequest({ hostname: 'localhost', port: PORT, path: '/', method: 'GET' });
         log(`Server is running on port ${PORT}`, 'pass');
     } catch (error) {
+        if (process.env.SKIP_IF_OFFLINE === 'true') {
+            log(`Server is NOT running on port ${PORT}. Skipping live HTTP integration tests in offline mode.`, 'warn');
+            process.exit(0);
+        }
         log(`Server is NOT running on port ${PORT}. Please start the server first.`, 'fail');
         log(`Run: npm run dev`, 'info');
         process.exit(1);

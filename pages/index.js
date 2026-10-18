@@ -319,6 +319,9 @@ export default function Home() {
   const [pendingRestore, setPendingRestore] = useState(null); // Queue for restore (holds file)
   // [FIX BUG-04] Debounce ref to throttle Firestore writes from saveUserPortfolio
   const savePortfolioTimerRef = useRef(null);
+  const lastSavedAssetsSignatureRef = useRef(''); // Tracks structural assets to avoid writes on pure price updates
+  const lastSnapshotDateRef = useRef(''); // Tracks today's snapshot to avoid redundant reads/writes
+  const lastSnapshotTimeRef = useRef(0);
 
 
 
@@ -793,18 +796,45 @@ export default function Home() {
 
   // Manual refresh functions
 
-  // Save portfolio to Firestore whenever assets change
-  // [FIX BUG-04] Debounced saveUserPortfolio — throttle Firestore writes.
-  // Price updates fire rebuildPortfolio every 2 min → assets change → without debounce
-  // this would write to Firestore every 2 minutes even though transactions haven't changed.
+  // Helper to extract structural asset holding signature (excluding live market price fluctuations)
+  const getAssetStructuralSignature = useCallback((assetList) => {
+    if (!assetList) return '';
+    const extract = (items = [], type) => (items || []).map(item => ({
+      t: item.ticker || item.symbol || '',
+      a: item.lots !== undefined ? item.lots : (item.amount || 0),
+      b: item.broker || item.exchange || '',
+      p: item.avgPrice || item.entryPrice || 0,
+      m: item.market || '',
+      u: item.useManualPrice || false,
+      mp: item.manualPrice || 0,
+      tp: type
+    }));
+    return JSON.stringify({
+      s: extract(assetList.stocks, 's'),
+      c: extract(assetList.crypto, 'c'),
+      g: extract(assetList.gold, 'g'),
+      k: extract(assetList.cash, 'k')
+    });
+  }, []);
+
+  // Save portfolio to Firestore ONLY when asset holdings structure changes (buy/sell/edit/delete)
+  // [OPTIMIZATION] Prevents writing to Firestore every 2 minutes when background price updates occur
   useEffect(() => {
     if (user && !loading && !authLoading && saveUserPortfolio && assets && isInitialized) {
+      const currentSignature = getAssetStructuralSignature(assets);
+
+      // If structural holdings have not changed (only market prices changed), SKIP Firestore write!
+      if (lastSavedAssetsSignatureRef.current === currentSignature) {
+        return;
+      }
+
       // Clear any existing timer
       if (savePortfolioTimerRef.current) {
         clearTimeout(savePortfolioTimerRef.current);
       }
       // Debounce: only write to Firestore 5 seconds after assets stop changing
       savePortfolioTimerRef.current = setTimeout(() => {
+        lastSavedAssetsSignatureRef.current = currentSignature;
         saveUserPortfolio(assets);
         savePortfolioTimerRef.current = null;
       }, 5000);
@@ -815,7 +845,7 @@ export default function Home() {
         clearTimeout(savePortfolioTimerRef.current);
       }
     };
-  }, [assets, user, loading, authLoading, saveUserPortfolio, isInitialized]);
+  }, [assets, user, loading, authLoading, saveUserPortfolio, isInitialized, getAssetStructuralSignature]);
 
   // Fetch transactions and update portfolio state
   useEffect(() => {
@@ -917,6 +947,12 @@ export default function Home() {
     const dateObj = new Date();
     const today = dateObj.toLocaleDateString('en-CA');
     const snapshotRef = doc(db, 'users', user.uid, 'history', today);
+
+    // [OPTIMIZATION] If today's snapshot was already recorded/verified in this session and it's an auto-trigger (!force),
+    // skip network read/write to save Firestore quota unless at least 1 hour has elapsed
+    if (!force && lastSnapshotDateRef.current === today && (Date.now() - lastSnapshotTimeRef.current < 3600000)) {
+      return;
+    }
 
     try {
       const docSnap = await getDoc(snapshotRef);
@@ -1156,6 +1192,8 @@ export default function Home() {
         secureLogger.log(`Recording daily snapshot (${force ? 'Manual' : 'Auto'}):`, today);
         // Use full overwrite (no merge) to prevent portfolio array duplication
         await setDoc(snapshotRef, snapshotData);
+        lastSnapshotDateRef.current = today;
+        lastSnapshotTimeRef.current = Date.now();
         if (force) {
           setConfirmModal({
             isOpen: true,
@@ -1167,7 +1205,7 @@ export default function Home() {
           });
         }
       } else {
-        // Auto-update throttle: Only update if last update was > 1 minute ago
+        // Auto-update throttle: Only update if last update was > 1 hour (3600 seconds) ago
         const lastData = docSnap.data();
         // Handle Firestore Timestamp or standard Date string/object
         let lastTime = new Date(0);
@@ -1179,15 +1217,18 @@ export default function Home() {
 
         const now = new Date();
         const diffMs = now - lastTime;
-        // Check if last update was more than 10 seconds ago (User Request: "setiap 10 detik")
         const diffSeconds = diffMs / 1000;
 
-        if (diffSeconds >= 10) {
+        // [OPTIMIZATION] Throttle background snapshot rewrites to at least 1 hour (3600s) instead of 10s
+        if (diffSeconds >= 3600) {
           secureLogger.log(`Auto-updating daily snapshot (throttle: ${diffSeconds.toFixed(1)}s passed)`);
           // Use full overwrite (no merge) to prevent portfolio array duplication
           await setDoc(snapshotRef, snapshotData);
+          lastSnapshotDateRef.current = today;
+          lastSnapshotTimeRef.current = Date.now();
         } else {
-          // secureLogger.log('Skipping auto-update: throttled (< 10 seconds)');
+          lastSnapshotDateRef.current = today;
+          lastSnapshotTimeRef.current = Date.now();
         }
       }
     } catch (err) {
@@ -1220,6 +1261,7 @@ export default function Home() {
   }, [pricesLoading, pendingSnapshot, recordDailySnapshot]);
 
   // Daily Snapshot Logic (Auto - Debounce on Change)
+  // Executes once shortly after assets/user init, or 5s after real asset modifications
   useEffect(() => {
     // Debounce check for changes
     const timeoutId = setTimeout(() => {
@@ -1230,18 +1272,6 @@ export default function Home() {
 
     return () => clearTimeout(timeoutId);
   }, [recordDailySnapshot, loading, authLoading, assets, isInitialized]);
-
-  // Active Daily Snapshot Sync (Periodic 10-second heartbeat)
-  useEffect(() => {
-    if (!loading && !authLoading && isInitialized && user) {
-      const intervalId = setInterval(() => {
-        // secureLogger.log('Heartbeat: Triggering daily snapshot check (10s)');
-        recordDailySnapshot(false);
-      }, 10000); // Check every 10 seconds as requested
-
-      return () => clearInterval(intervalId);
-    }
-  }, [recordDailySnapshot, loading, authLoading, isInitialized, user]);
 
 
 

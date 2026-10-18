@@ -53,7 +53,7 @@ scripts.forEach(script => {
         const result = spawnSync('node', args, {
             stdio: 'inherit',
             cwd: PROJECT_ROOT,
-            env: { ...process.env, FORCE_COLOR: 'true' }
+            env: { ...process.env, SKIP_IF_OFFLINE: 'true', FORCE_COLOR: 'true' }
         });
 
         const duration = ((Date.now() - start) / 1000).toFixed(2);

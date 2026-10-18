@@ -3,6 +3,7 @@
 // Receives updates from Telegram and routes them to the bot handler
 
 import { handleUpdate, handleCallbackQuery } from '../../lib/telegramBot';
+import { secureLogger } from '../../lib/security';
 
 // Rate limiting for webhook (prevent abuse)
 const webhookRateLimit = new Map();
@@ -53,14 +54,14 @@ export default async function handler(req, res) {
   const isProduction = process.env.NODE_ENV === 'production';
   
   if (isProduction && !webhookSecret) {
-    console.error('[Telegram Webhook] TELEGRAM_WEBHOOK_SECRET not set in production');
+    secureLogger.error('[Telegram Webhook] TELEGRAM_WEBHOOK_SECRET not set in production');
     return res.status(500).json({ error: 'Webhook security not configured' });
   }
 
   if (webhookSecret) {
     const requestSecret = req.headers['x-telegram-bot-api-secret-token'];
     if (requestSecret !== webhookSecret) {
-      console.warn('[Telegram Webhook] Invalid secret token detected - Rejecting request.');
+      secureLogger.warn('[Telegram Webhook] Invalid secret token detected - Rejecting request.');
       return res.status(401).json({ error: 'Unauthorized payload' });
     }
   }
@@ -69,7 +70,7 @@ export default async function handler(req, res) {
   // VALIDATE: Check required environment variables
   // ═══════════════════════════════════════════════════════════════
   if (!process.env.TELEGRAM_BOT_TOKEN) {
-    console.error('[Telegram Webhook] TELEGRAM_BOT_TOKEN not set');
+    secureLogger.error('[Telegram Webhook] TELEGRAM_BOT_TOKEN not set');
     return res.status(500).json({ error: 'Bot not configured' });
   }
 
@@ -86,7 +87,7 @@ export default async function handler(req, res) {
     
     // Rate limit check
     if (chatId && !checkWebhookRateLimit(chatId)) {
-      console.warn(`[Telegram Webhook] Rate limit exceeded for chat ${chatId}`);
+      secureLogger.warn(`[Telegram Webhook] Rate limit exceeded for chat ${chatId}`);
       return res.status(200).json({ ok: true }); // Acknowledge but don't process
     }
 
@@ -103,7 +104,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
 
   } catch (error) {
-    console.error('[Telegram Webhook] Error processing update:', error);
+    secureLogger.error('[Telegram Webhook] Error processing update:', error);
     
     // Still respond 200 to prevent Telegram from retrying
     // (retrying would just cause the same error)
