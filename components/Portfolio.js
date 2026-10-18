@@ -434,7 +434,7 @@ export default function Portfolio({
       const isMobile = window.innerWidth <= 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobile) {
-        window.location.href = `whatsapp://send?text=${encodeURIComponent(text)}`;
+        window.location.assign(`whatsapp://send?text=${encodeURIComponent(text)}`);
       }
 
     } catch (error) {
