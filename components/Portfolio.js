@@ -1276,37 +1276,7 @@ export default function Portfolio({
           {/* Right: Portfolio Health & Return Progress Meter */}
           <div className="w-full md:w-80 lg:w-96 flex flex-col justify-center space-y-2">
             <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-              <div className="flex items-center gap-2">
-                <span>Return Modal</span>
-                {stablecoinData.hasStablecoins && (
-                  <div className="inline-flex p-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 text-[10px] font-medium">
-                    <button
-                      type="button"
-                      onClick={() => handleSetInvestedMode('all')}
-                      className={`px-2 py-0.5 rounded-md transition-all ${
-                        !isInvestedActiveMode
-                          ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                          : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-                      }`}
-                      title="Versi 1: Return dihitung terhadap total modal termasuk stablecoin"
-                    >
-                      Total
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSetInvestedMode('active')}
-                      className={`px-2 py-0.5 rounded-md transition-all ${
-                        isInvestedActiveMode
-                          ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                          : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-                      }`}
-                      title="Versi 2: Return dihitung khusus modal aktif tanpa USDT & USDC"
-                    >
-                      Tanpa Stable
-                    </button>
-                  </div>
-                )}
-              </div>
+              <span>Return Modal</span>
               <span className="font-mono font-bold text-gray-700 dark:text-gray-300">
                 {hideBalance ? '•••' : `${Math.abs(displayedReturnPercent).toFixed(1)}%`}
               </span>
