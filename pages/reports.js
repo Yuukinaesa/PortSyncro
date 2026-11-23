@@ -105,6 +105,49 @@ function calculateValueExcludingCash(item) {
     return item.totalValueIDR || 0;
 }
 
+/**
+ * Helper: Calculate active invested amount from portfolio snapshot, EXCLUDING cash AND standby stablecoins (USDT & USDC)
+ * @param {Object} item - History snapshot item with portfolio data
+ * @returns {number} Active invested in IDR (excluding cash & stablecoins)
+ */
+function calculateInvestedExcludingStablecoins(item) {
+    if (item.activeInvestedIDR !== undefined && item.activeInvestedIDR !== null) {
+        return item.activeInvestedIDR;
+    }
+    if (item.portfolio) {
+        const { stocks, crypto, gold } = item.portfolio;
+        const stocksInvested = (stocks || []).reduce((sum, s) => sum + (s.totalCostIDR || s.totalCost || 0), 0);
+        const nonStableCryptoInvested = (crypto || []).reduce((sum, c) => {
+            const sym = (c.symbol || '').toUpperCase().trim();
+            if (sym === 'USDT' || sym === 'USDC') return sum;
+            return sum + (c.totalCostIDR || c.totalCost || 0);
+        }, 0);
+        const goldInvested = (gold || []).reduce((sum, g) => sum + (g.totalCost || 0), 0);
+        return stocksInvested + nonStableCryptoInvested + goldInvested;
+    }
+    return item.totalInvestedIDR || 0;
+}
+
+/**
+ * Helper: Calculate portfolio VALUE excluding cash AND standby stablecoins (USDT & USDC)
+ * @param {Object} item - History snapshot item with portfolio data
+ * @returns {number} Active value in IDR (excluding cash & stablecoins)
+ */
+function calculateValueExcludingStablecoins(item) {
+    if (item.portfolio) {
+        const { stocks, crypto, gold } = item.portfolio;
+        const stocksValue = (stocks || []).reduce((sum, s) => sum + (s.portoIDR || s.porto || 0), 0);
+        const nonStableCryptoValue = (crypto || []).reduce((sum, c) => {
+            const sym = (c.symbol || '').toUpperCase().trim();
+            if (sym === 'USDT' || sym === 'USDC') return sum;
+            return sum + (c.portoIDR || 0);
+        }, 0);
+        const goldValue = (gold || []).reduce((sum, g) => sum + (g.portoIDR || g.porto || 0), 0);
+        return stocksValue + nonStableCryptoValue + goldValue;
+    }
+    return item.totalValueIDR || 0;
+}
+
 export default function Reports() {
     const router = useRouter();
     const { user, loading: authLoading, getUserPortfolio } = useAuth();
@@ -119,6 +162,19 @@ export default function Reports() {
         end: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('en-CA') // Last day of current month (Local)
     });
     const [currency, setCurrency] = useState('IDR'); // IDR or USD view
+    const [investedMode, setInvestedMode] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('portsyncro_invested_mode') || 'all';
+        }
+        return 'all';
+    });
+
+    const handleSetInvestedMode = useCallback((mode) => {
+        setInvestedMode(mode);
+        if (typeof window !== 'undefined') {
+            try { localStorage.setItem('portsyncro_invested_mode', mode); } catch {}
+        }
+    }, []);
     const [snapshotLoading, setSnapshotLoading] = useState(false);
     const [notification, setNotification] = useState(null);
 
@@ -573,19 +629,37 @@ export default function Reports() {
             return fmtUSD(idrVal / exchangeRate);
         };
 
-        // Header - show selected currency
+        // Header - show selected currency with both versions of invested capital
         const currencyLabel = currency === 'IDR' ? '(IDR)' : '(USD)';
-        csvRows.push(['Date', 'Day', `Total Value ${currencyLabel}`, `Invested ${currencyLabel}`, `Net Profit ${currencyLabel}`, 'P/L %', 'Type', 'Name', 'Platform', 'Quantity', `Value ${currencyLabel}`]);
+        csvRows.push([
+            'Date',
+            'Day',
+            `Total Value ${currencyLabel}`,
+            `Total Invested (Inc. Stable) ${currencyLabel}`,
+            `Active Invested (Excl. Stable) ${currencyLabel}`,
+            `Net Profit ${currencyLabel}`,
+            'P/L % (Total)',
+            'P/L % (Active)',
+            'Type',
+            'Name',
+            'Platform',
+            'Quantity',
+            `Value ${currencyLabel}`
+        ]);
 
         [...filteredData].reverse().forEach(item => {
             const dateObj = parseISO(item.date);
             const dateStr = format(dateObj, 'd MMM yyyy');
             const dayStr = format(dateObj, 'EEEE', { locale: language === 'en' ? enUS : id });
 
-            const invested = calculateInvestedExcludingCash(item);
+            const investedTotal = calculateInvestedExcludingCash(item);
+            const investedActive = calculateInvestedExcludingStablecoins(item);
             const valueExcl = calculateValueExcludingCash(item);
-            const profit = valueExcl - invested;
-            const pct = invested > 0 ? ((profit / invested) * 100).toFixed(1) + '%' : '0%';
+            const valueExclActive = calculateValueExcludingStablecoins(item);
+            const profitTotal = valueExcl - investedTotal;
+            const profitActive = valueExclActive - investedActive;
+            const pctTotal = investedTotal > 0 ? ((profitTotal / investedTotal) * 100).toFixed(1) + '%' : '0%';
+            const pctActive = investedActive > 0 ? ((profitActive / investedActive) * 100).toFixed(1) + '%' : '0%';
 
             // Calculate implied exchange rate from item
             const impliedRate = (item.totalValueIDR > 0 && item.totalValueUSD > 0)
@@ -594,10 +668,11 @@ export default function Reports() {
 
             // Summary row - use selected currency
             const totalVal = currency === 'IDR' ? fmtIDR(item.totalValueIDR) : fmtUSD(item.totalValueUSD);
-            const investedVal = fmtSingleValue(invested, impliedRate);
-            const profitVal = (profit >= 0 ? '+' : '') + fmtSingleValue(profit, impliedRate);
+            const investedTotalVal = fmtSingleValue(investedTotal, impliedRate);
+            const investedActiveVal = fmtSingleValue(investedActive, impliedRate);
+            const profitVal = (profitTotal >= 0 ? '+' : '') + fmtSingleValue(profitTotal, impliedRate);
 
-            csvRows.push([dateStr, dayStr, totalVal, investedVal, profitVal, pct, '', '', '', '', '']);
+            csvRows.push([dateStr, dayStr, totalVal, investedTotalVal, investedActiveVal, profitVal, pctTotal, pctActive, '', '', '', '', '']);
 
             // Asset rows
             const addAssets = (assets, type) => {
@@ -775,9 +850,14 @@ export default function Reports() {
         // EXCLUDE cash from BOTH value and invested for P/L calculation
         const latest = filteredData[filteredData.length - 1];
 
-        // Calculate latest invested and value - Exclude cash
-        const latestInvestedIDR = calculateInvestedExcludingCash(latest);
-        const latestValueExclCashIDR = calculateValueExcludingCash(latest);
+        // Calculate latest invested and value - based on selected investedMode ('all' vs 'active')
+        const isModeActive = investedMode === 'active';
+        const latestInvestedIDR = isModeActive
+            ? calculateInvestedExcludingStablecoins(latest)
+            : calculateInvestedExcludingCash(latest);
+        const latestValueExclCashIDR = isModeActive
+            ? calculateValueExcludingStablecoins(latest)
+            : calculateValueExcludingCash(latest);
 
         let latestInvested = 0;
         let latestValueForPL = 0;
@@ -805,7 +885,7 @@ export default function Reports() {
             high,
             low
         };
-    }, [filteredData, currency]);
+    }, [filteredData, currency, investedMode]);
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white font-sans">
@@ -830,24 +910,48 @@ export default function Reports() {
                         </div>
                     </div>
 
-                    {/* Currency Toggle - Mobile Optimized */}
-                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner">
-                        <button
-                            onClick={() => setCurrency('IDR')}
-                            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 ${currency === 'IDR'
-                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/25'
-                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
-                        >
-                            IDR
-                        </button>
-                        <button
-                            onClick={() => setCurrency('USD')}
-                            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 ${currency === 'USD'
-                                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md shadow-green-500/25'
-                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
-                        >
-                            USD
-                        </button>
+                    <div className="flex items-center gap-2">
+                        {/* Invested Mode Toggle */}
+                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner text-xs font-semibold">
+                            <button
+                                onClick={() => handleSetInvestedMode('all')}
+                                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all ${investedMode === 'all'
+                                    ? 'bg-blue-600 text-white shadow-xs'
+                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                                title="Versi 1: Total modal seluruh aset termasuk stablecoin"
+                            >
+                                Total
+                            </button>
+                            <button
+                                onClick={() => handleSetInvestedMode('active')}
+                                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all ${investedMode === 'active'
+                                    ? 'bg-blue-600 text-white shadow-xs'
+                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                                title="Versi 2: Modal aktif tanpa USDT & USDC"
+                            >
+                                {language === 'en' ? 'Excl. Stable' : 'Tanpa Stable'}
+                            </button>
+                        </div>
+
+                        {/* Currency Toggle - Mobile Optimized */}
+                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner">
+                            <button
+                                onClick={() => setCurrency('IDR')}
+                                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 ${currency === 'IDR'
+                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/25'
+                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                            >
+                                IDR
+                            </button>
+                            <button
+                                onClick={() => setCurrency('USD')}
+                                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 ${currency === 'USD'
+                                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md shadow-green-500/25'
+                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                            >
+                                USD
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>

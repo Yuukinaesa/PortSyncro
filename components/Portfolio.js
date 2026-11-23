@@ -124,6 +124,21 @@ export default function Portfolio({
 
   const [activeAssetTab, setActiveAssetTab] = useState('all');
   const [cryptoTableFilter, setCryptoTableFilter] = useState('all'); // 'all', 'combined', 'usdt', 'usdc'
+  const [investedMode, setInvestedMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('portsyncro_invested_mode') || 'all';
+    }
+    return 'all';
+  });
+
+  const handleSetInvestedMode = useCallback((mode) => {
+    setInvestedMode(mode);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('portsyncro_invested_mode', mode);
+      } catch {}
+    }
+  }, []);
   const [internalHeaderCollapsed, setInternalHeaderCollapsed] = useState(false);
   const isHeaderCollapsed = propIsHeaderCollapsed !== undefined ? propIsHeaderCollapsed : internalHeaderCollapsed;
   const setIsHeaderCollapsed = useCallback((val) => {
@@ -594,6 +609,14 @@ export default function Portfolio({
     };
   }, [gains.totalCost, gains.totalCostUSD, gains.totalGainIDR, gains.totalGainUSD, exchangeRate, stablecoinData]);
 
+  // Selected Invested Metrics based on investedMode ('all' vs 'active')
+  const isInvestedActiveMode = investedMode === 'active' && stablecoinData.hasStablecoins;
+  const displayedCostIDR = isInvestedActiveMode ? investedBreakdown.activeCostIDR : (gains.totalCost || 0);
+  const displayedCostUSD = isInvestedActiveMode ? investedBreakdown.activeCostUSD : (gains.totalCostUSD || 0);
+  const displayedValIDR = isInvestedActiveMode ? investedBreakdown.activeValIDR : (totals.totalIDR || 0);
+  const displayedValUSD = isInvestedActiveMode ? investedBreakdown.activeValUSD : (totals.totalUSD || 0);
+  const displayedReturnPercent = isInvestedActiveMode ? investedBreakdown.activeReturnPercent : (gains.gainPercent || 0);
+
   // Search Filter
   const filteredAssets = useMemo(() => {
     const query = searchQuery.toLowerCase();
@@ -674,8 +697,14 @@ export default function Portfolio({
       csvRows.push(['PORTFOLIO REPORT']);
       csvRows.push(['Generated At', currentDate]);
       csvRows.push(['Exchange Rate (1 USD)', formatIDR(exchangeRate)]);
-      csvRows.push(['Total Value (IDR)', formatIDR(totals.totalIDR)]);
-      csvRows.push(['Total Value (USD)', formatUSD(totals.totalUSD)]);
+      csvRows.push(['Total Portfolio Value (IDR)', formatIDR(totals.totalIDR)]);
+      csvRows.push(['Total Portfolio Value (USD)', formatUSD(totals.totalUSD)]);
+      csvRows.push(['Versi 1: Total Modal Invested (Termasuk USDT & USDC)', `${formatIDR(gains.totalCost)} (${formatUSD(gains.totalCostUSD)})`]);
+      csvRows.push(['   - Return Modal Total', `${(gains.gainPercent || 0).toFixed(2)}%`]);
+      csvRows.push(['Versi 2: Modal Invested Aktif (Tanpa USDT & USDC)', `${formatIDR(investedBreakdown.activeCostIDR)} (${formatUSD(investedBreakdown.activeCostUSD)})`]);
+      csvRows.push(['   - Return Modal Aktif', `${(investedBreakdown.activeReturnPercent || 0).toFixed(2)}%`]);
+      csvRows.push(['Standby Stablecoin (USDT + USDC)', `${formatUSD(investedBreakdown.stablecoinCostUSD)} (~${formatIDR(investedBreakdown.stablecoinCostIDR)})`]);
+      csvRows.push(['Total Untung/Rugi (P&L)', `${formatIDR(gains.totalGainIDR)} (${formatUSD(gains.totalGainUSD)})`]);
       csvRows.push([]); // Empty row
 
       // 2. Define Headers
@@ -773,8 +802,11 @@ export default function Portfolio({
           const gainUSD = valueUSD - costUSD;
           const gainIDR = valueIDR - costIDR;
 
+          const sym = (crypto.symbol || '').toUpperCase().trim();
+          const isStablecoin = sym === 'USDT' || sym === 'USDC';
+
           csvRows.push([
-            'Crypto',
+            isStablecoin ? 'Crypto (Stablecoin)' : 'Crypto',
             crypto.symbol,
             crypto.exchange || '-',
             crypto.amount,
@@ -844,6 +876,18 @@ export default function Portfolio({
             (gold.gainPercentage || 0).toFixed(2) + '%'
           ]);
         });
+      }
+
+      // Summary section with both Version 1 (Total Invested) and Version 2 (Modal Aktif tanpa Stablecoin)
+      if (category === 'all') {
+        csvRows.push([]);
+        csvRows.push(['=== RINGKASAN PORTOFOLIO / PORTFOLIO SUMMARY ===']);
+        csvRows.push(['Total Portofolio (Market Value)', formatIDR(totals.totalIDR), formatUSD(totals.totalUSD)]);
+        csvRows.push(['Versi 1: Total Modal Invested (Termasuk USDT & USDC)', formatIDR(gains.totalCost), formatUSD(gains.totalCostUSD), `Return: ${(gains.gainPercent || 0).toFixed(2)}%`]);
+        csvRows.push(['Versi 2: Modal Invested Aktif (Tanpa USDT & USDC)', formatIDR(investedBreakdown.activeCostIDR), formatUSD(investedBreakdown.activeCostUSD), `Return Aktif: ${(investedBreakdown.activeReturnPercent || 0).toFixed(2)}%`]);
+        csvRows.push(['Standby Stablecoin (USDT + USDC)', formatIDR(investedBreakdown.stablecoinCostIDR), formatUSD(investedBreakdown.stablecoinCostUSD)]);
+        csvRows.push(['Saldo Kas / Bank & E-Wallet', formatIDR(totals.totalBankIDR), formatUSD(totals.totalBankUSD)]);
+        csvRows.push(['Total Untung / Rugi (P&L)', formatIDR(gains.totalGainIDR), formatUSD(gains.totalGainUSD)]);
       }
 
       const BOM = '\uFEFF';
@@ -973,34 +1017,78 @@ export default function Portfolio({
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
 
         {/* 1. Total Portfolio */}
-        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative overflow-hidden group shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('totalPortfolio') || 'Total Portfolio'}</span>
-            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-[#1f2937] flex items-center justify-center text-blue-600 dark:text-blue-400">
-              <FiDollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="space-y-1 mb-2">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-              {getMasked(formatIDR(totals.totalIDR))}
-            </h2>
-            <p className="text-xs text-gray-500 font-mono">
-              {getMasked(formatUSD(totals.totalUSD))}
-            </p>
-
-            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500 mb-1">
-                Invested
-              </p>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-gray-700 dark:text-gray-300 transform transition-colors">
-                  {getMasked(formatIDR(gains.totalCost))}
-                </span>
-                <span className="text-xs text-gray-500 font-mono">
-                  {getMasked(formatUSD(gains.totalCostUSD))}
-                </span>
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative overflow-hidden group shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('totalPortfolio') || 'Total Portfolio'}</span>
+              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-[#1f2937] flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <FiDollarSign className="w-4 h-4" />
               </div>
             </div>
+            <div className="space-y-1 mb-2">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                {getMasked(formatIDR(totals.totalIDR))}
+              </h2>
+              <p className="text-xs text-gray-500 font-mono">
+                {getMasked(formatUSD(totals.totalUSD))}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500">
+                {isInvestedActiveMode ? (t('activeInvested') || 'Modal Aktif') : (t('totalInvested') || 'Total Modal')}
+              </p>
+              {stablecoinData.hasStablecoins && (
+                <div className="inline-flex p-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 text-[10px] font-medium">
+                  <button
+                    type="button"
+                    onClick={() => handleSetInvestedMode('all')}
+                    className={`px-2 py-0.5 rounded-md transition-all ${
+                      !isInvestedActiveMode
+                        ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                    }`}
+                    title="Versi 1: Total modal seluruh aset termasuk USDT & USDC"
+                  >
+                    Total
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetInvestedMode('active')}
+                    className={`px-2 py-0.5 rounded-md transition-all ${
+                      isInvestedActiveMode
+                        ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                    }`}
+                    title="Versi 2: Modal aktif tanpa USDT & USDC (khusus aset fluktuatif)"
+                  >
+                    Tanpa Stable
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-gray-700 dark:text-gray-300 transform transition-colors">
+                {getMasked(formatIDR(displayedCostIDR))}
+              </span>
+              <span className="text-xs text-gray-500 font-mono">
+                {getMasked(formatUSD(displayedCostUSD))}
+              </span>
+            </div>
+            {stablecoinData.hasStablecoins && (
+              <div className="mt-1.5 flex items-center justify-between text-[10px] text-gray-400 font-mono">
+                <span title={isInvestedActiveMode ? 'Total Modal seluruh aset' : 'Modal Aktif tanpa USDT/USDC'}>
+                  {isInvestedActiveMode
+                    ? `Total: ${getMasked(formatIDR(gains.totalCost))}`
+                    : `Aktif: ${getMasked(formatIDR(investedBreakdown.activeCostIDR))}`}
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400" title="Standby USDT & USDC">
+                  Stable: {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1178,9 +1266,9 @@ export default function Portfolio({
                 {getMasked(formatUSD(gains.totalGainUSD))}
               </span>
               <span className={`text-sm font-bold ${
-                investedBreakdown.activeReturnPercent > 0 ? 'text-emerald-600 dark:text-emerald-400' : investedBreakdown.activeReturnPercent < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'
+                displayedReturnPercent > 0 ? 'text-emerald-600 dark:text-emerald-400' : displayedReturnPercent < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'
               }`}>
-                ({investedBreakdown.activeReturnPercent > 0 ? '+' : ''}{getMasked(investedBreakdown.activeReturnPercent.toFixed(1))}%)
+                ({displayedReturnPercent > 0 ? '+' : ''}{getMasked(displayedReturnPercent.toFixed(1))}%)
               </span>
             </div>
           </div>
@@ -1188,21 +1276,65 @@ export default function Portfolio({
           {/* Right: Portfolio Health & Return Progress Meter */}
           <div className="w-full md:w-80 lg:w-96 flex flex-col justify-center space-y-2">
             <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-              <span>Return Modal</span>
+              <div className="flex items-center gap-2">
+                <span>Return Modal</span>
+                {stablecoinData.hasStablecoins && (
+                  <div className="inline-flex p-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 text-[10px] font-medium">
+                    <button
+                      type="button"
+                      onClick={() => handleSetInvestedMode('all')}
+                      className={`px-2 py-0.5 rounded-md transition-all ${
+                        !isInvestedActiveMode
+                          ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                          : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                      }`}
+                      title="Versi 1: Return dihitung terhadap total modal termasuk stablecoin"
+                    >
+                      Total
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSetInvestedMode('active')}
+                      className={`px-2 py-0.5 rounded-md transition-all ${
+                        isInvestedActiveMode
+                          ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                          : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                      }`}
+                      title="Versi 2: Return dihitung khusus modal aktif tanpa USDT & USDC"
+                    >
+                      Tanpa Stable
+                    </button>
+                  </div>
+                )}
+              </div>
               <span className="font-mono font-bold text-gray-700 dark:text-gray-300">
-                {hideBalance ? '•••' : `${Math.abs(investedBreakdown.activeReturnPercent).toFixed(1)}%`}
+                {hideBalance ? '•••' : `${Math.abs(displayedReturnPercent).toFixed(1)}%`}
               </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
               <div
-                style={{ width: `${Math.min(Math.abs(investedBreakdown.activeReturnPercent), 100)}%` }}
+                style={{ width: `${Math.min(Math.abs(displayedReturnPercent), 100)}%` }}
                 className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
               ></div>
             </div>
             <div className="flex justify-between text-[11px] text-gray-400 font-mono">
-              <span title="Modal Invested tanpa USDT/USDC">Modal: {getMasked(formatIDR(investedBreakdown.activeCostIDR))}</span>
-              <span title="Nilai Aset Invested tanpa USDT/USDC">Nilai: {getMasked(formatIDR(investedBreakdown.activeValIDR))}</span>
+              <span title={isInvestedActiveMode ? 'Modal Aktif tanpa USDT/USDC' : 'Total Modal Seluruh Aset'}>
+                Modal ({isInvestedActiveMode ? 'Aktif' : 'Total'}): {getMasked(formatIDR(displayedCostIDR))}
+              </span>
+              <span title={isInvestedActiveMode ? 'Nilai Pasar Aset Fluktuatif tanpa USDT/USDC' : 'Total Nilai Portofolio'}>
+                Nilai: {getMasked(formatIDR(displayedValIDR))}
+              </span>
             </div>
+            {stablecoinData.hasStablecoins && (
+              <div className="flex justify-between text-[10px] text-gray-400/90 font-mono pt-0.5">
+                <span>
+                  {isInvestedActiveMode
+                    ? `Ref Total: ${getMasked(formatIDR(gains.totalCost))} (${gains.gainPercent > 0 ? '+' : ''}${gains.gainPercent.toFixed(1)}%)`
+                    : `Ref Aktif: ${getMasked(formatIDR(investedBreakdown.activeCostIDR))} (${investedBreakdown.activeReturnPercent > 0 ? '+' : ''}${investedBreakdown.activeReturnPercent.toFixed(1)}%)`}
+                </span>
+                <span>Stable: {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1092,6 +1092,21 @@ export default function Home() {
       // Total Invested EXCLUDES cash - cash is not an investment, has no P/L
       const totalInvestedIDR = stocksInvestedIDR + cryptoInvestedIDR + goldInvestedIDR;
 
+      // Active Invested EXCLUDES both cash and standby stablecoins (USDT & USDC)
+      let stablecoinCostIDR = 0;
+      let stablecoinValueUSD = 0;
+      (crypto || []).forEach(c => {
+        const sym = (c.symbol || '').toUpperCase().trim();
+        if (sym === 'USDT' || sym === 'USDC') {
+          const avgPrice = c.avgPrice || c.entryPrice || 1.0;
+          const amount = parseFloat(c.amount) || 0;
+          stablecoinCostIDR += avgPrice * amount * safeExchangeRate;
+          const price = prices[c.symbol]?.price || c.currentPrice || 1.0;
+          stablecoinValueUSD += price * amount;
+        }
+      });
+      const activeInvestedIDR = Math.max(0, totalInvestedIDR - stablecoinCostIDR);
+
 
       // DEBUG: Log what we're calculating
       secureLogger.log('[SNAPSHOT DEBUG] Using LIVE PRICES - Asset counts:', {
@@ -1215,6 +1230,8 @@ export default function Home() {
         totalValueIDR: Math.round(totalValueIDR),
         totalValueUSD: totalValueUSD,
         totalInvestedIDR: Math.round(totalInvestedIDR),
+        activeInvestedIDR: Math.round(activeInvestedIDR),
+        stablecoinValueUSD: Math.round(stablecoinValueUSD * 100) / 100,
         timestamp: serverTimestamp(),
         portfolio: cleanUndefinedValues(enrichedPortfolio)
       };
