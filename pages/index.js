@@ -3585,7 +3585,7 @@ export default function Home() {
                       setActiveTab('portfolio');
                     }
                   }}
-                  placeholder={t('placeholderSearch') || "Cari aset (BTC, BBCA)..."}
+                  placeholder={t('search') || "Cari aset..."}
                   className="w-full bg-gray-100/90 dark:bg-[#161b22] hover:bg-gray-100 dark:hover:bg-[#1c222c] focus:bg-white dark:focus:bg-[#0d1117] text-gray-900 dark:text-white pl-8 sm:pl-9 pr-7 sm:pr-8 py-1.5 text-xs rounded-xl border border-gray-200/80 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 />
                 {searchQuery ? (
