@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AssetTable from './AssetTable';
 import Notification from './Notification';
+import MetricsGuideModal from './MetricsGuideModal';
 
-import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp, FiDisc, FiCamera, FiChevronUp, FiChevronDown, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiHelpCircle, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp, FiDisc, FiCamera, FiChevronUp, FiChevronDown, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { fetchExchangeRate } from '../lib/fetchPrices';
 import { formatNumber, formatIDR, formatUSD, formatNumberUSD, formatQuantity } from '../lib/utils';
@@ -124,6 +125,7 @@ export default function Portfolio({
 
   const [activeAssetTab, setActiveAssetTab] = useState('all');
   const [cryptoTableFilter, setCryptoTableFilter] = useState('all'); // 'all', 'combined', 'usdt', 'usdc'
+  const [isMetricsGuideOpen, setIsMetricsGuideOpen] = useState(false);
   const [investedMode, setInvestedMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('portsyncro_invested_mode') || 'all';
@@ -1047,21 +1049,43 @@ export default function Portfolio({
               </p>
               <div
                 className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono pt-0.5"
-                title="Total seluruh kekayaan waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)"
+                title={t('initialPortoDesc') || (language === 'en' ? 'Total net worth before gains/losses (Invested Capital + Cash Balance)' : 'Total seluruh kekayaan waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)')}
               >
-                <span>Porto Utuh:</span>
+                <span>{t('initialPorto') || (language === 'en' ? 'Pre-P/L Portfolio' : 'Porto Utuh')}:</span>
                 <span className="text-gray-600 dark:text-gray-300 font-medium">
                   {getMasked(formatIDR(initialPortoIDR))}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsMetricsGuideOpen(true)}
+                  className="text-gray-400 hover:text-blue-500 transition-colors p-0.5 ml-0.5"
+                  title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
+                  aria-label="Metrics Guide"
+                >
+                  <FiInfo className="w-3 h-3" />
+                </button>
               </div>
             </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500">
-                {isInvestedActiveMode ? (t('activeInvested') || 'Modal Aktif') : (t('totalInvested') || 'Total Modal')}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500">
+                  {isInvestedActiveMode ? (t('activeInvested') || (language === 'en' ? 'Active Invested' : 'Modal Aktif')) : (t('totalInvested') || (language === 'en' ? 'Total Invested' : 'Total Modal'))}
+                </p>
+                {stablecoinData.hasStablecoins && (
+                  <button
+                    type="button"
+                    onClick={() => setIsMetricsGuideOpen(true)}
+                    className="text-gray-400 hover:text-blue-500 transition-colors"
+                    title={t('guideStableTitle') || (language === 'en' ? 'Why exclude stablecoins?' : 'Kenapa Ada Mode Tanpa Stable?')}
+                    aria-label="Stablecoin Mode Guide"
+                  >
+                    <FiHelpCircle className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
               {stablecoinData.hasStablecoins && (
                 <div className="inline-flex p-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 text-[10px] font-medium">
                   <button
@@ -1072,9 +1096,9 @@ export default function Portfolio({
                         ? 'bg-blue-600 text-white font-semibold shadow-xs'
                         : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
                     }`}
-                    title="Versi 1: Total modal seluruh aset termasuk USDT & USDC"
+                    title={language === 'en' ? 'Total: All capital including USDT & USDC' : 'Total: Total modal seluruh aset termasuk USDT & USDC'}
                   >
-                    Total
+                    {t('total') || 'Total'}
                   </button>
                   <button
                     type="button"
@@ -1084,9 +1108,9 @@ export default function Portfolio({
                         ? 'bg-blue-600 text-white font-semibold shadow-xs'
                         : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
                     }`}
-                    title="Versi 2: Modal aktif tanpa USDT & USDC (khusus aset fluktuatif)"
+                    title={language === 'en' ? 'Excl. Stable: Active capital taking market risk (excluding standby USDT & USDC)' : 'Tanpa Stable: Modal aktif berisiko pasar (tanpa standby USDT & USDC)'}
                   >
-                    Tanpa Stable
+                    {t('exclStableShort') || (language === 'en' ? 'Excl. Stable' : 'Tanpa Stable')}
                   </button>
                 </div>
               )}
@@ -1101,13 +1125,13 @@ export default function Portfolio({
             </div>
             {stablecoinData.hasStablecoins && (
               <div className="mt-1.5 flex items-center justify-between text-[10px] text-gray-400 font-mono">
-                <span title={isInvestedActiveMode ? 'Total Modal seluruh aset' : 'Modal Aktif tanpa USDT/USDC'}>
+                <span title={isInvestedActiveMode ? (language === 'en' ? 'Total capital of all assets' : 'Total Modal seluruh aset') : (language === 'en' ? 'Active capital without USDT/USDC' : 'Modal Aktif tanpa USDT/USDC')}>
                   {isInvestedActiveMode
-                    ? `Total: ${getMasked(formatIDR(gains.totalCost))}`
-                    : `Aktif: ${getMasked(formatIDR(investedBreakdown.activeCostIDR))}`}
+                    ? `${t('total') || 'Total'}: ${getMasked(formatIDR(gains.totalCost))}`
+                    : `${t('active') || (language === 'en' ? 'Active' : 'Aktif')}: ${getMasked(formatIDR(investedBreakdown.activeCostIDR))}`}
                 </span>
-                <span className="text-emerald-600 dark:text-emerald-400" title="Standby USDT & USDC">
-                  Stable: {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}
+                <span className="text-emerald-600 dark:text-emerald-400" title={language === 'en' ? 'Standby USDT & USDC (USD Digital Cash)' : 'Standby USDT & USDC (Kas Dolar Digital)'}>
+                  {t('stablecoin') || 'Stable'}: {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}
                 </span>
               </div>
             )}
@@ -1303,7 +1327,18 @@ export default function Portfolio({
           {/* Right: Portfolio Health & Return Progress Meter */}
           <div className="w-full md:w-80 lg:w-96 flex flex-col justify-center space-y-2">
             <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-              <span>Return Modal</span>
+              <div className="flex items-center gap-1.5">
+                <span>{t('capitalReturn') || (language === 'en' ? 'Capital Return' : 'Return Modal')}</span>
+                <button
+                  type="button"
+                  onClick={() => setIsMetricsGuideOpen(true)}
+                  className="text-gray-400 hover:text-blue-500 transition-colors p-0.5"
+                  title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
+                  aria-label="Metrics Guide"
+                >
+                  <FiInfo className="w-3 h-3" />
+                </button>
+              </div>
               <span className="font-mono font-bold text-gray-700 dark:text-gray-300">
                 {hideBalance ? '•••' : `${Math.abs(displayedReturnPercent).toFixed(1)}%`}
               </span>
@@ -1316,21 +1351,21 @@ export default function Portfolio({
             </div>
             {/* Modal Invested (Waktu Utuh Sebelum P/L vs Nilai Aset Invested Sekarang) */}
             <div className="flex justify-between text-[11px] font-mono">
-              <span className="text-gray-400" title={isInvestedActiveMode ? 'Modal Aktif waktu uang masih utuh sebelum kena profit/loss' : 'Modal Invested waktu uang masih utuh sebelum kena profit/loss'}>
-                Modal: <span className="text-gray-700 dark:text-gray-300 font-semibold">{getMasked(formatIDR(displayedCostIDR))}</span>
+              <span className="text-gray-400" title={isInvestedActiveMode ? (language === 'en' ? 'Active capital taking market risk before gains/losses' : 'Modal Aktif waktu uang masih utuh sebelum kena profit/loss') : (language === 'en' ? 'Total invested capital before gains/losses' : 'Modal Invested waktu uang masih utuh sebelum kena profit/loss')}>
+                {t('investedCost') || (language === 'en' ? 'Cost' : 'Modal')}: <span className="text-gray-700 dark:text-gray-300 font-semibold">{getMasked(formatIDR(displayedCostIDR))}</span>
               </span>
-              <span className="text-gray-400" title="Nilai pasar aset yang diinvestasikan saat ini (setelah profit/loss)">
-                Nilai: <span className="text-gray-700 dark:text-gray-300 font-semibold">{getMasked(formatIDR(displayedInvestedValIDR))}</span>
+              <span className="text-gray-400" title={language === 'en' ? 'Current market value of invested assets after gains/losses' : 'Nilai pasar aset yang diinvestasikan saat ini (setelah profit/loss)'}>
+                {t('currentValue') || (language === 'en' ? 'Value' : 'Nilai')}: <span className="text-gray-700 dark:text-gray-300 font-semibold">{getMasked(formatIDR(displayedInvestedValIDR))}</span>
               </span>
             </div>
 
             {/* Total Portofolio (Waktu Utuh Sebelum P/L vs Total Portofolio Sekarang) */}
             <div className="flex justify-between text-[10px] text-gray-400 font-mono pt-1 border-t border-gray-100 dark:border-gray-800/60">
-              <span title="Total portofolio waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)">
-                Porto Utuh: <span className="text-gray-600 dark:text-gray-400 font-medium">{getMasked(formatIDR(initialPortoIDR))}</span>
+              <span title={language === 'en' ? 'Total net worth before gains/losses (Invested Capital + Cash Balance)' : 'Total portofolio waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)'}>
+                {t('initialPorto') || (language === 'en' ? 'Pre-P/L Porto' : 'Porto Utuh')}: <span className="text-gray-600 dark:text-gray-400 font-medium">{getMasked(formatIDR(initialPortoIDR))}</span>
               </span>
-              <span title="Total nilai seluruh portofolio sekarang setelah kena profit/loss">
-                Porto Sekarang: <span className="text-gray-600 dark:text-gray-400 font-medium">{getMasked(formatIDR(totals.totalIDR))}</span>
+              <span title={language === 'en' ? 'Total current net worth after gains/losses' : 'Total nilai seluruh portofolio sekarang setelah kena profit/loss'}>
+                {t('currentPorto') || (language === 'en' ? 'Current Porto' : 'Porto Sekarang')}: <span className="text-gray-600 dark:text-gray-400 font-medium">{getMasked(formatIDR(totals.totalIDR))}</span>
               </span>
             </div>
           </div>
@@ -1378,7 +1413,9 @@ export default function Portfolio({
             <div className="flex items-center gap-2 mb-4 px-2 justify-between">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 {t('bankAndWallet') || 'Bank & E-Wallet'}
-                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.cash} {t('asset') || 'Aset'}</span>
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">
+                  {uniqueFilteredCounts.cash} {uniqueFilteredCounts.cash === 1 ? (t('asset') || 'Asset') : (t('assets') || (language === 'en' ? 'Assets' : 'Aset'))}
+                </span>
               </h3>
               <button onClick={(e) => exportPortfolioToCSV('cash', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title={t('exportBankData') || (language === 'en' ? 'Export Bank Data' : 'Ekspor Data Bank')}>
                 <FiDownload className="w-4 h-4" />
@@ -1403,7 +1440,9 @@ export default function Portfolio({
             <div className="flex items-center gap-2 mb-4 px-2 justify-between">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 {t('stocks') || 'Saham'}
-                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.stocks} {t('asset') || 'Aset'}</span>
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">
+                  {uniqueFilteredCounts.stocks} {uniqueFilteredCounts.stocks === 1 ? (t('asset') || 'Asset') : (t('assets') || (language === 'en' ? 'Assets' : 'Aset'))}
+                </span>
               </h3>
               <button onClick={(e) => exportPortfolioToCSV('stock', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title={t('exportStocks') || (language === 'en' ? 'Export Stocks' : 'Ekspor Saham')}>
                 <FiDownload className="w-4 h-4" />
@@ -1432,12 +1471,12 @@ export default function Portfolio({
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                      Ringkasan Stablecoin (USDT & USDC)
+                      {t('stablecoinSummary') || (language === 'en' ? 'Stablecoin Summary (USDT & USDC)' : 'Ringkasan Stablecoin (USDT & USDC)')}
                     </h4>
                   </div>
                   <div className="flex items-center gap-1 p-0.5 bg-gray-100 dark:bg-[#0d1117] rounded-xl border border-gray-200/60 dark:border-gray-800/80 text-xs">
                     {[
-                      { id: 'all', label: 'Semua Kripto' },
+                      { id: 'all', label: t('allCrypto') || (language === 'en' ? 'All Crypto' : 'Semua Kripto') },
                       { id: 'combined', label: 'USDT+USDC' },
                       { id: 'usdt', label: 'USDT' },
                       { id: 'usdc', label: 'USDC' },
@@ -1477,7 +1516,7 @@ export default function Portfolio({
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="font-semibold text-gray-500 dark:text-gray-400">Total USDT + USDC</span>
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-                        {stablecoinData.combined.percentOfCrypto.toFixed(0)}% Kripto
+                        {stablecoinData.combined.percentOfCrypto.toFixed(0)}% {t('crypto') || (language === 'en' ? 'Crypto' : 'Kripto')}
                       </span>
                     </div>
                     <div className="text-base font-bold text-gray-900 dark:text-white">
@@ -1499,7 +1538,7 @@ export default function Portfolio({
                   >
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="font-semibold text-gray-500 dark:text-gray-400">Tether (USDT)</span>
-                      <span className="text-[10px] text-gray-400">{stablecoinData.usdt.count} Akun</span>
+                      <span className="text-[10px] text-gray-400">{stablecoinData.usdt.count} {t('accounts') || (language === 'en' ? 'Accounts' : 'Akun')}</span>
                     </div>
                     <div className="text-base font-bold text-teal-600 dark:text-teal-400">
                       {getMasked(formatUSD(stablecoinData.usdt.valUSD))}
@@ -1520,7 +1559,7 @@ export default function Portfolio({
                   >
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="font-semibold text-gray-500 dark:text-gray-400">USD Coin (USDC)</span>
-                      <span className="text-[10px] text-gray-400">{stablecoinData.usdc.count} Akun</span>
+                      <span className="text-[10px] text-gray-400">{stablecoinData.usdc.count} {t('accounts') || (language === 'en' ? 'Accounts' : 'Akun')}</span>
                     </div>
                     <div className="text-base font-bold text-blue-600 dark:text-blue-400">
                       {getMasked(formatUSD(stablecoinData.usdc.valUSD))}
@@ -1538,7 +1577,7 @@ export default function Portfolio({
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   {t('crypto') || 'Kripto'}
                   <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">
-                    {displayedCryptoAssets.length} {t('asset') || 'Aset'}
+                    {displayedCryptoAssets.length} {displayedCryptoAssets.length === 1 ? (t('asset') || 'Asset') : (t('assets') || (language === 'en' ? 'Assets' : 'Aset'))}
                   </span>
                 </h3>
               </div>
@@ -1583,7 +1622,9 @@ export default function Portfolio({
             <div className="flex items-center gap-2 mb-4 px-2 justify-between">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 {t('gold') || 'Emas'}
-                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.gold} {t('asset') || 'Aset'}</span>
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">
+                  {uniqueFilteredCounts.gold} {uniqueFilteredCounts.gold === 1 ? (t('asset') || 'Asset') : (t('assets') || (language === 'en' ? 'Assets' : 'Aset'))}
+                </span>
               </h3>
               <button onClick={(e) => exportPortfolioToCSV('gold', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title={t('exportGold') || (language === 'en' ? 'Export Gold' : 'Ekspor Emas')}>
                 <FiDownload className="w-4 h-4" />
@@ -1617,7 +1658,10 @@ export default function Portfolio({
       </div>
 
       {/* Modals & Notifications */}
-
+      <MetricsGuideModal
+        isOpen={isMetricsGuideOpen}
+        onClose={() => setIsMetricsGuideOpen(false)}
+      />
 
       {notification && (
         <Notification

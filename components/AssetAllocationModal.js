@@ -6,7 +6,8 @@ import { FiPieChart, FiTrendingUp, FiTarget, FiFilter } from 'react-icons/fi';
 import PortfolioDistributionChart from './PortfolioDistributionChart';
 
 export default function AssetAllocationModal({ isOpen, onClose, assets, prices, exchangeRate, hideBalance }) {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
+    const isEn = language === 'en';
     const [activeTab, setActiveTab] = useState('all'); // all, stock, crypto, gold, cash
     const [calculationBasis, setCalculationBasis] = useState('total'); // 'total' or 'category'
 
@@ -58,12 +59,16 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
             let name = asset.ticker || asset.symbol;
             if (type === 'gold') name = asset.broker || asset.brand || name;
 
+            const tickerUpper = (asset.ticker || asset.symbol || '').toUpperCase();
+            const isStablecoin = type === 'crypto' && (tickerUpper === 'USDT' || tickerUpper === 'USDC');
+
             return {
                 name,
                 type,
                 ticker: asset.ticker || asset.symbol,
                 valueIDR,
-                amount
+                amount,
+                isStablecoin
             };
         };
 
@@ -137,8 +142,16 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
 
     if (!isOpen) return null;
 
+    const tabLabels = {
+        all: t('all') || (isEn ? 'All' : 'Semua'),
+        stock: t('stocks') || (isEn ? 'Stocks' : 'Saham'),
+        crypto: t('crypto') || (isEn ? 'Crypto' : 'Kripto'),
+        gold: t('gold') || (isEn ? 'Gold' : 'Emas'),
+        cash: t('bankAndWalletShort') || (isEn ? 'Cash' : 'Kas / Bank')
+    };
+
     return (
-        <Modal type="default" isOpen={isOpen} onClose={onClose} title="Alokasi Aset">
+        <Modal type="default" isOpen={isOpen} onClose={onClose} title={t('assetAllocation') || (isEn ? 'Asset Allocation' : 'Alokasi Aset')}>
             <div className="space-y-6 font-sans">
 
                 {/* Total Value Header */}
@@ -147,7 +160,7 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
                         <p className="text-xs text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
                             {activeTab === 'all'
                                 ? t('totalPortfolio')
-                                : t('totalCategory', { category: activeTab.charAt(0).toUpperCase() + activeTab.slice(1) })}
+                                : t('totalCategory', { category: tabLabels[activeTab] || activeTab })}
                         </p>
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white mt-1">
                             {getMasked(formatIDR(currentCategoryTotal))}
@@ -161,14 +174,21 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
                 {/* Pie Chart Display */}
                 <div className="mb-4">
                     <PortfolioDistributionChart
-                        title={activeTab === 'all' ? t('assetAllocation') : `${t('assetAllocation') || 'Alokasi Aset'} - ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
+                        title={activeTab === 'all' ? (t('assetAllocation') || (isEn ? 'Asset Allocation' : 'Alokasi Aset')) : `${t('assetAllocation') || (isEn ? 'Asset Allocation' : 'Alokasi Aset')} - ${tabLabels[activeTab] || activeTab}`}
                         data={(() => {
                             if (activeTab === 'all') {
+                                const stockVal = allocationData.items.filter(i => i.type === 'stock').reduce((acc, i) => acc + i.valueIDR, 0);
+                                const volatileCryptoVal = allocationData.items.filter(i => i.type === 'crypto' && !i.isStablecoin).reduce((acc, i) => acc + i.valueIDR, 0);
+                                const stablecoinVal = allocationData.items.filter(i => i.type === 'crypto' && i.isStablecoin).reduce((acc, i) => acc + i.valueIDR, 0);
+                                const goldVal = allocationData.items.filter(i => i.type === 'gold').reduce((acc, i) => acc + i.valueIDR, 0);
+                                const cashVal = allocationData.items.filter(i => i.type === 'cash').reduce((acc, i) => acc + i.valueIDR, 0);
+
                                 return [
-                                    { name: t('stocks') || 'Saham', value: allocationData.items.filter(i => i.type === 'stock').reduce((acc, i) => acc + i.valueIDR, 0), color: '#3b82f6' },
-                                    { name: t('crypto') || 'Kripto', value: allocationData.items.filter(i => i.type === 'crypto').reduce((acc, i) => acc + i.valueIDR, 0), color: '#a855f7' },
-                                    { name: t('gold') || 'Emas', value: allocationData.items.filter(i => i.type === 'gold').reduce((acc, i) => acc + i.valueIDR, 0), color: '#eab308' },
-                                    { name: t('bankAndWalletShort') || 'Kas', value: allocationData.items.filter(i => i.type === 'cash').reduce((acc, i) => acc + i.valueIDR, 0), color: '#10b981' }
+                                    { name: t('stocks') || (isEn ? 'Stocks' : 'Saham'), value: stockVal, color: '#3b82f6' },
+                                    { name: isEn ? 'Crypto (Volatile)' : 'Kripto (Fluktuatif)', value: volatileCryptoVal, color: '#a855f7' },
+                                    { name: isEn ? 'Stablecoin (USD Cash)' : 'Stablecoin (Kas Dolar)', value: stablecoinVal, color: '#14b8a6' },
+                                    { name: t('gold') || (isEn ? 'Gold' : 'Emas'), value: goldVal, color: '#eab308' },
+                                    { name: t('bankAndWalletShort') || (isEn ? 'Cash Bank & E-Wallet' : 'Kas Bank & E-Wallet'), value: cashVal, color: '#10b981' }
                                 ].filter(item => item.value > 0);
                             } else {
                                 // Specific category
@@ -203,7 +223,7 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
                                         : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}
                                 `}
                             >
-                                {type === 'all' ? t('all') : type.charAt(0).toUpperCase() + type.slice(1)}
+                                {tabLabels[type] || type}
                             </button>
                         ))}
                     </div>
@@ -250,8 +270,12 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
                                     <div>
                                         <h4 className="font-bold text-gray-900 dark:text-white text-sm">{item.ticker || item.name}</h4>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] text-gray-500 uppercase font-semibold bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
-                                                {item.type}
+                                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                                item.isStablecoin
+                                                    ? 'bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400'
+                                                    : 'text-gray-500 bg-gray-100 dark:bg-gray-800'
+                                            }`}>
+                                                {item.isStablecoin ? (isEn ? 'Stablecoin (USD Cash)' : 'Stablecoin (Kas Dolar)') : item.type.toUpperCase()}
                                             </span>
                                         </div>
                                     </div>
@@ -276,7 +300,7 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
 
                     {displayItems.length === 0 && (
                         <div className="text-center py-8 text-gray-500">
-                            <p>Tidak ada aset dalam kategori ini.</p>
+                            <p>{t('emptyCategory') || (isEn ? 'No assets in this category.' : 'Tidak ada aset dalam kategori ini.')}</p>
                         </div>
                     )}
                 </div>

@@ -1154,8 +1154,8 @@ export default function Reports() {
                                     }`}>
                                     <FiActivity className="w-2.5 h-2.5" /> {Math.abs(stats.grossChangePct).toFixed(1)}%
                                 </span>
-                                <span title="Modal Invested waktu uang masih utuh sebelum kena profit/loss">
-                                    Modal: {currency === 'IDR' ? formatIDR(stats.latestInvested, 0) : formatUSD(stats.latestInvested)}
+                                <span title={language === 'en' ? 'Invested capital before gains/losses' : 'Modal Invested waktu uang masih utuh sebelum kena profit/loss'}>
+                                    {language === 'en' ? 'Cost' : 'Modal'}: {currency === 'IDR' ? formatIDR(stats.latestInvested, 0) : formatUSD(stats.latestInvested)}
                                 </span>
                             </div>
                         </div>
