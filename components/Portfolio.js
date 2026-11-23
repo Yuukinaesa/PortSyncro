@@ -718,29 +718,11 @@ export default function Portfolio({
       </div>
 
       {/* Control Panel Bar (Sticky & Frosted & Collapsible) */}
-      {isHeaderCollapsed ? (
-        onToggleHeaderCollapse ? null : (
-          <div className="sticky top-[92px] sm:top-[104px] z-20 flex justify-center -mx-4 sm:-mx-6 px-4 sm:px-6 py-1.5 transition-all duration-300 pointer-events-none">
-            <button
-              onClick={() => setIsHeaderCollapsed(false)}
-              className="pointer-events-auto px-4 py-2 bg-white/95 dark:bg-[#161b22]/95 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full text-xs font-bold shadow-xl shadow-black/10 dark:shadow-black/40 backdrop-blur-xl flex items-center gap-2 transition-all duration-200 active:scale-95 border border-gray-200 dark:border-gray-700"
-              title={t('showHeader') || (language === 'en' ? 'Show Filters & Actions' : 'Tampilkan Filter & Aksi')}
-              aria-label={t('showHeader') || (language === 'en' ? 'Show Filters & Actions' : 'Tampilkan Filter & Aksi')}
-            >
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-              <FiEye className="w-3.5 h-3.5 text-blue-500" />
-              <span>{activeTabLabel} ({activeCount}) • {t('filterAndActions') || (language === 'en' ? 'Open Filters & Actions' : 'Buka Filter & Aksi')}</span>
-              <FiChevronDown className="w-3.5 h-3.5 text-gray-400" />
-            </button>
-          </div>
-        )
-      ) : (
+      {isHeaderCollapsed ? null : (
         <div className="sticky top-[118px] sm:top-[142px] z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
           <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-2.5 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-md dark:shadow-black/40">
-            {/* Row 1: Category Tabs + Quick Collapse */}
-            <div className="flex items-center justify-between gap-2 sm:gap-6 w-full xl:w-auto">
-              <span className="text-gray-900 dark:text-white font-bold px-2 hidden md:block text-sm">Portfolio</span>
-
+            {/* Row 1: Category Tabs */}
+            <div className="flex items-center gap-2 sm:gap-4 w-full xl:w-auto">
               <div className="flex items-center gap-1.5 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="grid grid-cols-5 gap-1 w-full min-w-[320px] md:min-w-0 md:flex md:space-x-1">
                   {['all', 'cash', 'stock', 'crypto', 'gold'].map(tab => {
@@ -772,17 +754,6 @@ export default function Portfolio({
                   })}
                 </div>
               </div>
-
-              {/* Mobile Quick Collapse Toggle */}
-              <button
-                onClick={() => setIsHeaderCollapsed(true)}
-                className="xl:hidden p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center gap-1 shrink-0"
-                title={t('hideHeader') || (language === 'en' ? 'Hide Filters & Actions' : 'Sembunyikan Filter & Aksi')}
-                aria-label={t('hideHeader') || (language === 'en' ? 'Hide Filters & Actions' : 'Sembunyikan Filter & Aksi')}
-              >
-                <FiEyeOff className="w-3.5 h-3.5 text-blue-500" />
-                <span className="text-[10px] font-semibold hidden xs:inline">{t('hide') || (language === 'en' ? 'Hide' : 'Sembunyikan')}</span>
-              </button>
             </div>
 
             {/* Row 2: Action Buttons (Smooth auto-collapse on mobile scroll or toggle) */}
@@ -827,16 +798,6 @@ export default function Portfolio({
               <button onClick={() => onAddAsset && onAddAsset()} className="h-9 sm:h-10 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95 flex-shrink-0">
                 <FiPlusCircle className="w-3.5 h-3.5" />
                 <span>{t('add') || 'Tambah'}</span>
-              </button>
-
-              {/* Desktop Hide Button */}
-              <button
-                onClick={() => setIsHeaderCollapsed(true)}
-                className="hidden xl:flex h-10 px-2.5 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-xl items-center gap-1.5 text-xs font-semibold border border-gray-200 dark:border-gray-800 transition-all hover:text-gray-900 dark:hover:text-white"
-                title={t('hideHeader') || (language === 'en' ? 'Hide Filters & Actions' : 'Sembunyikan Filter & Aksi')}
-              >
-                <FiEyeOff className="w-3.5 h-3.5 text-blue-500" />
-                <span>{t('hide') || (language === 'en' ? 'Hide' : 'Sembunyikan')}</span>
               </button>
             </div>
           </div>

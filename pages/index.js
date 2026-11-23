@@ -3582,15 +3582,18 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Sembunyikan / Hide Menu Button */}
+                {/* Subtle Divider */}
+                <div className="h-5 w-[1px] bg-gray-200 dark:bg-gray-800 mx-0.5 hidden xs:block"></div>
+
+                {/* Sembunyikan / Hide Menu Button - Single Master Toggle */}
                 <button
                   onClick={() => setIsHeaderCollapsed(true)}
-                  className="p-2 sm:px-2.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg sm:rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex items-center gap-1 shrink-0 ml-1 text-xs"
+                  className="p-2 sm:px-2.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg sm:rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex items-center gap-1.5 shrink-0 text-xs"
                   title={t('hideHeader') || (language === 'en' ? 'Hide Filters & Menu' : 'Sembunyikan Filter & Menu')}
                   aria-label={t('hideHeader') || (language === 'en' ? 'Hide Filters & Menu' : 'Sembunyikan Filter & Menu')}
                 >
-                  <FiEyeOff className="w-4 h-4 text-gray-400 hover:text-blue-500" />
-                  <span className="hidden md:inline font-semibold text-[11px] text-gray-500 dark:text-gray-400">{t('hide') || (language === 'en' ? 'Hide' : 'Sembunyikan')}</span>
+                  <FiEyeOff className="w-4 h-4 text-gray-400 hover:text-blue-500 transition-colors" />
+                  <span className="hidden xs:inline font-semibold text-[11px] text-gray-500 dark:text-gray-400">{t('hide') || (language === 'en' ? 'Hide' : 'Sembunyikan')}</span>
                 </button>
               </div>
             </div>
