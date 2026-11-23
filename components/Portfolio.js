@@ -42,7 +42,8 @@ export default function Portfolio({
   onOpenSettings,
   onSnap,
   priceCheckWrapper,
-  isNavCollapsed = false
+  isHeaderCollapsed: propIsHeaderCollapsed,
+  onToggleHeaderCollapse
 }) {
   const assetCount = useMemo(() => ({
     stocks: new Set((assets?.stocks || []).map(s => (s.ticker || '').toUpperCase())).size,
@@ -118,7 +119,14 @@ export default function Portfolio({
   }, [propExchangeRateError, propExchangeRateSource, propLastExchangeRateUpdate, exchangeRateError, exchangeRateSource, lastExchangeRateUpdate]);
 
   const [activeAssetTab, setActiveAssetTab] = useState('all');
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [internalHeaderCollapsed, setInternalHeaderCollapsed] = useState(false);
+  const isHeaderCollapsed = propIsHeaderCollapsed !== undefined ? propIsHeaderCollapsed : internalHeaderCollapsed;
+  const setIsHeaderCollapsed = useCallback((val) => {
+    setInternalHeaderCollapsed(val);
+    if (onToggleHeaderCollapse) {
+      onToggleHeaderCollapse(val);
+    }
+  }, [onToggleHeaderCollapse]);
   const [isActionCollapsed, setIsActionCollapsed] = useState(false);
   const [isAutoHidden, setIsAutoHidden] = useState(false);
   const lastScrollYRef = useRef(0);
@@ -699,31 +707,35 @@ export default function Portfolio({
 
   return (
     <div className="space-y-6 pb-24 font-sans bg-gray-50 dark:bg-[#0d1117] min-h-screen text-gray-900 dark:text-gray-300 p-4 sm:p-6">
-      {/* App Header */}
-      <div className="flex flex-col space-y-1 mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t('portfolio') || 'My Portfolio'}</h1>
-        <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-          1 USD ≈ {getMasked(formatIDR(exchangeRate))}
-        </p>
+      {/* App Header (Hide when collapsed to keep viewport 100% focused) */}
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6 transition-all duration-300 ${isHeaderCollapsed ? 'hidden' : 'flex'}`}>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t('portfolio') || 'My Portfolio'}</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">
+            1 USD ≈ {getMasked(formatIDR(exchangeRate))}
+          </p>
+        </div>
       </div>
 
       {/* Control Panel Bar (Sticky & Frosted & Collapsible) */}
       {isHeaderCollapsed ? (
-        <div className={`sticky ${isNavCollapsed ? 'top-[92px] sm:top-[104px]' : 'top-[118px] sm:top-[142px]'} z-20 flex justify-end -mx-4 sm:-mx-6 px-4 sm:px-6 py-1.5 transition-all duration-300 pointer-events-none`}>
-          <button
-            onClick={() => setIsHeaderCollapsed(false)}
-            className="pointer-events-auto px-4 py-2 bg-white/95 dark:bg-[#161b22]/95 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full text-xs font-bold shadow-xl shadow-black/10 dark:shadow-black/40 backdrop-blur-xl flex items-center gap-2 transition-all duration-200 active:scale-95 border border-gray-200 dark:border-gray-700"
-            title={t('showHeader') || (language === 'en' ? 'Show Filters & Actions' : 'Tampilkan Filter & Aksi')}
-            aria-label={t('showHeader') || (language === 'en' ? 'Show Filters & Actions' : 'Tampilkan Filter & Aksi')}
-          >
-            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-            <FiEye className="w-3.5 h-3.5 text-blue-500" />
-            <span>{activeTabLabel} ({activeCount}) • {t('filterAndActions') || (language === 'en' ? 'Open Filters & Actions' : 'Buka Filter & Aksi')}</span>
-            <FiChevronDown className="w-3.5 h-3.5 text-gray-400" />
-          </button>
-        </div>
+        onToggleHeaderCollapse ? null : (
+          <div className="sticky top-[92px] sm:top-[104px] z-20 flex justify-center -mx-4 sm:-mx-6 px-4 sm:px-6 py-1.5 transition-all duration-300 pointer-events-none">
+            <button
+              onClick={() => setIsHeaderCollapsed(false)}
+              className="pointer-events-auto px-4 py-2 bg-white/95 dark:bg-[#161b22]/95 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full text-xs font-bold shadow-xl shadow-black/10 dark:shadow-black/40 backdrop-blur-xl flex items-center gap-2 transition-all duration-200 active:scale-95 border border-gray-200 dark:border-gray-700"
+              title={t('showHeader') || (language === 'en' ? 'Show Filters & Actions' : 'Tampilkan Filter & Aksi')}
+              aria-label={t('showHeader') || (language === 'en' ? 'Show Filters & Actions' : 'Tampilkan Filter & Aksi')}
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+              <FiEye className="w-3.5 h-3.5 text-blue-500" />
+              <span>{activeTabLabel} ({activeCount}) • {t('filterAndActions') || (language === 'en' ? 'Open Filters & Actions' : 'Buka Filter & Aksi')}</span>
+              <FiChevronDown className="w-3.5 h-3.5 text-gray-400" />
+            </button>
+          </div>
+        )
       ) : (
-        <div className={`sticky ${isNavCollapsed ? 'top-[92px] sm:top-[104px]' : 'top-[118px] sm:top-[142px]'} z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300`}>
+        <div className="sticky top-[118px] sm:top-[142px] z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
           <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-2.5 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-md dark:shadow-black/40">
             {/* Row 1: Category Tabs + Quick Collapse */}
             <div className="flex items-center justify-between gap-2 sm:gap-6 w-full xl:w-auto">

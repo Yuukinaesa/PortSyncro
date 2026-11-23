@@ -339,8 +339,8 @@ export default function Home() {
     return false;
   });
 
-  // Collapsible Navigation Bar State
-  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
+  // Unified Collapsible Header & Navigation Bar State
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('hideBalance', hideBalance);
@@ -379,6 +379,11 @@ export default function Home() {
     rebuildPortfolio,
     reset
   } = usePortfolioState();
+
+  // Total unique assets count across all categories for unified badge
+  const totalAssetCount = useMemo(() => {
+    return (assets?.stocks?.length || 0) + (assets?.crypto?.length || 0) + (assets?.gold?.length || 0) + (assets?.cash?.length || 0);
+  }, [assets]);
 
   // Generic Pending Action Handler for UI interactions during price updates
   const pendingFeatureActionRef = useRef(null);
@@ -3523,20 +3528,31 @@ export default function Home() {
 
         <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 pb-24 sm:pb-20">
 
-          {/* Navigation Controls (Sticky) - Mobile & Desktop Collapsible */}
-          {isNavCollapsed ? (
-            <div className="sticky top-14 sm:top-16 z-30 flex justify-center mb-2 sm:mb-4 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1 pointer-events-none transition-all duration-300">
+          {/* Navigation Controls (Sticky) - Mobile & Desktop Unified Collapsible Pill */}
+          {isHeaderCollapsed ? (
+            <div className="sticky top-14 sm:top-16 z-30 flex justify-center mb-3 sm:mb-6 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1 pointer-events-none transition-all duration-300">
               <button
-                onClick={() => setIsNavCollapsed(false)}
-                className="pointer-events-auto px-4 py-1.5 bg-white/95 dark:bg-[#161b22]/95 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full text-xs font-bold shadow-lg shadow-black/10 dark:shadow-black/30 backdrop-blur-xl flex items-center gap-2 transition-all duration-200 active:scale-95 border border-gray-200 dark:border-gray-700"
-                title={t('showNav') || (language === 'en' ? 'Show Navigation' : 'Tampilkan Navigasi')}
-                aria-label={t('showNav') || (language === 'en' ? 'Show Navigation' : 'Tampilkan Navigasi')}
+                onClick={() => setIsHeaderCollapsed(false)}
+                className="pointer-events-auto px-4 py-2 bg-white/95 dark:bg-[#161b22]/95 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full text-xs font-bold shadow-xl shadow-black/10 dark:shadow-black/40 backdrop-blur-xl flex items-center gap-2 sm:gap-2.5 transition-all duration-200 active:scale-95 border border-gray-200 dark:border-gray-700"
+                title={t('showHeader') || (language === 'en' ? 'Show Filters & Menu' : 'Tampilkan Filter & Menu')}
+                aria-label={t('showHeader') || (language === 'en' ? 'Show Filters & Menu' : 'Tampilkan Filter & Menu')}
               >
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                <span className="font-semibold text-gray-800 dark:text-gray-200">
+                <span className="font-bold text-gray-800 dark:text-gray-100">
                   {activeTab === 'portfolio' ? t('portfolio') : activeTab === 'add' ? t('addAsset') : t('history')}
                 </span>
-                <span className="text-gray-400 text-[10px] hidden xs:inline">• {t('showMenu') || (language === 'en' ? 'Show Menu' : 'Tampilkan Menu')}</span>
+                {activeTab === 'portfolio' && (
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-semibold">{t('all') || 'Semua'} ({totalAssetCount})</span>
+                    {exchangeRate > 0 && (
+                      <span className="text-gray-500 dark:text-gray-400 font-mono text-[11px] hidden sm:inline">
+                        • 1 USD ≈ {formatIDR(exchangeRate)}
+                      </span>
+                    )}
+                  </>
+                )}
+                <span className="text-gray-400 text-[10px] hidden md:inline">• {t('showMenu') || (language === 'en' ? 'Show Menu' : 'Tampilkan Menu')}</span>
                 <FiChevronDown className="w-3.5 h-3.5 text-gray-400" />
               </button>
             </div>
@@ -3566,12 +3582,12 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Sembunyikan Navigasi / Hide Nav Button */}
+                {/* Sembunyikan / Hide Menu Button */}
                 <button
-                  onClick={() => setIsNavCollapsed(true)}
+                  onClick={() => setIsHeaderCollapsed(true)}
                   className="p-2 sm:px-2.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg sm:rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex items-center gap-1 shrink-0 ml-1 text-xs"
-                  title={t('hideNav') || (language === 'en' ? 'Hide Navigation' : 'Sembunyikan Navigasi')}
-                  aria-label={t('hideNav') || (language === 'en' ? 'Hide Navigation' : 'Sembunyikan Navigasi')}
+                  title={t('hideHeader') || (language === 'en' ? 'Hide Filters & Menu' : 'Sembunyikan Filter & Menu')}
+                  aria-label={t('hideHeader') || (language === 'en' ? 'Hide Filters & Menu' : 'Sembunyikan Filter & Menu')}
                 >
                   <FiEyeOff className="w-4 h-4 text-gray-400 hover:text-blue-500" />
                   <span className="hidden md:inline font-semibold text-[11px] text-gray-500 dark:text-gray-400">{t('hide') || (language === 'en' ? 'Hide' : 'Sembunyikan')}</span>
@@ -3650,7 +3666,8 @@ export default function Home() {
                 <ErrorBoundary>
                   <Portfolio
                     assets={assets}
-                    isNavCollapsed={isNavCollapsed}
+                    isHeaderCollapsed={isHeaderCollapsed}
+                    onToggleHeaderCollapse={setIsHeaderCollapsed}
                     onUpdateStock={(...args) => executeWithPriceCheck(updateStock, 'Update Stock', ...args)}
                     onUpdateCrypto={(...args) => executeWithPriceCheck(updateCrypto, 'Update Crypto', ...args)}
                     onUpdateGold={(...args) => executeWithPriceCheck(updateGold, 'Update Gold', ...args)}
