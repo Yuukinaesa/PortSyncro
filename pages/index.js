@@ -8,7 +8,7 @@ import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
 import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { FiLogOut, FiCreditCard, FiSettings, FiCheck, FiEyeOff, FiChevronDown, FiSearch, FiX } from 'react-icons/fi';
+import { FiLogOut, FiCreditCard, FiSettings, FiCheck, FiEyeOff, FiChevronDown, FiChevronUp, FiSearch, FiX } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { fetchExchangeRate } from '../lib/fetchExchangeRate';
@@ -339,8 +339,31 @@ export default function Home() {
     return false;
   });
 
-  // Unified Collapsible Header & Navigation Bar State
+  // Unified Collapsible Header & Navigation Bar State with LocalStorage Persistence
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+
+  // Restore saved header collapse preference on mount (SSR safe)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('isHeaderCollapsed');
+      if (saved !== null) {
+        setIsHeaderCollapsed(saved === 'true');
+      }
+    } catch (e) {
+      // LocalStorage access may fail in private mode
+    }
+  }, []);
+
+  // Save preference handler
+  const setHeaderCollapsedWithPersistence = useCallback((val) => {
+    setIsHeaderCollapsed(val);
+    try {
+      localStorage.setItem('isHeaderCollapsed', String(val));
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // Global shortcut to focus top navbar search (Press '/' or 'Ctrl+K' / 'Cmd+K')
@@ -3593,10 +3616,11 @@ export default function Home() {
           {isHeaderCollapsed ? (
             <div className="sticky top-14 sm:top-16 z-30 flex justify-center mb-3 sm:mb-6 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1 pointer-events-none transition-all duration-300">
               <button
-                onClick={() => setIsHeaderCollapsed(false)}
-                className="pointer-events-auto px-4 py-2 bg-white/95 dark:bg-[#161b22]/95 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full text-xs font-bold shadow-xl shadow-black/10 dark:shadow-black/40 backdrop-blur-xl flex items-center gap-2 sm:gap-2.5 transition-all duration-200 active:scale-95 border border-gray-200 dark:border-gray-700"
-                title={t('showHeader') || (language === 'en' ? 'Show Filters & Menu' : 'Tampilkan Filter & Menu')}
-                aria-label={t('showHeader') || (language === 'en' ? 'Show Filters & Menu' : 'Tampilkan Filter & Menu')}
+                type="button"
+                onClick={() => setHeaderCollapsedWithPersistence(false)}
+                className="pointer-events-auto px-4 py-2 bg-white/95 dark:bg-[#161b22]/95 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full text-xs font-bold shadow-xl shadow-black/10 dark:shadow-black/40 backdrop-blur-xl flex items-center gap-2 sm:gap-2.5 transition-all duration-200 active:scale-95 border border-gray-200 dark:border-gray-700 group"
+                title={t('expandMenu') || (language === 'en' ? 'Expand Menu' : 'Buka Menu')}
+                aria-label={t('expandMenu') || (language === 'en' ? 'Expand Menu' : 'Buka Menu')}
               >
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
                 <span className="font-bold text-gray-800 dark:text-gray-100">
@@ -3613,14 +3637,15 @@ export default function Home() {
                     )}
                   </>
                 )}
-                <span className="text-gray-400 text-[10px] hidden md:inline">• {t('showMenu') || (language === 'en' ? 'Show Menu' : 'Tampilkan Menu')}</span>
-                <FiChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-gray-400 text-[10px] hidden md:inline">• {t('expandMenu') || (language === 'en' ? 'Expand' : 'Buka Menu')}</span>
+                <FiChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-transform group-hover:translate-y-0.5" />
               </button>
             </div>
           ) : (
-            <div className="sticky top-14 sm:top-16 z-30 flex justify-center mb-4 sm:mb-8 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2 sm:py-3 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
-              <div className="flex items-center justify-between sm:justify-center p-1 sm:p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-xl sm:rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 w-full sm:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] gap-1 sm:gap-2">
-                <div className="flex items-center gap-1 flex-1 sm:flex-none">
+            <div className="sticky top-14 sm:top-16 z-30 flex items-center justify-center mb-4 sm:mb-8 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2 sm:py-3 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
+              <div className="flex items-center justify-between sm:justify-center gap-2 w-full sm:w-auto">
+                {/* Navigation Tabs Pill (Contains ONLY the 3 page views) */}
+                <div className="flex items-center p-1 sm:p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-xl sm:rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 flex-1 sm:flex-none">
                   {[
                     { id: 'portfolio', label: t('portfolio'), mobileLabel: t('portfolio'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
                     { id: 'add', label: t('addAsset'), mobileLabel: t('add'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> },
@@ -3630,7 +3655,7 @@ export default function Home() {
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={`
-                         relative flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2.5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex-1 sm:flex-none min-w-0
+                         relative flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex-1 sm:flex-none min-w-0
                          ${activeTab === tab.id
                           ? 'text-white bg-blue-600 shadow-lg shadow-blue-900/20'
                           : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#0d1117]'}
@@ -3643,18 +3668,18 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Subtle Divider */}
-                <div className="h-5 w-[1px] bg-gray-200 dark:bg-gray-800 mx-0.5 hidden xs:block"></div>
-
-                {/* Sembunyikan / Hide Menu Button - Single Master Toggle */}
+                {/* Dedicated Minimize / Collapse Button (Clearly separated from page tabs) */}
                 <button
-                  onClick={() => setIsHeaderCollapsed(true)}
-                  className="p-2 sm:px-2.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg sm:rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex items-center gap-1.5 shrink-0 text-xs"
-                  title={t('hideHeader') || (language === 'en' ? 'Hide Filters & Menu' : 'Sembunyikan Filter & Menu')}
-                  aria-label={t('hideHeader') || (language === 'en' ? 'Hide Filters & Menu' : 'Sembunyikan Filter & Menu')}
+                  type="button"
+                  onClick={() => setHeaderCollapsedWithPersistence(true)}
+                  className="p-2 sm:px-3 sm:py-2.5 bg-white dark:bg-[#161b22] hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-gray-200 dark:border-gray-800 rounded-xl sm:rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 transition-all flex items-center justify-center gap-1.5 shrink-0 text-xs font-semibold active:scale-95 group touch-target-sm"
+                  title={t('minimizeMenu') || (language === 'en' ? 'Collapse Menu' : 'Ringkas Menu')}
+                  aria-label={t('minimizeMenu') || (language === 'en' ? 'Collapse Menu' : 'Ringkas Menu')}
                 >
-                  <FiEyeOff className="w-4 h-4 text-gray-400 hover:text-blue-500 transition-colors" />
-                  <span className="hidden xs:inline font-semibold text-[11px] text-gray-500 dark:text-gray-400">{t('hide') || (language === 'en' ? 'Hide' : 'Sembunyikan')}</span>
+                  <FiChevronUp className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-transform group-hover:-translate-y-0.5" />
+                  <span className="hidden xs:inline text-[11px] font-semibold text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white">
+                    {t('minimize') || (language === 'en' ? 'Minimize' : 'Ringkas')}
+                  </span>
                 </button>
               </div>
             </div>
@@ -3731,7 +3756,7 @@ export default function Home() {
                   <Portfolio
                     assets={assets}
                     isHeaderCollapsed={isHeaderCollapsed}
-                    onToggleHeaderCollapse={setIsHeaderCollapsed}
+                    onToggleHeaderCollapse={setHeaderCollapsedWithPersistence}
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
                     onUpdateStock={(...args) => executeWithPriceCheck(updateStock, 'Update Stock', ...args)}
