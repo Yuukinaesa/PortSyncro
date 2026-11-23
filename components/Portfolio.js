@@ -1294,22 +1294,12 @@ export default function Portfolio({
             </div>
             <div className="flex justify-between text-[11px] text-gray-400 font-mono">
               <span title={isInvestedActiveMode ? 'Modal Aktif tanpa USDT/USDC' : 'Total Modal Seluruh Aset'}>
-                Modal ({isInvestedActiveMode ? 'Aktif' : 'Total'}): {getMasked(formatIDR(displayedCostIDR))}
+                Modal: {getMasked(formatIDR(displayedCostIDR))}
               </span>
               <span title={isInvestedActiveMode ? 'Nilai Pasar Aset Fluktuatif tanpa USDT/USDC' : 'Total Nilai Portofolio'}>
                 Nilai: {getMasked(formatIDR(displayedValIDR))}
               </span>
             </div>
-            {stablecoinData.hasStablecoins && (
-              <div className="flex justify-between text-[10px] text-gray-400/90 font-mono pt-0.5">
-                <span>
-                  {isInvestedActiveMode
-                    ? `Ref Total: ${getMasked(formatIDR(gains.totalCost))} (${gains.gainPercent > 0 ? '+' : ''}${gains.gainPercent.toFixed(1)}%)`
-                    : `Ref Aktif: ${getMasked(formatIDR(investedBreakdown.activeCostIDR))} (${investedBreakdown.activeReturnPercent > 0 ? '+' : ''}${investedBreakdown.activeReturnPercent.toFixed(1)}%)`}
-                </span>
-                <span>Stable: {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
