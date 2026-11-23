@@ -8,7 +8,7 @@ import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
 import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { FiLogOut, FiCreditCard, FiSettings, FiCheck, FiEyeOff, FiChevronDown } from 'react-icons/fi';
+import { FiLogOut, FiCreditCard, FiSettings, FiCheck, FiEyeOff, FiChevronDown, FiSearch, FiX } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { fetchExchangeRate } from '../lib/fetchExchangeRate';
@@ -341,6 +341,33 @@ export default function Home() {
 
   // Unified Collapsible Header & Navigation Bar State
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Global shortcut to focus top navbar search (Press '/' or 'Ctrl+K' / 'Cmd+K')
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      const tag = activeEl?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || activeEl?.isContentEditable) {
+        if (e.key === 'Escape' && activeEl?.id === 'top-navbar-search') {
+          activeEl.blur();
+        }
+        return;
+      }
+
+      if ((e.key === '/' || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k')) && !e.shiftKey) {
+        e.preventDefault();
+        const searchInput = document.getElementById('top-navbar-search');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('hideBalance', hideBalance);
@@ -3470,45 +3497,79 @@ export default function Home() {
           <meta name="description" content={t('tagline')} />
         </Head>
 
-        {/* Header - Sticky & Blurred - Mobile Optimized */}
+        {/* Header - Sticky & Blurred - Mobile & Desktop Responsive Navbar with Central Search */}
         <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-[#0d1117]/90 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 transition-all duration-300 safe-area-top">
-          <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
+          <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4 md:gap-6">
             {/* Logo area */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20 flex-shrink-0">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20 flex-shrink-0">
+                <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate">PortSyncro</h1>
-                <p className="text-[9px] sm:text-[10px] font-medium text-gray-500 leading-tight truncate max-w-[120px] sm:max-w-none hidden xs:block">{t('tagline')}</p>
-                {/* User email for mobile - only show on xs and below sm */}
-                <p
-                  className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 leading-tight truncate max-w-[220px] sm:hidden"
-                  title={user?.email}
-                >
-                  {user?.email}
-                </p>
+              <div className="min-w-0 hidden xs:block">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-white truncate">PortSyncro</h1>
+                <p className="text-[9px] sm:text-[10px] font-medium text-gray-500 leading-tight truncate hidden lg:block">{t('tagline')}</p>
+              </div>
+            </div>
+
+            {/* Central Top Navbar Search Bar */}
+            <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-1 sm:mx-4">
+              <div className="relative group w-full">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                  <FiSearch className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </div>
+                <label htmlFor="top-navbar-search" className="sr-only">{t('search') || 'Search'}</label>
+                <input
+                  id="top-navbar-search"
+                  name="top-navbar-search"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (activeTab !== 'portfolio') {
+                      setActiveTab('portfolio');
+                    }
+                  }}
+                  placeholder={t('placeholderSearch') || "Cari aset (BTC, BBCA)..."}
+                  className="w-full bg-gray-100/90 dark:bg-[#161b22] hover:bg-gray-100 dark:hover:bg-[#1c222c] focus:bg-white dark:focus:bg-[#0d1117] text-gray-900 dark:text-white pl-8 sm:pl-9 pr-7 sm:pr-8 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-gray-200/80 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 shadow-inner dark:shadow-none"
+                />
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    title={t('clear') || "Hapus pencarian"}
+                    aria-label="Clear search"
+                  >
+                    <FiX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                ) : (
+                  <div className="absolute inset-y-0 right-0 pr-2.5 hidden md:flex items-center pointer-events-none">
+                    <kbd className="text-[10px] font-mono text-gray-400 bg-gray-200/70 dark:bg-gray-800/80 px-1.5 py-0.5 rounded border border-gray-300/80 dark:border-gray-700">
+                      /
+                    </kbd>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700 touch-target-sm"
+                className="p-2 sm:p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700 touch-target-sm"
                 title={t('settings') || "Settings"}
               >
-                <FiSettings className="w-5 h-5" />
+                <FiSettings className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
-              <div className="h-8 w-[1px] bg-gray-200 dark:bg-gray-800 mx-0.5 hidden sm:block"></div>
+              <div className="h-6 sm:h-8 w-[1px] bg-gray-200 dark:bg-gray-800 mx-0.5 hidden sm:block"></div>
 
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="hidden sm:flex flex-col items-end min-w-0">
                   <span
-                    className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate max-w-[250px] lg:max-w-[300px]"
+                    className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate max-w-[150px] md:max-w-[200px] lg:max-w-[280px]"
                     title={user?.email}
                   >
                     {user?.email}
@@ -3516,10 +3577,10 @@ export default function Home() {
                 </div>
                 <button
                   onClick={logout}
-                  className="p-2.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all touch-target-sm"
+                  className="p-2 sm:p-2.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all touch-target-sm"
                   title={t('logout')}
                 >
-                  <FiLogOut className="w-5 h-5" />
+                  <FiLogOut className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
@@ -3671,6 +3732,8 @@ export default function Home() {
                     assets={assets}
                     isHeaderCollapsed={isHeaderCollapsed}
                     onToggleHeaderCollapse={setIsHeaderCollapsed}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
                     onUpdateStock={(...args) => executeWithPriceCheck(updateStock, 'Update Stock', ...args)}
                     onUpdateCrypto={(...args) => executeWithPriceCheck(updateCrypto, 'Update Crypto', ...args)}
                     onUpdateGold={(...args) => executeWithPriceCheck(updateGold, 'Update Gold', ...args)}
@@ -3704,6 +3767,7 @@ export default function Home() {
                     user={user}
                     onTransactionsUpdate={() => { }}
                     exchangeRate={exchangeRate}
+                    searchQuery={searchQuery}
                   />
                 </ErrorBoundary>
               ) : null}

@@ -43,7 +43,9 @@ export default function Portfolio({
   onSnap,
   priceCheckWrapper,
   isHeaderCollapsed: propIsHeaderCollapsed,
-  onToggleHeaderCollapse
+  onToggleHeaderCollapse,
+  searchQuery: propSearchQuery,
+  onSearchChange: propOnSearchChange
 }) {
   const assetCount = useMemo(() => ({
     stocks: new Set((assets?.stocks || []).map(s => (s.ticker || '').toUpperCase())).size,
@@ -59,7 +61,9 @@ export default function Portfolio({
   }, [assetCount]);
 
   const [prices, setPrices] = useState(propPrices || {});
-  const [searchQuery, setSearchQuery] = useState('');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
+  const searchQuery = propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
+  const setSearchQuery = propOnSearchChange || setInternalSearchQuery;
 
 
   const memoizedPrices = useMemo(() => propPrices, [propPrices]);
@@ -1019,22 +1023,25 @@ export default function Portfolio({
         </div>
       )}
 
-      {/* Search Bar */}
-      <div className="relative group">
-        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-          <FiSearch className="text-gray-500 group-focus-within:text-blue-500 transition-colors" />
+      {/* Active Search Filter Banner */}
+      {searchQuery && (
+        <div className="flex items-center justify-between p-3 sm:p-3.5 bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-2xl text-xs sm:text-sm text-blue-900 dark:text-blue-200 shadow-sm animate-fade-in-up">
+          <div className="flex items-center gap-2 truncate">
+            <FiSearch className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span className="truncate">
+              {t('searchingFor') || 'Menampilkan hasil untuk'}: <strong className="font-semibold text-blue-600 dark:text-blue-400">&ldquo;{searchQuery}&rdquo;</strong>
+            </span>
+          </div>
+          <button
+            onClick={() => setSearchQuery('')}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 bg-white dark:bg-[#161b22] border border-blue-200 dark:border-blue-800 rounded-lg transition-all shrink-0 hover:scale-105 active:scale-95 shadow-sm"
+            title={t('clear') || 'Hapus'}
+          >
+            <FiX className="w-3.5 h-3.5" />
+            <span>{t('clear') || 'Hapus'}</span>
+          </button>
         </div>
-        <label htmlFor="portfolio-search" className="sr-only">{t('search') || 'Search'}</label>
-        <input
-          id="portfolio-search"
-          name="portfolio-search"
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t('placeholderSearch') || "Cari aset (e.g. BTC, BBCA)..."}
-          className="w-full bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white pl-12 pr-4 py-4 rounded-xl focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm placeholder-gray-500 dark:placeholder-gray-600"
-        />
-      </div>
+      )}
 
       {/* Asset Tables */}
       <div className="space-y-8">

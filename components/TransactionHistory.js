@@ -15,7 +15,8 @@ export default function TransactionHistory({
   user,
   onTransactionsUpdate,
   exchangeRate,
-  assetKey // Tambahkan prop assetKey
+  assetKey, // Tambahkan prop assetKey
+  searchQuery = ''
 }) {
   const [filteredTransactions, setFilteredTransactions] = useState(transactions);
   const [filter, setFilter] = useState('all'); // all, buy, sell
@@ -170,6 +171,20 @@ export default function TransactionHistory({
       filtered = filtered.filter(tx => tx.assetType === assetTypeFilter);
     }
 
+    // Apply search query filter
+    if (searchQuery && typeof searchQuery === 'string') {
+      const q = searchQuery.toLowerCase().trim();
+      if (q) {
+        filtered = filtered.filter(tx =>
+          (tx.ticker || '').toLowerCase().includes(q) ||
+          (tx.symbol || '').toLowerCase().includes(q) ||
+          (tx.notes || '').toLowerCase().includes(q) ||
+          (tx.broker || '').toLowerCase().includes(q) ||
+          (tx.exchange || '').toLowerCase().includes(q)
+        );
+      }
+    }
+
     // Sort by timestamp in descending order
     filtered.sort((a, b) => {
       const dateA = new Date(a.timestamp);
@@ -179,7 +194,7 @@ export default function TransactionHistory({
 
     secureLogger.log('Filtered transactions:', filtered);
     setFilteredTransactions(filtered);
-  }, [filter, assetTypeFilter, transactions, assetKey]); // Tambahkan assetKey ke dependency
+  }, [filter, assetTypeFilter, transactions, assetKey, searchQuery]); // Tambahkan assetKey dan searchQuery ke dependency
 
   // Format tanggal ke format lokal
   const formatDate = (dateString) => {
