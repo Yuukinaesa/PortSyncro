@@ -3608,15 +3608,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right: Currency Chip, Settings, User Profile, Logout */}
+            {/* Right: Settings, User Profile, Logout */}
             <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-              {/* Live Currency Chip (Desktop) */}
-              {exchangeRate > 0 && (
-                <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-[#161b22] rounded-xl text-xs font-mono text-gray-600 dark:text-gray-300 border border-gray-200/80 dark:border-gray-800">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>1 USD ≈ {formatIDR(exchangeRate)}</span>
-                </div>
-              )}
 
               {/* Settings Button */}
               <button

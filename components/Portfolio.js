@@ -826,8 +826,8 @@ export default function Portfolio({
 
   return (
     <div className="space-y-6 pb-24 font-sans bg-gray-50 dark:bg-[#0d1117] min-h-screen text-gray-900 dark:text-gray-300 p-4 sm:p-6">
-      {/* App Header & Live Currency Indicator (Visible on Mobile/Tablet, hidden on Desktop where it is in the navbar) */}
-      <div className={`flex lg:hidden flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 transition-all duration-300 ${isHeaderCollapsed ? 'hidden' : 'flex'}`}>
+      {/* App Header & Live Currency Indicator */}
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 transition-all duration-300 ${isHeaderCollapsed ? 'hidden' : 'flex'}`}>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-[#161b22] rounded-xl text-xs font-mono text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-800 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
