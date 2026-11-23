@@ -52,6 +52,9 @@ const withPWA = require('@ducanh2912/next-pwa').default({
 const nextConfig = {
     reactStrictMode: true,
     outputFileTracingRoot: require('path').join(__dirname),
+    experimental: {
+        agentUpgrade: 'security',
+    },
     // swcMinify dihapus karena sudah tidak didukung
 
     // Fix WebSocket HMR issues in development
