@@ -3599,15 +3599,15 @@ export default function Home() {
                       onClick={() => setHeaderCollapsedWithPersistence(!isHeaderCollapsed)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                         isHeaderCollapsed
-                          ? 'bg-blue-600 text-white shadow-sm'
+                          ? 'bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 shadow-sm border border-gray-300 dark:border-gray-700'
                           : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-gray-800/60'
                       }`}
-                      title={isHeaderCollapsed ? (t('expandCards') || 'Tampilkan Ringkasan') : (t('hideCards') || 'Sembunyikan Ringkasan')}
-                      aria-label={isHeaderCollapsed ? (t('expandCards') || 'Tampilkan Ringkasan') : (t('hideCards') || 'Sembunyikan Ringkasan')}
+                      title={isHeaderCollapsed ? (t('expandCards') || 'Tampilkan Menu & Ringkasan') : (t('hideCards') || 'Sembunyikan Menu & Ringkasan')}
+                      aria-label={isHeaderCollapsed ? (t('expandCards') || 'Tampilkan Menu & Ringkasan') : (t('hideCards') || 'Sembunyikan Menu & Ringkasan')}
                     >
                       {isHeaderCollapsed ? (
                         <>
-                          <FiEye className="w-3.5 h-3.5" />
+                          <FiEye className="w-3.5 h-3.5 text-blue-500" />
                           <span>{t('show') || 'Tampilkan'}</span>
                         </>
                       ) : (
