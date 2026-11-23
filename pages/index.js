@@ -1225,12 +1225,18 @@ export default function Home() {
         })
       };
 
+      // Total Portofolio Waktu Utuh sebelum kena profit/loss (Modal Invested + Saldo Kas Bank)
+      const initialPortoIDR = totalInvestedIDR + cashValueIDR;
+      const initialPortoUSD = (safeExchangeRate > 0 ? (totalInvestedIDR / safeExchangeRate) : 0) + cashValueUSD;
+
       const snapshotData = {
         date: today,
         totalValueIDR: Math.round(totalValueIDR),
         totalValueUSD: totalValueUSD,
         totalInvestedIDR: Math.round(totalInvestedIDR),
         activeInvestedIDR: Math.round(activeInvestedIDR),
+        initialPortoIDR: Math.round(initialPortoIDR),
+        initialPortoUSD: Math.round(initialPortoUSD * 100) / 100,
         stablecoinValueUSD: Math.round(stablecoinValueUSD * 100) / 100,
         timestamp: serverTimestamp(),
         portfolio: cleanUndefinedValues(enrichedPortfolio)
@@ -2944,8 +2950,13 @@ export default function Home() {
       await new Promise(resolve => setTimeout(resolve, 200));
 
       const backupData = {
-        version: '2.0',
+        version: '2.1',
         exportedAt: new Date().toISOString(),
+        metadata: {
+          exchangeRate: exchangeRate || 16000,
+          generatedBy: 'PortSyncro',
+          schema: 'full_portfolio_and_transactions'
+        },
         portfolio: assets,
         transactions: allTransactions
       };
@@ -2999,7 +3010,7 @@ export default function Home() {
         onConfirm: () => setConfirmModal(null)
       });
     }
-  }, [pricesLoading, user, assets, t, language]);
+  }, [pricesLoading, user, assets, t, language, exchangeRate]);
 
   // Restore Portfolio from JSON (supports legacy format)
   const handleRestore = useCallback(async (file) => {

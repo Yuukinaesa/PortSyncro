@@ -635,6 +635,7 @@ export default function Reports() {
             'Date',
             'Day',
             `Total Value ${currencyLabel}`,
+            `Initial Portfolio / Porto Utuh ${currencyLabel}`,
             `Total Invested (Inc. Stable) ${currencyLabel}`,
             `Active Invested (Excl. Stable) ${currencyLabel}`,
             `Net Profit ${currencyLabel}`,
@@ -666,13 +667,17 @@ export default function Reports() {
                 ? (item.totalValueIDR / item.totalValueUSD)
                 : 16000;
 
+            const cashVal = item.portfolio?.cash?.reduce((sum, c) => sum + (c.portoIDR || c.porto || 0), 0) || 0;
+            const initialPorto = item.initialPortoIDR || (investedTotal + cashVal);
+            const initialPortoVal = fmtSingleValue(initialPorto, impliedRate);
+
             // Summary row - use selected currency
             const totalVal = currency === 'IDR' ? fmtIDR(item.totalValueIDR) : fmtUSD(item.totalValueUSD);
             const investedTotalVal = fmtSingleValue(investedTotal, impliedRate);
             const investedActiveVal = fmtSingleValue(investedActive, impliedRate);
             const profitVal = (profitTotal >= 0 ? '+' : '') + fmtSingleValue(profitTotal, impliedRate);
 
-            csvRows.push([dateStr, dayStr, totalVal, investedTotalVal, investedActiveVal, profitVal, pctTotal, pctActive, '', '', '', '', '']);
+            csvRows.push([dateStr, dayStr, totalVal, initialPortoVal, investedTotalVal, investedActiveVal, profitVal, pctTotal, pctActive, '', '', '', '', '']);
 
             // Asset rows
             const addAssets = (assets, type) => {
@@ -775,7 +780,13 @@ export default function Reports() {
         csvRows.push(['Currency', currencyLabel]);
         csvRows.push(['Snapshots', filteredData.length]);
         csvRows.push([]);
+        const initialPorto = latest.initialPortoIDR || (investedIDR + (latest.portfolio?.cash?.reduce((s, c) => s + (c.portoIDR || c.porto || 0), 0) || 0));
+        const initialPortoVal = currency === 'IDR' ? initialPorto : (initialPorto / impliedRate);
+
         csvRows.push(['Metric', `Value (${currencyLabel})`, 'Percentage']);
+        csvRows.push(['Initial Portfolio / Porto Utuh', fmtCurrency(initialPortoVal), '🌱']);
+        csvRows.push(['Current Portfolio', fmtCurrency(endVal), '💰']);
+        csvRows.push(['Total Invested', fmtCurrency(invested), '📦']);
         csvRows.push(['Net Change', (netChange >= 0 ? '+' : '') + fmtCurrency(netChange), (netChange >= 0 ? '+' : '') + netChangePct.toFixed(1) + '%']);
         csvRows.push(['Total Profit', (totalProfit >= 0 ? '+' : '') + fmtCurrency(totalProfit), totalProfitPct.toFixed(1) + '%']);
         csvRows.push(['Highest (ATH)', fmtCurrency(high), '🏆']);
@@ -825,12 +836,18 @@ export default function Reports() {
             // P/L = (Value without cash) - (Invested without cash)
             const grossChange = valueForPL - invested;
             const grossChangePct = invested > 0 ? (grossChange / invested) * 100 : 0;
+            const singleCashIDR = item.portfolio?.cash?.reduce((s, c) => s + (c.portoIDR || c.porto || 0), 0) || 0;
+            const singleInitialPortoIDR = item.initialPortoIDR || (investedIDR + singleCashIDR);
+            const singleInitialPorto = currency === 'IDR' ? singleInitialPortoIDR : (singleInitialPortoIDR / implicitRate);
 
             return {
                 change: 0,
                 changePct: 0,
                 grossChange,
                 grossChangePct,
+                latestInvested: invested,
+                latestValueForPL: valueForPL,
+                latestInitialPorto: singleInitialPorto,
                 high: val,
                 low: val
             };
@@ -861,14 +878,15 @@ export default function Reports() {
 
         let latestInvested = 0;
         let latestValueForPL = 0;
+        const implicitRate = (latest.totalValueIDR > 0 && latest.totalValueUSD > 0)
+            ? (latest.totalValueIDR / latest.totalValueUSD)
+            : 16000;
+
         if (currency === 'IDR') {
             latestInvested = latestInvestedIDR;
             latestValueForPL = latestValueExclCashIDR;
         } else {
             // USD conversion
-            const implicitRate = (latest.totalValueIDR > 0 && latest.totalValueUSD > 0)
-                ? (latest.totalValueIDR / latest.totalValueUSD)
-                : 16000;
             latestInvested = latestInvestedIDR > 0 ? (latestInvestedIDR / implicitRate) : 0;
             latestValueForPL = latestValueExclCashIDR > 0 ? (latestValueExclCashIDR / implicitRate) : 0;
         }
@@ -877,11 +895,18 @@ export default function Reports() {
         const grossChange = latestValueForPL - latestInvested;
         const grossChangePct = latestInvested > 0 ? (grossChange / latestInvested) * 100 : 0;
 
+        const latestCashIDR = latest.portfolio?.cash?.reduce((s, c) => s + (c.portoIDR || c.porto || 0), 0) || 0;
+        const latestInitialPortoIDR = latest.initialPortoIDR || (latestInvestedIDR + latestCashIDR);
+        const latestInitialPorto = currency === 'IDR' ? latestInitialPortoIDR : (latestInitialPortoIDR / implicitRate);
+
         return {
             change,
             changePct,
             grossChange,
             grossChangePct,
+            latestInvested,
+            latestValueForPL,
+            latestInitialPorto,
             high,
             low
         };
@@ -1122,12 +1147,15 @@ export default function Reports() {
                                 {stats.grossChange >= 0 ? '+' : ''}{currency === 'IDR' ? formatIDR(stats.grossChange, 0) : formatUSD(stats.grossChange)}
                             </p>
 
-                            <div className="mt-2 sm:mt-3">
+                            <div className="mt-2 sm:mt-3 flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 font-mono">
                                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-xs font-bold ${stats.grossChangePct >= 0
                                     ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                                     : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                                     }`}>
                                     <FiActivity className="w-2.5 h-2.5" /> {Math.abs(stats.grossChangePct).toFixed(1)}%
+                                </span>
+                                <span title="Modal Invested waktu uang masih utuh sebelum kena profit/loss">
+                                    Modal: {currency === 'IDR' ? formatIDR(stats.latestInvested, 0) : formatUSD(stats.latestInvested)}
                                 </span>
                             </div>
                         </div>
