@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AssetTable from './AssetTable';
 import Notification from './Notification';
 
-import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp, FiDisc, FiCamera } from 'react-icons/fi';
+import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp, FiDisc, FiCamera, FiChevronUp, FiChevronDown, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { fetchExchangeRate } from '../lib/fetchPrices';
 import { formatNumber, formatIDR, formatUSD, formatNumberUSD, formatQuantity } from '../lib/utils';
@@ -117,9 +117,51 @@ export default function Portfolio({
   }, [propExchangeRateError, propExchangeRateSource, propLastExchangeRateUpdate, exchangeRateError, exchangeRateSource, lastExchangeRateUpdate]);
 
   const [activeAssetTab, setActiveAssetTab] = useState('all');
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [isActionCollapsed, setIsActionCollapsed] = useState(false);
+  const [isAutoHidden, setIsAutoHidden] = useState(false);
+  const lastScrollYRef = useRef(0);
+
+  // Auto-collapse actions on mobile when scrolling down to keep viewport clean
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY > 120 && currentY > lastScrollYRef.current + 10) {
+        setIsAutoHidden(true);
+      } else if (currentY < lastScrollYRef.current - 10 || currentY <= 50) {
+        setIsAutoHidden(false);
+      }
+      lastScrollYRef.current = currentY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const [notification, setNotification] = useState(null);
   const { t, language } = useLanguage();
   const { isDarkMode, toggleTheme } = useTheme();
+
+  const activeTabLabel = useMemo(() => {
+    const labels = {
+      all: t('all') || 'Semua',
+      cash: t('bank') || 'Bank',
+      stock: t('stocks') || 'Saham',
+      crypto: t('crypto') || 'Kripto',
+      gold: t('gold') || 'Emas'
+    };
+    return labels[activeAssetTab] || 'Semua';
+  }, [activeAssetTab, t]);
+
+  const activeCount = useMemo(() => {
+    if (activeAssetTab === 'all') {
+      return assetCount.stocks + assetCount.crypto + assetCount.gold + assetCount.cash;
+    }
+    if (activeAssetTab === 'cash') return assetCount.cash;
+    if (activeAssetTab === 'stock') return assetCount.stocks;
+    if (activeAssetTab === 'gold') return assetCount.gold;
+    return assetCount.crypto;
+  }, [activeAssetTab, assetCount]);
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -664,82 +706,128 @@ export default function Portfolio({
         </p>
       </div>
 
-      {/* Control Panel Bar (Sticky & Frosted) */}
-      <div className="sticky top-[118px] sm:top-[142px] z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
-        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-3 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-md dark:shadow-black/40">
-          <div className="flex items-center gap-3 sm:gap-6 w-full xl:w-auto overflow-x-auto no-scrollbar">
-            <span className="text-gray-900 dark:text-white font-bold px-2 hidden md:block text-sm">Portfolio</span>
+      {/* Control Panel Bar (Sticky & Frosted & Collapsible) */}
+      {isHeaderCollapsed ? (
+        <div className="sticky top-[118px] sm:top-[142px] z-20 flex justify-end -mx-4 sm:-mx-6 px-4 sm:px-6 py-1.5 transition-all duration-300 pointer-events-none">
+          <button
+            onClick={() => setIsHeaderCollapsed(false)}
+            className="pointer-events-auto px-4 py-2 bg-white/95 dark:bg-[#161b22]/95 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full text-xs font-bold shadow-xl shadow-black/10 dark:shadow-black/40 backdrop-blur-xl flex items-center gap-2 transition-all duration-200 active:scale-95 border border-gray-200 dark:border-gray-700"
+            title="Tampilkan Header & Filter"
+          >
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            <FiEye className="w-3.5 h-3.5 text-blue-500" />
+            <span>{activeTabLabel} ({activeCount}) • Buka Filter & Aksi</span>
+            <FiChevronDown className="w-3.5 h-3.5 text-gray-400" />
+          </button>
+        </div>
+      ) : (
+        <div className="sticky top-[118px] sm:top-[142px] z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
+          <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-2.5 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-md dark:shadow-black/40">
+            {/* Row 1: Category Tabs + Quick Collapse */}
+            <div className="flex items-center justify-between gap-2 sm:gap-6 w-full xl:w-auto">
+              <span className="text-gray-900 dark:text-white font-bold px-2 hidden md:block text-sm">Portfolio</span>
 
-            <div className="grid grid-cols-5 gap-1 w-full min-w-[320px] md:min-w-0 md:flex md:space-x-1">
-              {['all', 'cash', 'stock', 'crypto', 'gold'].map(tab => {
-                const count = tab === 'all'
-                  ? assetCount.stocks + assetCount.crypto + assetCount.gold + assetCount.cash
-                  : (tab === 'cash' ? assetCount.cash : (tab === 'stock' ? assetCount.stocks : (tab === 'gold' ? assetCount.gold : assetCount.crypto)));
-                const labels = {
-                  all: t('all') || 'Semua',
-                  cash: t('bank') || 'Bank',
-                  stock: t('stocks') || 'Saham',
-                  crypto: t('crypto') || 'Kripto',
-                  gold: t('gold') || 'Emas'
-                };
-                const isActive = activeAssetTab === tab;
+              <div className="flex items-center gap-1.5 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="grid grid-cols-5 gap-1 w-full min-w-[320px] md:min-w-0 md:flex md:space-x-1">
+                  {['all', 'cash', 'stock', 'crypto', 'gold'].map(tab => {
+                    const count = tab === 'all'
+                      ? assetCount.stocks + assetCount.crypto + assetCount.gold + assetCount.cash
+                      : (tab === 'cash' ? assetCount.cash : (tab === 'stock' ? assetCount.stocks : (tab === 'gold' ? assetCount.gold : assetCount.crypto)));
+                    const labels = {
+                      all: t('all') || 'Semua',
+                      cash: t('bank') || 'Bank',
+                      stock: t('stocks') || 'Saham',
+                      crypto: t('crypto') || 'Kripto',
+                      gold: t('gold') || 'Emas'
+                    };
+                    const isActive = activeAssetTab === tab;
 
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveAssetTab(tab)}
-                    className={`
-                        px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-xl flex flex-col items-center justify-center transition-all duration-200 w-full md:w-auto md:min-w-[80px]
-                        ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200'}
-                     `}
-                  >
-                    <span className="text-[11px] sm:text-xs font-bold truncate w-full text-center">{labels[tab]}</span>
-                    <span className="text-[10px] opacity-80">({count})</span>
-                  </button>
-                )
-              })}
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveAssetTab(tab)}
+                        className={`
+                            px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-xl flex flex-col items-center justify-center transition-all duration-200 w-full md:w-auto md:min-w-[80px]
+                            ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200'}
+                         `}
+                      >
+                        <span className="text-[11px] sm:text-xs font-bold truncate w-full text-center">{labels[tab]}</span>
+                        <span className="text-[10px] opacity-80">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Mobile Quick Collapse / Umpetin Toggle */}
+              <button
+                onClick={() => setIsHeaderCollapsed(true)}
+                className="xl:hidden p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center gap-1 shrink-0"
+                title="Umpetin / Sembunyikan Header"
+                aria-label="Umpetin / Sembunyikan Header"
+              >
+                <FiEyeOff className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-[10px] font-semibold hidden xs:inline">Umpetin</span>
+              </button>
+            </div>
+
+            {/* Row 2: Action Buttons (Smooth auto-collapse on mobile scroll or toggle) */}
+            <div
+              className={`
+                flex items-center gap-2 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-0.5 justify-start xl:justify-end transition-all duration-300
+                ${(isActionCollapsed || isAutoHidden) ? 'max-h-0 xl:max-h-none opacity-0 xl:opacity-100 overflow-hidden pointer-events-none xl:pointer-events-auto py-0 my-0' : 'max-h-20 opacity-100'}
+              `}
+              style={{ flexShrink: 0 }}
+            >
+              {/* Refresh */}
+              <button onClick={handleRefresh} className="h-9 w-9 sm:h-10 sm:w-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl flex items-center justify-center text-gray-500 dark:text-gray-400 transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95 flex-shrink-0" title="Refresh">
+                <FiRefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${debouncedLoading ? "animate-spin text-blue-500" : ""}`} />
+              </button>
+
+              {/* Action buttons group */}
+              {/* Export */}
+              <button onClick={(e) => exportPortfolioToCSV('all', e)} className="h-9 sm:h-10 bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all border border-gray-200 dark:border-gray-700 hover:scale-105 active:scale-95 flex-shrink-0">
+                <FiDownload className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">{t('exportPortfolio') || 'Ekspor'}</span>
+              </button>
+
+              {/* WA */}
+              <button onClick={copyToWhatsApp} className="h-9 sm:h-10 bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 flex-shrink-0">
+                <FaWhatsapp className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Copy</span>
+              </button>
+
+              {/* Snap */}
+              <button onClick={() => onSnap && onSnap()} className="h-9 sm:h-10 bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95 flex-shrink-0">
+                <FiCamera className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Snap</span>
+              </button>
+
+              {/* Settings */}
+              <button onClick={onOpenSettings} className="h-9 sm:h-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95 flex-shrink-0">
+                <FiSettings className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t('settings') || 'Settings'}</span>
+              </button>
+
+              {/* Add */}
+              <button onClick={() => onAddAsset && onAddAsset()} className="h-9 sm:h-10 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95 flex-shrink-0">
+                <FiPlusCircle className="w-3.5 h-3.5" />
+                <span>{t('add') || 'Tambah'}</span>
+              </button>
+
+              {/* Desktop Hide Button */}
+              <button
+                onClick={() => setIsHeaderCollapsed(true)}
+                className="hidden xl:flex h-10 px-2.5 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-xl items-center gap-1.5 text-xs font-semibold border border-gray-200 dark:border-gray-800 transition-all hover:text-gray-900 dark:hover:text-white"
+                title="Umpetin / Sembunyikan Header"
+              >
+                <FiEyeOff className="w-3.5 h-3.5 text-blue-500" />
+                <span>Umpetin</span>
+              </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto no-scrollbar py-0.5 justify-start xl:justify-end" style={{ flexShrink: 0 }}>
-            {/* Refresh */}
-            <button onClick={handleRefresh} className="h-9 w-9 sm:h-10 sm:w-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl flex items-center justify-center text-gray-500 dark:text-gray-400 transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95 flex-shrink-0" title="Refresh">
-              <FiRefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${debouncedLoading ? "animate-spin text-blue-500" : ""}`} />
-            </button>
-
-            {/* Action buttons group */}
-            {/* Export */}
-            <button onClick={(e) => exportPortfolioToCSV('all', e)} className="h-9 sm:h-10 bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all border border-gray-200 dark:border-gray-700 hover:scale-105 active:scale-95 flex-shrink-0">
-              <FiDownload className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">{t('exportPortfolio') || 'Ekspor'}</span>
-            </button>
-
-            {/* WA */}
-            <button onClick={copyToWhatsApp} className="h-9 sm:h-10 bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 flex-shrink-0">
-              <FaWhatsapp className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Copy</span>
-            </button>
-
-            {/* Snap */}
-            <button onClick={() => onSnap && onSnap()} className="h-9 sm:h-10 bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95 flex-shrink-0">
-              <FiCamera className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Snap</span>
-            </button>
-
-            {/* Settings */}
-            <button onClick={onOpenSettings} className="h-9 sm:h-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95 flex-shrink-0">
-              <FiSettings className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t('settings') || 'Settings'}</span>
-            </button>
-
-            {/* Add */}
-            <button onClick={() => onAddAsset && onAddAsset()} className="h-9 sm:h-10 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95 flex-shrink-0">
-              <FiPlusCircle className="w-3.5 h-3.5" />
-              <span>{t('add') || 'Tambah'}</span>
-            </button>
-          </div>
         </div>
-      </div>
+      )}
 
       {/* Summary Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
