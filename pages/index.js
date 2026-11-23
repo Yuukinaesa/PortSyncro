@@ -724,16 +724,16 @@ export default function Home() {
     }
   }, [pricesLoading, performPriceFetch]);
 
-  // Update exchange rate function - STABILIZED & CACHED
+  // Update exchange rate function - PURE REAL TIME ONLY, ZERO DUMMY DATA
   const fetchExchangeRateData = useCallback(async () => {
     try {
       const rateData = await fetchExchangeRate();
-      if (rateData && rateData.rate) {
+      if (rateData && typeof rateData.rate === 'number' && rateData.rate > 0) {
         updateExchangeRate(rateData.rate);
       }
     } catch (error) {
       secureLogger.error('Error fetching exchange rate:', error);
-      updateExchangeRate(16850);
+      // STRICT: JANGAN GUNAKAN DUMMY DATA. Biarkan rate real yang ada tetap aktif.
     }
   }, [updateExchangeRate]);
 
@@ -745,12 +745,12 @@ export default function Home() {
   const handleRefreshExchangeRate = useCallback(async () => {
     try {
       const rateData = await fetchExchangeRate();
-      if (rateData && rateData.rate) {
+      if (rateData && typeof rateData.rate === 'number' && rateData.rate > 0) {
         updateExchangeRate(rateData.rate);
       }
     } catch (error) {
       secureLogger.error('Error fetching exchange rate:', error);
-      updateExchangeRate(16850);
+      // STRICT: JANGAN GUNAKAN DUMMY DATA. Biarkan rate real yang ada tetap aktif.
     }
   }, [updateExchangeRate]);
 
