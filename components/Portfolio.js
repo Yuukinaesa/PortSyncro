@@ -4,7 +4,6 @@ import Notification from './Notification';
 
 import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp, FiDisc, FiCamera, FiChevronUp, FiChevronDown, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
-import { MdTouchApp } from 'react-icons/md';
 import { fetchExchangeRate } from '../lib/fetchPrices';
 import { formatNumber, formatIDR, formatUSD, formatNumberUSD, formatQuantity } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
@@ -125,8 +124,6 @@ export default function Portfolio({
 
   const [activeAssetTab, setActiveAssetTab] = useState('all');
   const [cryptoTableFilter, setCryptoTableFilter] = useState('all'); // 'all', 'combined', 'usdt', 'usdc'
-  const [showInvestedBreakdown, setShowInvestedBreakdown] = useState(false);
-  const [showPlBreakdown, setShowPlBreakdown] = useState(false);
   const [internalHeaderCollapsed, setInternalHeaderCollapsed] = useState(false);
   const isHeaderCollapsed = propIsHeaderCollapsed !== undefined ? propIsHeaderCollapsed : internalHeaderCollapsed;
   const setIsHeaderCollapsed = useCallback((val) => {
@@ -567,8 +564,16 @@ export default function Portfolio({
       ? stablecoinData.combined.costIDR
       : (stablecoinCostUSD * safeExchangeRate);
 
+    // Modal Invested tanpa USDT dan USDC
     const activeCostIDR = Math.max(0, totalCost - stablecoinCostIDR);
     const activeCostUSD = Math.max(0, totalCostUSD - stablecoinCostUSD);
+
+    // Nilai Aset Invested tanpa USDT dan USDC
+    const activeValIDR = Math.max(0, activeCostIDR + (gains.totalGainIDR || 0));
+    const activeValUSD = Math.max(0, activeCostUSD + (gains.totalGainUSD || 0));
+
+    // Return Modal Aktif (%)
+    const activeReturnPercent = activeCostIDR > 0 ? ((gains.totalGainIDR || 0) / activeCostIDR) * 100 : 0;
 
     const activePercent = totalCost > 0 ? (activeCostIDR / totalCost) * 100 : 0;
     const stablecoinPercent = totalCost > 0 ? (stablecoinCostIDR / totalCost) * 100 : 0;
@@ -576,6 +581,9 @@ export default function Portfolio({
     return {
       activeCostIDR,
       activeCostUSD,
+      activeValIDR,
+      activeValUSD,
+      activeReturnPercent,
       activePercent,
       stablecoinCostIDR,
       stablecoinCostUSD,
@@ -584,7 +592,7 @@ export default function Portfolio({
       usdtUSD: stablecoinData.usdt.valUSD,
       usdcUSD: stablecoinData.usdc.valUSD
     };
-  }, [gains.totalCost, gains.totalCostUSD, exchangeRate, stablecoinData]);
+  }, [gains.totalCost, gains.totalCostUSD, gains.totalGainIDR, gains.totalGainUSD, exchangeRate, stablecoinData]);
 
   // Search Filter
   const filteredAssets = useMemo(() => {
@@ -962,16 +970,13 @@ export default function Portfolio({
       {!isHeaderCollapsed && (
         <div className="space-y-6 transition-all duration-300">
           {/* Summary Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
 
         {/* 1. Total Portfolio */}
-        <div 
-          onClick={() => setShowInvestedBreakdown(prev => !prev)}
-          className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative overflow-hidden group shadow-sm transition-all duration-300 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700/60"
-        >
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative overflow-hidden group shadow-sm">
           <div className="flex justify-between items-start mb-4">
             <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('totalPortfolio') || 'Total Portfolio'}</span>
-            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-[#1f2937] flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-[#1f2937] flex items-center justify-center text-blue-600 dark:text-blue-400">
               <FiDollarSign className="w-4 h-4" />
             </div>
           </div>
@@ -984,22 +989,9 @@ export default function Portfolio({
             </p>
 
             <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500">
-                  Invested
-                </p>
-                <div 
-                  className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all duration-200 ${
-                    showInvestedBreakdown
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                      : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900/60'
-                  }`}
-                >
-                  <MdTouchApp className={`w-3.5 h-3.5 ${showInvestedBreakdown ? '' : 'animate-pulse'}`} />
-                  <span>{showInvestedBreakdown ? 'Tutup' : 'Tap Rincian'}</span>
-                  <FiChevronDown className={`w-3 h-3 transition-transform duration-300 ${showInvestedBreakdown ? 'rotate-180' : ''}`} />
-                </div>
-              </div>
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500 mb-1">
+                Invested
+              </p>
               <div className="flex flex-col">
                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300 transform transition-colors">
                   {getMasked(formatIDR(gains.totalCost))}
@@ -1008,65 +1000,6 @@ export default function Portfolio({
                   {getMasked(formatUSD(gains.totalCostUSD))}
                 </span>
               </div>
-
-              {/* Interactive Invested Breakdown (Toggled via Tap/Click) */}
-              {showInvestedBreakdown && (
-                <div 
-                  onClick={(e) => e.stopPropagation()} 
-                  className="mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-gray-800 space-y-2 text-xs animate-in fade-in slide-in-from-top-1 duration-200"
-                >
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-gray-700 dark:text-gray-300">
-                    <span>Komposisi Modal</span>
-                    <span className="text-[10px] text-gray-400 font-mono">100% Invested</span>
-                  </div>
-
-                  {/* 1. Modal Aktif */}
-                  <div className="bg-gray-50/80 dark:bg-[#0d1117] p-2.5 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-800 dark:text-gray-200">
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                        <span>Modal Aktif</span>
-                      </span>
-                      <span className="text-xs font-bold text-gray-900 dark:text-white">
-                        {getMasked(formatIDR(investedBreakdown.activeCostIDR))}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
-                      <span>Saham, Kripto & Emas</span>
-                      <span className="font-mono">{getMasked(formatUSD(investedBreakdown.activeCostUSD))} ({investedBreakdown.activePercent.toFixed(0)}%)</span>
-                    </div>
-                  </div>
-
-                  {/* 2. Standby Stablecoin */}
-                  <div className="bg-emerald-50/40 dark:bg-[#0d1117] p-2.5 rounded-xl border border-emerald-100 dark:border-gray-800/80">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        <span>Standby (Stablecoin)</span>
-                      </span>
-                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                        {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center gap-2">
-                        {investedBreakdown.usdtUSD > 0 && (
-                          <span>USDT: <strong className="text-gray-700 dark:text-gray-300 font-mono">{getMasked(formatUSD(investedBreakdown.usdtUSD))}</strong></span>
-                        )}
-                        {investedBreakdown.usdcUSD > 0 && (
-                          <span>USDC: <strong className="text-gray-700 dark:text-gray-300 font-mono">{getMasked(formatUSD(investedBreakdown.usdcUSD))}</strong></span>
-                        )}
-                        {!investedBreakdown.hasStablecoins && <span>$0.00 (0%)</span>}
-                      </div>
-                      <span className="font-mono">{getMasked(formatIDR(investedBreakdown.stablecoinCostIDR))}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-[9.5px] text-gray-400 dark:text-gray-500 italic pt-0.5 leading-tight">
-                    *Modal aktif adalah dana pada aset fluktuatif, stablecoin adalah modal standby siap pakai.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -1218,11 +1151,8 @@ export default function Portfolio({
         </div>
       </div>
 
-      {/* BIG P/L Card (Executive Multi-Column Layout with Interactive Breakdown) */}
-      <div 
-        onClick={() => setShowPlBreakdown(prev => !prev)}
-        className="bg-white dark:bg-[#161b22] rounded-2xl p-5 sm:p-6 border border-gray-200 dark:border-gray-800 relative group shadow-sm mt-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700/60 transition-all duration-300"
-      >
+      {/* BIG P/L Card (Executive Multi-Column Layout) */}
+      <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 sm:p-6 border border-gray-200 dark:border-gray-800 relative group shadow-sm mt-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Left: Total Gain/Loss Values */}
           <div className="space-y-1">
@@ -1248,9 +1178,9 @@ export default function Portfolio({
                 {getMasked(formatUSD(gains.totalGainUSD))}
               </span>
               <span className={`text-sm font-bold ${
-                gains.gainPercent > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.gainPercent < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'
+                investedBreakdown.activeReturnPercent > 0 ? 'text-emerald-600 dark:text-emerald-400' : investedBreakdown.activeReturnPercent < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'
               }`}>
-                ({gains.gainPercent > 0 ? '+' : ''}{getMasked(gains.gainPercent.toFixed(1))}%)
+                ({investedBreakdown.activeReturnPercent > 0 ? '+' : ''}{getMasked(investedBreakdown.activeReturnPercent.toFixed(1))}%)
               </span>
             </div>
           </div>
@@ -1258,110 +1188,23 @@ export default function Portfolio({
           {/* Right: Portfolio Health & Return Progress Meter */}
           <div className="w-full md:w-80 lg:w-96 flex flex-col justify-center space-y-2">
             <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-              <div className="flex items-center gap-1.5">
-                <span>Return Modal</span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowPlBreakdown(prev => !prev);
-                  }}
-                  className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all duration-200 ${
-                    showPlBreakdown
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                      : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900/60'
-                  }`}
-                  title="Klik untuk melihat rincian modal aktif vs stablecoin"
-                >
-                  <MdTouchApp className={`w-3 h-3 ${showPlBreakdown ? '' : 'animate-pulse'}`} />
-                  <span>{showPlBreakdown ? 'Tutup' : 'Tap Rincian'}</span>
-                  <FiChevronDown className={`w-3 h-3 transition-transform duration-300 ${showPlBreakdown ? 'rotate-180' : ''}`} />
-                </button>
-              </div>
+              <span>Return Modal</span>
               <span className="font-mono font-bold text-gray-700 dark:text-gray-300">
-                {hideBalance ? '•••' : `${Math.abs(gains.gainPercent).toFixed(1)}%`}
+                {hideBalance ? '•••' : `${Math.abs(investedBreakdown.activeReturnPercent).toFixed(1)}%`}
               </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
               <div
-                style={{ width: `${Math.min(Math.abs(gains.gainPercent), 100)}%` }}
+                style={{ width: `${Math.min(Math.abs(investedBreakdown.activeReturnPercent), 100)}%` }}
                 className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
               ></div>
             </div>
             <div className="flex justify-between text-[11px] text-gray-400 font-mono">
-              <span>Modal: {getMasked(formatIDR(gains.totalCost))}</span>
-              <span>Nilai: {getMasked(formatIDR(totals.totalIDR))}</span>
+              <span title="Modal Invested tanpa USDT/USDC">Modal: {getMasked(formatIDR(investedBreakdown.activeCostIDR))}</span>
+              <span title="Nilai Aset Invested tanpa USDT/USDC">Nilai: {getMasked(formatIDR(investedBreakdown.activeValIDR))}</span>
             </div>
           </div>
         </div>
-
-        {/* Interactive P/L Modal Breakdown (Toggled via Tap/Click) */}
-        {showPlBreakdown && (
-          <div 
-            onClick={(e) => e.stopPropagation()} 
-            className="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-800 space-y-2.5 text-xs animate-in fade-in slide-in-from-top-1 duration-200"
-          >
-            <div className="flex items-center justify-between text-[11px] font-semibold text-gray-700 dark:text-gray-300">
-              <span className="flex items-center gap-1.5">
-                <span>Rincian Modal & Imbal Hasil</span>
-                <span className="text-[10px] text-gray-400 font-normal">(Modal Aktif vs Standby Stablecoin)</span>
-              </span>
-              <span className="text-[10px] text-gray-400 font-mono">Total Modal: {getMasked(formatIDR(gains.totalCost))}</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* 1. Modal Aktif */}
-              <div className="bg-gray-50/80 dark:bg-[#0d1117] p-3 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-800 dark:text-gray-200">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    <span>Modal Aktif (Fluktuatif)</span>
-                  </span>
-                  <span className="text-xs font-bold text-gray-900 dark:text-white font-mono">
-                    {getMasked(formatIDR(investedBreakdown.activeCostIDR))}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
-                  <span>Saham, Kripto (non-stable) & Emas</span>
-                  <span className={`font-mono font-semibold ${
-                    gains.totalGainIDR < 0 ? 'text-rose-500' : 'text-emerald-500'
-                  }`}>
-                    Return Aktif: {investedBreakdown.activeCostIDR > 0 ? `${((gains.totalGainIDR / investedBreakdown.activeCostIDR) * 100).toFixed(1)}%` : '0%'}
-                  </span>
-                </div>
-              </div>
-
-              {/* 2. Standby Stablecoin */}
-              <div className="bg-emerald-50/40 dark:bg-[#0d1117] p-3 rounded-xl border border-emerald-100 dark:border-gray-800/80">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <span>Standby (Stablecoin)</span>
-                  </span>
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                    {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center gap-2">
-                    {investedBreakdown.usdtUSD > 0 && (
-                      <span>USDT: <strong className="text-gray-700 dark:text-gray-300 font-mono">{getMasked(formatUSD(investedBreakdown.usdtUSD))}</strong></span>
-                    )}
-                    {investedBreakdown.usdcUSD > 0 && (
-                      <span>USDC: <strong className="text-gray-700 dark:text-gray-300 font-mono">{getMasked(formatUSD(investedBreakdown.usdcUSD))}</strong></span>
-                    )}
-                    {!investedBreakdown.hasStablecoins && <span>$0.00 (0%)</span>}
-                  </div>
-                  <span className="font-mono">~{getMasked(formatIDR(investedBreakdown.stablecoinCostIDR))}</span>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-[9.5px] text-gray-400 dark:text-gray-500 italic pt-0.5 leading-tight">
-              *Return Modal total ({Math.abs(gains.gainPercent).toFixed(1)}%) dihitung dari seluruh modal termasuk stablecoin. Return Aktif hanya mengukur performa aset yang bergerak.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )}

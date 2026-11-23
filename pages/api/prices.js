@@ -227,8 +227,8 @@ export default async function handler(req, res) {
       })
       : Promise.resolve({});
 
-    // Timeout guard: 8.5 seconds max so Vercel never times out with 504
-    const timeoutGuard = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 8500));
+    // Timeout guard: 6.0 seconds max so serverless functions never hit 10s gateway timeout (504)
+    const timeoutGuard = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 6000));
     const allFetches = Promise.allSettled([stockPromise, cryptoPromise, goldPromise]);
 
     const raceOutcome = await Promise.race([allFetches, timeoutGuard]);

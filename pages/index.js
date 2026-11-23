@@ -662,7 +662,7 @@ export default function Home() {
         }
         secureLogger.warn(`API error: ${response.status}`);
         const hasExistingPrices = pricesRef.current && Object.keys(pricesRef.current).length > 0;
-        if (!hasExistingPrices && retryAttempt >= 1) {
+        if (!hasExistingPrices && retryAttempt >= 3) {
           setRateLimitNotification({
             isOpen: true,
             title: 'Gagal Memuat Harga',
@@ -682,7 +682,7 @@ export default function Home() {
     } catch (error) {
       secureLogger.error('Error fetching prices:', error);
       const hasExistingPrices = pricesRef.current && Object.keys(pricesRef.current).length > 0;
-      if (!hasExistingPrices && retryAttempt >= 1) {
+      if (!hasExistingPrices && retryAttempt >= 3) {
         setRateLimitNotification({
           isOpen: true,
           title: 'Masalah Koneksi / API',
