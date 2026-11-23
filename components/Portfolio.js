@@ -123,7 +123,6 @@ export default function Portfolio({
   }, [propExchangeRateError, propExchangeRateSource, propLastExchangeRateUpdate, exchangeRateError, exchangeRateSource, lastExchangeRateUpdate]);
 
   const [activeAssetTab, setActiveAssetTab] = useState('all');
-  const [cryptoCardView, setCryptoCardView] = useState('all'); // 'all', 'combined', 'usdt', 'usdc'
   const [cryptoTableFilter, setCryptoTableFilter] = useState('all'); // 'all', 'combined', 'usdt', 'usdc'
   const [internalHeaderCollapsed, setInternalHeaderCollapsed] = useState(false);
   const isHeaderCollapsed = propIsHeaderCollapsed !== undefined ? propIsHeaderCollapsed : internalHeaderCollapsed;
@@ -845,13 +844,13 @@ export default function Portfolio({
 
   return (
     <div className="space-y-6 pb-24 font-sans bg-gray-50 dark:bg-[#0d1117] min-h-screen text-gray-900 dark:text-gray-300 p-4 sm:p-6">
-      {/* App Header (Hide when collapsed to keep viewport 100% focused) */}
-      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6 transition-all duration-300 ${isHeaderCollapsed ? 'hidden' : 'flex'}`}>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t('portfolio') || 'My Portfolio'}</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">
-            1 USD ≈ {getMasked(formatIDR(exchangeRate))}
-          </p>
+      {/* App Header & Live Currency Indicator (Hide when collapsed) */}
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 transition-all duration-300 ${isHeaderCollapsed ? 'hidden' : 'flex'}`}>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-[#161b22] rounded-xl text-xs font-mono text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="font-semibold">1 USD ≈ {getMasked(formatIDR(exchangeRate))}</span>
+          </div>
         </div>
       </div>
 
@@ -1036,230 +1035,59 @@ export default function Portfolio({
           <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.stocksPercent.toFixed(1)}% {t('fromPortfolio')}</p>
         </div>
 
-        {/* 4. Kripto (With Interactive Stablecoin USDT / USDC / Combined Tabs) */}
-        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-4 sm:p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm flex flex-col justify-between transition-all">
+        {/* 4. Kripto */}
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm flex flex-col justify-between">
           <div>
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('crypto') || 'Kripto'}</span>
-                {cryptoCardView !== 'all' && (
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-                    cryptoCardView === 'combined'
-                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
-                      : cryptoCardView === 'usdt'
-                        ? 'bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800'
-                        : 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                  }`}>
-                    {cryptoCardView === 'combined' ? 'USDT+USDC' : cryptoCardView.toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                cryptoCardView === 'all'
-                  ? 'bg-purple-100 dark:bg-[#1f2937] text-purple-600 dark:text-purple-400'
-                  : cryptoCardView === 'combined'
-                    ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
-                    : cryptoCardView === 'usdt'
-                      ? 'bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400'
-                      : 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
-              }`}>
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('crypto') || 'Kripto'}</span>
+              <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-[#1f2937] flex items-center justify-center text-purple-600 dark:text-purple-400">
                 <FiActivity className="w-4 h-4" />
               </div>
             </div>
-
-            {/* Sub-Tabs: Semua | USDT+USDC | USDT | USDC */}
-            <div className="flex items-center gap-1 p-0.5 sm:p-1 bg-gray-100 dark:bg-[#0d1117] rounded-xl mb-3 border border-gray-200/60 dark:border-gray-800/80">
-              {[
-                { id: 'all', label: t('all') || 'Semua' },
-                { id: 'combined', label: 'USDT+USDC' },
-                { id: 'usdt', label: 'USDT' },
-                { id: 'usdc', label: 'USDC' },
-              ].map(tab => {
-                const isActive = cryptoCardView === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => {
-                      setCryptoCardView(tab.id);
-                      setCryptoTableFilter(tab.id);
-                    }}
-                    className={`
-                      flex-1 py-1 px-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all text-center truncate
-                      ${isActive
-                        ? (tab.id === 'all'
-                            ? 'bg-purple-600 text-white shadow-sm'
-                            : tab.id === 'combined'
-                              ? 'bg-emerald-600 text-white shadow-sm'
-                              : tab.id === 'usdt'
-                                ? 'bg-teal-600 text-white shadow-sm'
-                                : 'bg-blue-600 text-white shadow-sm')
-                        : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white dark:hover:bg-gray-800/60'}
-                    `}
-                    title={tab.label}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
+            <div className="space-y-1 mb-2">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                {getMasked(formatIDR(totals.totalCryptoIDR))}
+              </h2>
+              <p className="text-xs text-gray-500 font-mono mb-2">
+                {getMasked(formatUSD(totals.totalCryptoUSD))}
+              </p>
+              <div className="flex items-center gap-2 text-xs">
+                {(() => {
+                  const roundedCryptoGain = Math.round(gains.totalCryptoGainIDR);
+                  return (
+                    <>
+                      <span className={roundedCryptoGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedCryptoGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                        {roundedCryptoGain > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalCryptoGainIDR))}
+                      </span>
+                      <span className={roundedCryptoGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedCryptoGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                        ({getMasked(gains.cryptoGainPercent.toFixed(1))}%)
+                      </span>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
-
-            {/* Values Display */}
-            {cryptoCardView === 'all' && (
-              <div className="space-y-1 mb-2 animate-fade-in-up">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                  {getMasked(formatIDR(totals.totalCryptoIDR))}
-                </h2>
-                <p className="text-xs text-gray-500 font-mono mb-2">
-                  {getMasked(formatUSD(totals.totalCryptoUSD))}
-                </p>
-                <div className="flex items-center gap-2 text-xs">
-                  {(() => {
-                    const roundedCryptoGain = Math.round(gains.totalCryptoGainIDR);
-                    return (
-                      <>
-                        <span className={roundedCryptoGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedCryptoGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                          {roundedCryptoGain > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalCryptoGainIDR))}
-                        </span>
-                        <span className={roundedCryptoGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedCryptoGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                          ({getMasked(gains.cryptoGainPercent.toFixed(1))}%)
-                        </span>
-                      </>
-                    );
-                  })()}
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
-                  <div style={{ width: `${totals.cryptoPercent}%` }} className="bg-purple-500 h-full rounded-full"></div>
-                </div>
-                <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</p>
-              </div>
-            )}
-
-            {cryptoCardView === 'combined' && (
-              <div className="space-y-1 mb-2 animate-fade-in-up">
-                <h2 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">
-                  {getMasked(formatIDR(stablecoinData.combined.valIDR))}
-                </h2>
-                <p className="text-xs text-gray-500 font-mono mb-2">
-                  {getMasked(formatUSD(stablecoinData.combined.valUSD))}
-                  <span className="text-[10px] text-gray-400 ml-1.5 font-sans">({getMasked(formatQuantity(stablecoinData.combined.amount))} Token)</span>
-                </p>
-                <div className="flex items-center gap-2 text-xs">
-                  {(() => {
-                    const roundedGain = Math.round(stablecoinData.combined.gainIDR);
-                    return (
-                      <>
-                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                          {roundedGain > 0 ? '+' : ''}{getMasked(formatIDR(stablecoinData.combined.gainIDR))}
-                        </span>
-                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                          ({getMasked(stablecoinData.combined.gainPercent.toFixed(1))}%)
-                        </span>
-                      </>
-                    );
-                  })()}
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
-                  <div style={{ width: `${Math.min(stablecoinData.combined.percentOfCrypto, 100)}%` }} className="bg-emerald-500 h-full rounded-full"></div>
-                </div>
-                <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : stablecoinData.combined.percentOfCrypto.toFixed(1)}% dari total Kripto</p>
-              </div>
-            )}
-
-            {cryptoCardView === 'usdt' && (
-              <div className="space-y-1 mb-2 animate-fade-in-up">
-                <h2 className="text-xl font-bold text-teal-600 dark:text-teal-400 tracking-tight">
-                  {getMasked(formatIDR(stablecoinData.usdt.valIDR))}
-                </h2>
-                <p className="text-xs text-gray-500 font-mono mb-2">
-                  {getMasked(formatUSD(stablecoinData.usdt.valUSD))}
-                  <span className="text-[10px] text-gray-400 ml-1.5 font-sans">({getMasked(formatQuantity(stablecoinData.usdt.amount))} USDT)</span>
-                </p>
-                <div className="flex items-center gap-2 text-xs">
-                  {(() => {
-                    const roundedGain = Math.round(stablecoinData.usdt.gainIDR);
-                    return (
-                      <>
-                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                          {roundedGain > 0 ? '+' : ''}{getMasked(formatIDR(stablecoinData.usdt.gainIDR))}
-                        </span>
-                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                          ({getMasked(stablecoinData.usdt.gainPercent.toFixed(1))}%)
-                        </span>
-                      </>
-                    );
-                  })()}
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
-                  <div style={{ width: `${Math.min(stablecoinData.usdt.percentOfCrypto, 100)}%` }} className="bg-teal-500 h-full rounded-full"></div>
-                </div>
-                <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : stablecoinData.usdt.percentOfCrypto.toFixed(1)}% dari total Kripto ({stablecoinData.usdt.count} Akun)</p>
-              </div>
-            )}
-
-            {cryptoCardView === 'usdc' && (
-              <div className="space-y-1 mb-2 animate-fade-in-up">
-                <h2 className="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">
-                  {getMasked(formatIDR(stablecoinData.usdc.valIDR))}
-                </h2>
-                <p className="text-xs text-gray-500 font-mono mb-2">
-                  {getMasked(formatUSD(stablecoinData.usdc.valUSD))}
-                  <span className="text-[10px] text-gray-400 ml-1.5 font-sans">({getMasked(formatQuantity(stablecoinData.usdc.amount))} USDC)</span>
-                </p>
-                <div className="flex items-center gap-2 text-xs">
-                  {(() => {
-                    const roundedGain = Math.round(stablecoinData.usdc.gainIDR);
-                    return (
-                      <>
-                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                          {roundedGain > 0 ? '+' : ''}{getMasked(formatIDR(stablecoinData.usdc.gainIDR))}
-                        </span>
-                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                          ({getMasked(stablecoinData.usdc.gainPercent.toFixed(1))}%)
-                        </span>
-                      </>
-                    );
-                  })()}
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
-                  <div style={{ width: `${Math.min(stablecoinData.usdc.percentOfCrypto, 100)}%` }} className="bg-blue-500 h-full rounded-full"></div>
-                </div>
-                <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : stablecoinData.usdc.percentOfCrypto.toFixed(1)}% dari total Kripto ({stablecoinData.usdc.count} Akun)</p>
-              </div>
-            )}
+            <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
+              <div style={{ width: `${totals.cryptoPercent}%` }} className="bg-purple-500 h-full rounded-full"></div>
+            </div>
+            <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</p>
           </div>
 
-          {/* Bottom Breakdown Helper */}
-          <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between text-[10px] text-gray-500">
-            <span className="font-medium text-gray-400">Stablecoin:</span>
-            <div className="flex items-center gap-2 font-mono">
-              <button
-                type="button"
-                onClick={() => {
-                  setCryptoCardView('usdt');
-                  setCryptoTableFilter('usdt');
-                }}
-                className={`hover:text-teal-500 transition-colors flex items-center gap-1 ${cryptoCardView === 'usdt' ? 'text-teal-600 dark:text-teal-400 font-bold' : ''}`}
-                title="Lihat USDT"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
-                <span>USDT: {getMasked(formatUSD(stablecoinData.usdt.valUSD))}</span>
-              </button>
-              <span>•</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setCryptoCardView('usdc');
-                  setCryptoTableFilter('usdc');
-                }}
-                className={`hover:text-blue-500 transition-colors flex items-center gap-1 ${cryptoCardView === 'usdc' ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}`}
-                title="Lihat USDC"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                <span>USDC: {getMasked(formatUSD(stablecoinData.usdc.valUSD))}</span>
-              </button>
+          {/* Clean, Non-Intrusive Stablecoin Summary Row */}
+          {stablecoinData.hasStablecoins && (
+            <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between text-[11px]">
+              <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Stablecoin:
+              </span>
+              <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">
+                {getMasked(formatUSD(stablecoinData.combined.valUSD))}
+                <span className="text-gray-400 font-normal text-[10px] ml-1">
+                  ({stablecoinData.combined.percentOfCrypto.toFixed(0)}%)
+                </span>
+              </span>
             </div>
-          </div>
+          )}
         </div>
 
         {/* 5. Emas */}
@@ -1295,53 +1123,68 @@ export default function Portfolio({
         </div>
       </div>
 
-      {/* BIG P/L Card */}
-      <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm mt-4">
-        <div className="flex justify-between items-start mb-4">
-          <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('totalGainLoss') || 'Total Untung/Rugi'}</span>
-          <div className="w-8 h-8 rounded-lg bg-yellow-100 dark:bg-[#1f2937] flex items-center justify-center text-yellow-600 dark:text-yellow-400">
-            <FiTrendingUp className="w-4 h-4" />
+      {/* BIG P/L Card (Executive Multi-Column Layout) */}
+      <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 sm:p-6 border border-gray-200 dark:border-gray-800 relative group shadow-sm mt-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Left: Total Gain/Loss Values */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-gray-500 text-xs font-semibold tracking-wide uppercase">{t('totalGainLoss') || 'Total Untung / Rugi'}</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                gains.totalGainIDR > 0
+                  ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+                  : gains.totalGainIDR < 0
+                    ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+              }`}>
+                {gains.totalGainIDR > 0 ? (t('profitable') || 'Untung') : gains.totalGainIDR < 0 ? (t('loss') || 'Rugi') : (t('flat') || 'Flat')}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <h2 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
+                gains.totalGainIDR > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.totalGainIDR < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'
+              }`}>
+                {gains.totalGainIDR > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalGainIDR))}
+              </h2>
+              <span className="text-sm font-mono text-gray-500">
+                {getMasked(formatUSD(gains.totalGainUSD))}
+              </span>
+              <span className={`text-sm font-bold ${
+                gains.gainPercent > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.gainPercent < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'
+              }`}>
+                ({gains.gainPercent > 0 ? '+' : ''}{getMasked(gains.gainPercent.toFixed(1))}%)
+              </span>
+            </div>
+          </div>
+
+          {/* Right: Portfolio Health & Return Progress Meter */}
+          <div className="w-full md:w-80 lg:w-96 flex flex-col justify-center space-y-2">
+            <div className="flex justify-between text-xs text-gray-500 font-medium">
+              <span>Return Modal</span>
+              <span className="font-mono font-bold text-gray-700 dark:text-gray-300">
+                {hideBalance ? '•••' : `${Math.abs(gains.gainPercent).toFixed(1)}%`}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+              <div
+                style={{ width: `${Math.min(Math.abs(gains.gainPercent), 100)}%` }}
+                className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+              ></div>
+            </div>
+            <div className="flex justify-between text-[11px] text-gray-400 font-mono">
+              <span>Modal: {getMasked(formatIDR(gains.totalCost))}</span>
+              <span>Nilai: {getMasked(formatIDR(totals.totalIDR))}</span>
+            </div>
           </div>
         </div>
-
-        {(() => {
-          const roundedTotalGain = Math.round(gains.totalGainIDR);
-          const roundedTotalPercent = Math.round(gains.gainPercent * 10) / 10;
-          return (
-            <div className="space-y-1 mb-2">
-              <h2 className={`text-xl font-bold tracking-tight ${roundedTotalGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedTotalGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}`}>
-                {roundedTotalGain > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalGainIDR))}
-              </h2>
-              <p className="text-xs text-gray-500 font-mono mb-2">
-                {getMasked(formatUSD(gains.totalGainUSD))}
-              </p>
-              <div className="flex items-center gap-2 text-xs">
-                <span className={roundedTotalPercent > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedTotalPercent < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                  {roundedTotalPercent > 0 ? '+' : ''}{getMasked(gains.gainPercent.toFixed(1))}%
-                </span>
-                <span className="text-gray-500">
-                  ({roundedTotalGain > 0 ? (t('profitable') || 'Menguntungkan') : roundedTotalGain < 0 ? (t('loss') || 'Merugi') : (t('flat') || 'Tidak Berubah')})
-                </span>
-              </div>
-            </div>
-          );
-        })()}
-
-        <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-4">
-          <div
-            style={{ width: `${Math.min(Math.abs(gains.gainPercent), 100)}%` }}
-            className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-          ></div>
-        </div>
-        <p className="text-[10px] text-gray-500 mt-2">{t('ofTotalCost') || 'dari total biaya'}</p>
       </div>
 
-      {/* Floating Price Loading Indicator */}
+      {/* Floating Price Loading Indicator (Docked to Bottom-Right, Non-Intrusive) */}
       {debouncedLoading && (
-        <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-blue-600 text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-3 animate-bounce">
-            <FiRefreshCw className="animate-spin w-4 h-4" />
-            <span className="text-sm font-bold">{t('updatingPrices') || 'Sedang memperbarui harga...'}</span>
+        <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-50 animate-fade-in">
+          <div className="bg-blue-600/95 backdrop-blur-md text-white px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5 border border-blue-400/30 text-xs font-semibold">
+            <FiRefreshCw className="animate-spin w-3.5 h-3.5 text-blue-200" />
+            <span>{t('updatingPrices') || 'Sedang memperbarui harga...'}</span>
           </div>
         </div>
       )}
@@ -1420,32 +1263,28 @@ export default function Portfolio({
 
         {(activeAssetTab === 'all' || activeAssetTab === 'crypto') && filteredAssets.crypto.length > 0 && (
           <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4 px-2 justify-between">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  {t('crypto') || 'Kripto'}
-                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">
-                    {displayedCryptoAssets.length} {t('asset') || 'Aset'}
-                  </span>
-                </h3>
-
-                {/* Stablecoin Quick Filter Pills */}
-                {stablecoinData.hasStablecoins && (
-                  <div className="flex items-center gap-1 p-0.5 bg-gray-100 dark:bg-[#161b22] rounded-xl border border-gray-200 dark:border-gray-800 text-xs">
+            {/* Stablecoin Executive Breakdown Hub (Full width, interactive 3-card stats) */}
+            {stablecoinData.hasStablecoins && (
+              <div className="mb-4 bg-white dark:bg-[#161b22] rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2.5 border-b border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                      Ringkasan Stablecoin (USDT & USDC)
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-1 p-0.5 bg-gray-100 dark:bg-[#0d1117] rounded-xl border border-gray-200/60 dark:border-gray-800/80 text-xs">
                     {[
-                      { id: 'all', label: t('all') || 'Semua' },
-                      { id: 'combined', label: 'USDT+USDC', count: stablecoinData.combined.count },
-                      { id: 'usdt', label: 'USDT', count: stablecoinData.usdt.count },
-                      { id: 'usdc', label: 'USDC', count: stablecoinData.usdc.count },
+                      { id: 'all', label: 'Semua Kripto' },
+                      { id: 'combined', label: 'USDT+USDC' },
+                      { id: 'usdt', label: 'USDT' },
+                      { id: 'usdc', label: 'USDC' },
                     ].map(st => (
                       <button
                         key={st.id}
                         type="button"
-                        onClick={() => {
-                          setCryptoTableFilter(st.id);
-                          setCryptoCardView(st.id);
-                        }}
-                        className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                        onClick={() => setCryptoTableFilter(st.id)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
                           cryptoTableFilter === st.id
                             ? (st.id === 'all'
                                 ? 'bg-purple-600 text-white shadow-sm'
@@ -1454,14 +1293,92 @@ export default function Portfolio({
                                   : st.id === 'usdt'
                                     ? 'bg-teal-600 text-white shadow-sm'
                                     : 'bg-blue-600 text-white shadow-sm')
-                            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800'
+                            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white dark:hover:bg-gray-800'
                         }`}
                       >
-                        {st.label} {st.count !== undefined ? `(${st.count})` : ''}
+                        {st.label}
                       </button>
                     ))}
                   </div>
-                )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Card 1: Gabungan */}
+                  <div
+                    onClick={() => setCryptoTableFilter(cryptoTableFilter === 'combined' ? 'all' : 'combined')}
+                    className={`cursor-pointer p-3 rounded-xl border transition-all ${
+                      cryptoTableFilter === 'combined'
+                        ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-500 shadow-sm'
+                        : 'bg-gray-50 dark:bg-[#0d1117] border-gray-200/70 dark:border-gray-800 hover:border-emerald-300 dark:hover:border-emerald-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="font-semibold text-gray-500 dark:text-gray-400">Total USDT + USDC</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                        {stablecoinData.combined.percentOfCrypto.toFixed(0)}% Kripto
+                      </span>
+                    </div>
+                    <div className="text-base font-bold text-gray-900 dark:text-white">
+                      {getMasked(formatUSD(stablecoinData.combined.valUSD))}
+                    </div>
+                    <div className="text-xs text-gray-500 font-mono">
+                      {getMasked(formatIDR(stablecoinData.combined.valIDR))}
+                    </div>
+                  </div>
+
+                  {/* Card 2: Tether USDT */}
+                  <div
+                    onClick={() => setCryptoTableFilter(cryptoTableFilter === 'usdt' ? 'all' : 'usdt')}
+                    className={`cursor-pointer p-3 rounded-xl border transition-all ${
+                      cryptoTableFilter === 'usdt'
+                        ? 'bg-teal-50/70 dark:bg-teal-950/30 border-teal-500 shadow-sm'
+                        : 'bg-gray-50 dark:bg-[#0d1117] border-gray-200/70 dark:border-gray-800 hover:border-teal-300 dark:hover:border-teal-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="font-semibold text-gray-500 dark:text-gray-400">Tether (USDT)</span>
+                      <span className="text-[10px] text-gray-400">{stablecoinData.usdt.count} Akun</span>
+                    </div>
+                    <div className="text-base font-bold text-teal-600 dark:text-teal-400">
+                      {getMasked(formatUSD(stablecoinData.usdt.valUSD))}
+                    </div>
+                    <div className="text-xs text-gray-500 font-mono">
+                      {getMasked(formatIDR(stablecoinData.usdt.valIDR))}
+                    </div>
+                  </div>
+
+                  {/* Card 3: USD Coin USDC */}
+                  <div
+                    onClick={() => setCryptoTableFilter(cryptoTableFilter === 'usdc' ? 'all' : 'usdc')}
+                    className={`cursor-pointer p-3 rounded-xl border transition-all ${
+                      cryptoTableFilter === 'usdc'
+                        ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-500 shadow-sm'
+                        : 'bg-gray-50 dark:bg-[#0d1117] border-gray-200/70 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="font-semibold text-gray-500 dark:text-gray-400">USD Coin (USDC)</span>
+                      <span className="text-[10px] text-gray-400">{stablecoinData.usdc.count} Akun</span>
+                    </div>
+                    <div className="text-base font-bold text-blue-600 dark:text-blue-400">
+                      {getMasked(formatUSD(stablecoinData.usdc.valUSD))}
+                    </div>
+                    <div className="text-xs text-gray-500 font-mono">
+                      {getMasked(formatIDR(stablecoinData.usdc.valIDR))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4 px-2 justify-between">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  {t('crypto') || 'Kripto'}
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">
+                    {displayedCryptoAssets.length} {t('asset') || 'Aset'}
+                  </span>
+                </h3>
               </div>
 
               <button onClick={(e) => exportPortfolioToCSV('crypto', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors self-end sm:self-auto" title={t('exportCrypto') || (language === 'en' ? 'Export Crypto' : 'Ekspor Kripto')}>

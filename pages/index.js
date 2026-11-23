@@ -3530,7 +3530,7 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <div className="min-w-0 hidden xs:block">
+              <div className="min-w-0 flex flex-col justify-center">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-white truncate">PortSyncro</h1>
                 <p className="text-[9px] sm:text-[10px] font-medium text-gray-500 leading-tight truncate hidden lg:block">{t('tagline')}</p>
               </div>
