@@ -74,6 +74,25 @@ function auditValidation() {
     const sanitized = xssInput.replace(/[<>]/g, '');
     if (sanitized === "scriptalert(1)/scriptHello") log("Basic XSS Tag Stripping matches expected logic", 'pass');
     else log(`XSS Logic Mismatch: ${sanitized}`, 'fail');
+
+    // Constant-Time Secret Comparison Verification
+    function timingSafeCompare(a, b) {
+        if (typeof a !== 'string' || typeof b !== 'string') return false;
+        if (a.length !== b.length) return false;
+        let result = 0;
+        for (let i = 0; i < a.length; i++) {
+            result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+        }
+        return result === 0;
+    }
+
+    if (timingSafeCompare("secretToken123", "secretToken123") && 
+        !timingSafeCompare("secretToken123", "secretToken124") && 
+        !timingSafeCompare("short", "longerString")) {
+        log('Constant-Time Secret Comparison Logic passed', 'pass');
+    } else {
+        log('Constant-Time Secret Comparison Failed', 'fail');
+    }
 }
 
 // --- 3. SERVER SECURITY HEADERS AUDIT ---

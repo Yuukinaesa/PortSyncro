@@ -3,7 +3,7 @@
 // Receives updates from Telegram and routes them to the bot handler
 
 import { handleUpdate, handleCallbackQuery } from '../../lib/telegramBot';
-import { secureLogger } from '../../lib/security';
+import { secureLogger, timingSafeCompare } from '../../lib/security';
 
 // Rate limiting for webhook (prevent abuse)
 const webhookRateLimit = new Map();
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
 
   if (webhookSecret) {
     const requestSecret = req.headers['x-telegram-bot-api-secret-token'];
-    if (requestSecret !== webhookSecret) {
+    if (!timingSafeCompare(requestSecret, webhookSecret)) {
       secureLogger.warn('[Telegram Webhook] Invalid secret token detected - Rejecting request.');
       return res.status(401).json({ error: 'Unauthorized payload' });
     }

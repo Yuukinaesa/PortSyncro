@@ -7,7 +7,7 @@
 //   - External cron (e.g. cron-job.org): GET /api/telegram-daily?secret=YOUR_SECRET
 
 import { sendDailyReports } from '../../lib/telegramBot';
-import { secureLogger } from '../../lib/security';
+import { secureLogger, timingSafeCompare } from '../../lib/security';
 
 export default async function handler(req, res) {
   // Security: Check both query parameter and Authorization header for cron secret
@@ -20,10 +20,11 @@ export default async function handler(req, res) {
   }
 
   const authHeader = req.headers.authorization;
-  const isVercelCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
-  const isQuerySecret = cronSecret && req.query.secret === cronSecret;
+  const isVercelCron = Boolean(cronSecret && authHeader && authHeader.startsWith('Bearer ') && timingSafeCompare(authHeader.slice(7), cronSecret));
+  const isQuerySecret = Boolean(cronSecret && typeof req.query.secret === 'string' && timingSafeCompare(req.query.secret, cronSecret));
 
   if (cronSecret && !isVercelCron && !isQuerySecret) {
+    secureLogger.warn('[Cron] Unauthorized cron invocation attempt');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
