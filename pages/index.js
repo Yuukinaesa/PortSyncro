@@ -3520,27 +3520,58 @@ export default function Home() {
           <meta name="description" content={t('tagline')} />
         </Head>
 
-        {/* Header - Sticky & Blurred - Mobile & Desktop Responsive Navbar with Central Search */}
-        <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-[#0d1117]/90 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 transition-all duration-300 safe-area-top">
-          <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4 md:gap-6">
-            {/* Logo area */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20 flex-shrink-0">
-                <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
+        {/* Header - Sticky & Blurred - Unified Pro Navbar */}
+        <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-[#0d1117]/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 transition-all duration-300 safe-area-top shadow-sm">
+          <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+            {/* Left: Brand Logo & Desktop Navigation */}
+            <div className="flex items-center gap-3 lg:gap-4 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20 shrink-0">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <div className="flex flex-col justify-center">
+                  <span className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-white leading-tight">PortSyncro</span>
+                  <span className="text-[9px] font-medium text-gray-400 leading-tight hidden xl:block">{t('tagline')}</span>
+                </div>
               </div>
-              <div className="min-w-0 flex flex-col justify-center">
-                <h1 className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-white truncate">PortSyncro</h1>
-                <p className="text-[9px] sm:text-[10px] font-medium text-gray-500 leading-tight truncate hidden lg:block">{t('tagline')}</p>
-              </div>
+
+              {/* Desktop Divider */}
+              <div className="h-5 w-px bg-gray-200 dark:bg-gray-800 hidden md:block"></div>
+
+              {/* Desktop Primary Navigation Tabs */}
+              <nav className="hidden md:flex items-center p-1 bg-gray-100 dark:bg-[#161b22] border border-gray-200/80 dark:border-gray-800 rounded-xl">
+                {[
+                  { id: 'portfolio', label: t('portfolio'), icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
+                  { id: 'add', label: t('addAsset'), icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> },
+                  { id: 'history', label: t('history'), icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
+                ].map(tab => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        isActive
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-gray-800/60'
+                      }`}
+                    >
+                      {tab.icon}
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
             </div>
 
-            {/* Central Top Navbar Search Bar */}
-            <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-1 sm:mx-4">
+            {/* Center: Search Bar */}
+            <div className="flex-1 max-w-[180px] xs:max-w-xs sm:max-w-sm md:max-w-xs lg:max-w-sm mx-1 sm:mx-2">
               <div className="relative group w-full">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
-                  <FiSearch className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                  <FiSearch className="w-3.5 h-3.5" />
                 </div>
                 <label htmlFor="top-navbar-search" className="sr-only">{t('search') || 'Search'}</label>
                 <input
@@ -3555,7 +3586,7 @@ export default function Home() {
                     }
                   }}
                   placeholder={t('placeholderSearch') || "Cari aset (BTC, BBCA)..."}
-                  className="w-full bg-gray-100/90 dark:bg-[#161b22] hover:bg-gray-100 dark:hover:bg-[#1c222c] focus:bg-white dark:focus:bg-[#0d1117] text-gray-900 dark:text-white pl-8 sm:pl-9 pr-7 sm:pr-8 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-gray-200/80 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 shadow-inner dark:shadow-none"
+                  className="w-full bg-gray-100/90 dark:bg-[#161b22] hover:bg-gray-100 dark:hover:bg-[#1c222c] focus:bg-white dark:focus:bg-[#0d1117] text-gray-900 dark:text-white pl-8 sm:pl-9 pr-7 sm:pr-8 py-1.5 text-xs rounded-xl border border-gray-200/80 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 />
                 {searchQuery ? (
                   <button
@@ -3565,11 +3596,11 @@ export default function Home() {
                     title={t('clear') || "Hapus pencarian"}
                     aria-label="Clear search"
                   >
-                    <FiX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <FiX className="w-3.5 h-3.5" />
                   </button>
                 ) : (
                   <div className="absolute inset-y-0 right-0 pr-2.5 hidden md:flex items-center pointer-events-none">
-                    <kbd className="text-[10px] font-mono text-gray-400 bg-gray-200/70 dark:bg-gray-800/80 px-1.5 py-0.5 rounded border border-gray-300/80 dark:border-gray-700">
+                    <kbd className="text-[9px] font-mono text-gray-400 bg-gray-200/70 dark:bg-gray-800/80 px-1.5 py-0.5 rounded border border-gray-300/80 dark:border-gray-700">
                       /
                     </kbd>
                   </div>
@@ -3577,44 +3608,56 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right Actions */}
-            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Right: Currency Chip, Settings, User Profile, Logout */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              {/* Live Currency Chip (Desktop) */}
+              {exchangeRate > 0 && (
+                <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-[#161b22] rounded-xl text-xs font-mono text-gray-600 dark:text-gray-300 border border-gray-200/80 dark:border-gray-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>1 USD ≈ {formatIDR(exchangeRate)}</span>
+                </div>
+              )}
+
+              {/* Settings Button */}
               <button
+                type="button"
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2 sm:p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700 touch-target-sm"
+                className="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
                 title={t('settings') || "Settings"}
               >
-                <FiSettings className="w-4 h-4 sm:w-5 sm:h-5" />
+                <FiSettings className="w-4 h-4" />
               </button>
 
-              <div className="h-6 sm:h-8 w-[1px] bg-gray-200 dark:bg-gray-800 mx-0.5 hidden sm:block"></div>
+              <div className="h-5 w-px bg-gray-200 dark:bg-gray-800 hidden sm:block"></div>
 
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="hidden sm:flex flex-col items-end min-w-0">
-                  <span
-                    className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate max-w-[150px] md:max-w-[200px] lg:max-w-[280px]"
-                    title={user?.email}
-                  >
-                    {user?.email}
-                  </span>
+              {/* User Avatar & Name Badge */}
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0">
+                  {(user?.email || 'U')[0].toUpperCase()}
                 </div>
-                <button
-                  onClick={logout}
-                  className="p-2 sm:p-2.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all touch-target-sm"
-                  title={t('logout')}
-                >
-                  <FiLogOut className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[100px] sm:max-w-[130px] hidden sm:inline" title={user?.email}>
+                  {user?.email?.split('@')[0]}
+                </span>
               </div>
+
+              {/* Logout Button */}
+              <button
+                type="button"
+                onClick={logout}
+                className="p-2 text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all"
+                title={t('logout')}
+              >
+                <FiLogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </header>
 
         <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 pb-24 sm:pb-20">
 
-          {/* Navigation Controls (Sticky) - Mobile & Desktop Unified Collapsible Pill */}
+          {/* Mobile-Only Navigation Controls (Desktop uses top navbar) */}
           {isHeaderCollapsed ? (
-            <div className="sticky top-14 sm:top-16 z-30 flex justify-center mb-3 sm:mb-6 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1 pointer-events-none transition-all duration-300">
+            <div className="sticky top-14 sm:top-16 z-30 flex md:hidden justify-center mb-3 sm:mb-6 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1 pointer-events-none transition-all duration-300">
               <button
                 type="button"
                 onClick={() => setHeaderCollapsedWithPersistence(false)}
@@ -3630,22 +3673,16 @@ export default function Home() {
                   <>
                     <span className="text-gray-400">•</span>
                     <span className="text-blue-600 dark:text-blue-400 font-semibold">{t('all') || 'Semua'} ({totalAssetCount})</span>
-                    {exchangeRate > 0 && (
-                      <span className="text-gray-500 dark:text-gray-400 font-mono text-[11px] hidden sm:inline">
-                        • 1 USD ≈ {formatIDR(exchangeRate)}
-                      </span>
-                    )}
                   </>
                 )}
-                <span className="text-gray-400 text-[10px] hidden md:inline">• {t('expandMenu') || (language === 'en' ? 'Expand' : 'Buka Menu')}</span>
                 <FiChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-transform group-hover:translate-y-0.5" />
               </button>
             </div>
           ) : (
-            <div className="sticky top-14 sm:top-16 z-30 flex items-center justify-center mb-4 sm:mb-8 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2 sm:py-3 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
+            <div className="sticky top-14 sm:top-16 z-30 flex md:hidden items-center justify-center mb-4 sm:mb-6 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
               <div className="flex items-center justify-between sm:justify-center gap-2 w-full sm:w-auto">
                 {/* Navigation Tabs Pill (Contains ONLY the 3 page views) */}
-                <div className="flex items-center p-1 sm:p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-xl sm:rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 flex-1 sm:flex-none">
+                <div className="flex items-center p-1 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg shadow-black/5 dark:shadow-black/20 flex-1 sm:flex-none">
                   {[
                     { id: 'portfolio', label: t('portfolio'), mobileLabel: t('portfolio'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
                     { id: 'add', label: t('addAsset'), mobileLabel: t('add'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> },
@@ -3655,9 +3692,9 @@ export default function Home() {
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={`
-                         relative flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex-1 sm:flex-none min-w-0
+                         relative flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all duration-300 flex-1 sm:flex-none min-w-0
                          ${activeTab === tab.id
-                          ? 'text-white bg-blue-600 shadow-lg shadow-blue-900/20'
+                          ? 'text-white bg-blue-600 shadow-md shadow-blue-900/20'
                           : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#0d1117]'}
                        `}
                     >
@@ -3668,16 +3705,16 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Dedicated Minimize / Collapse Button (Clearly separated from page tabs) */}
+                {/* Minimize / Collapse Button (Mobile) */}
                 <button
                   type="button"
                   onClick={() => setHeaderCollapsedWithPersistence(true)}
-                  className="p-2 sm:px-3 sm:py-2.5 bg-white dark:bg-[#161b22] hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-gray-200 dark:border-gray-800 rounded-xl sm:rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 transition-all flex items-center justify-center gap-1.5 shrink-0 text-xs font-semibold active:scale-95 group touch-target-sm"
-                  title={t('minimizeMenu') || (language === 'en' ? 'Collapse Menu' : 'Ringkas Menu')}
-                  aria-label={t('minimizeMenu') || (language === 'en' ? 'Collapse Menu' : 'Ringkas Menu')}
+                  className="p-2 sm:px-3 bg-white dark:bg-[#161b22] hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg shadow-black/5 dark:shadow-black/20 transition-all flex items-center justify-center gap-1 shrink-0 text-xs font-semibold active:scale-95 group touch-target-sm"
+                  title={t('minimizeMenu') || (language === 'en' ? 'Collapse Menu' : 'Ringkas')}
+                  aria-label={t('minimizeMenu') || (language === 'en' ? 'Collapse Menu' : 'Ringkas')}
                 >
                   <FiChevronUp className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-transform group-hover:-translate-y-0.5" />
-                  <span className="hidden xs:inline text-[11px] font-semibold text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white">
+                  <span className="hidden xs:inline text-[11px] font-semibold text-gray-500 dark:text-gray-400">
                     {t('minimize') || (language === 'en' ? 'Minimize' : 'Ringkas')}
                   </span>
                 </button>
