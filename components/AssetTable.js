@@ -804,17 +804,18 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           <td className="px-4 py-4 text-center">
                             {!isSummary && (
                               <div className="flex justify-center gap-2">
-                                {onUpdate && <button onClick={() => openEditModal(asset)} className="text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white p-1" title="Edit"><FiEdit2 size={14} /></button>}
+                                {onUpdate && <button onClick={() => openEditModal(asset)} className="text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white p-1" title={t('edit') || (language === 'en' ? 'Edit' : 'Ubah')} aria-label={t('edit') || (language === 'en' ? 'Edit' : 'Ubah')}><FiEdit2 size={14} /></button>}
                                 {onSell && (
                                   <button
                                     onClick={() => handleSellClick(idx, asset)}
                                     className="text-gray-400 hover:text-green-600 dark:text-gray-500 dark:hover:text-green-500 p-1"
-                                    title="Jual (Sell)"
+                                    title={t('sell') || (language === 'en' ? 'Sell' : 'Jual')}
+                                    aria-label={t('sell') || (language === 'en' ? 'Sell' : 'Jual')}
                                   >
                                     <FiDollarSign size={14} />
                                   </button>
                                 )}
-                                {onDelete && <button onClick={() => handleDeleteClick(idx, asset)} className="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-500 p-1" title="Delete"><FiTrash2 size={14} /></button>}
+                                {onDelete && <button onClick={() => handleDeleteClick(idx, asset)} className="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-500 p-1" title={t('delete') || (language === 'en' ? 'Delete' : 'Hapus')} aria-label={t('delete') || (language === 'en' ? 'Delete' : 'Hapus')}><FiTrash2 size={14} /></button>}
                               </div>
                             )}
                           </td>
@@ -824,8 +825,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       {type === 'cash' && (
                         <td className="px-4 py-4 text-center">
                           <div className="flex justify-center gap-2">
-                            {onUpdate && <button onClick={() => openEditModal(asset)} className="text-gray-500 hover:text-white p-1"><FiEdit2 size={14} /></button>}
-                            {onDelete && <button onClick={() => handleDeleteClick(idx, asset)} className="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-500 p-1" title="Delete"><FiTrash2 size={14} /></button>}
+                            {onUpdate && <button onClick={() => openEditModal(asset)} className="text-gray-500 hover:text-white p-1" title={t('edit') || (language === 'en' ? 'Edit' : 'Ubah')} aria-label={t('edit') || (language === 'en' ? 'Edit' : 'Ubah')}><FiEdit2 size={14} /></button>}
+                            {onDelete && <button onClick={() => handleDeleteClick(idx, asset)} className="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-500 p-1" title={t('delete') || (language === 'en' ? 'Delete' : 'Hapus')} aria-label={t('delete') || (language === 'en' ? 'Delete' : 'Hapus')}><FiTrash2 size={14} /></button>}
                           </div>
                         </td>
                       )}
@@ -1011,8 +1012,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           <button
                             onClick={() => type === 'cash' ? handleEditAmount(uniqueId, asset) : openEditModal(asset)}
                             className="p-2.5 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl text-blue-600 dark:text-blue-400 border border-gray-200 dark:border-gray-800 transition-colors active:scale-95"
-                            title="Edit"
-                            aria-label="Edit"
+                            title={t('edit') || (language === 'en' ? 'Edit' : 'Ubah')}
+                            aria-label={t('edit') || (language === 'en' ? 'Edit' : 'Ubah')}
                           >
                             <FiEdit2 size={16} />
                           </button>
@@ -1021,8 +1022,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                           <button
                             onClick={() => handleDeleteClick(uniqueId, asset)}
                             className="p-2.5 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl text-red-600 dark:text-red-500 border border-gray-200 dark:border-gray-800 transition-colors active:scale-95"
-                            title="Delete"
-                            aria-label="Delete"
+                            title={t('delete') || (language === 'en' ? 'Delete' : 'Hapus')}
+                            aria-label={t('delete') || (language === 'en' ? 'Delete' : 'Hapus')}
                           >
                             <FiTrash2 size={16} />
                           </button>

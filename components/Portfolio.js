@@ -41,7 +41,8 @@ export default function Portfolio({
   hideBalance,
   onOpenSettings,
   onSnap,
-  priceCheckWrapper
+  priceCheckWrapper,
+  isNavCollapsed = false
 }) {
   const assetCount = useMemo(() => ({
     stocks: new Set((assets?.stocks || []).map(s => (s.ticker || '').toUpperCase())).size,
@@ -708,20 +709,21 @@ export default function Portfolio({
 
       {/* Control Panel Bar (Sticky & Frosted & Collapsible) */}
       {isHeaderCollapsed ? (
-        <div className="sticky top-[118px] sm:top-[142px] z-20 flex justify-end -mx-4 sm:-mx-6 px-4 sm:px-6 py-1.5 transition-all duration-300 pointer-events-none">
+        <div className={`sticky ${isNavCollapsed ? 'top-[92px] sm:top-[104px]' : 'top-[118px] sm:top-[142px]'} z-20 flex justify-end -mx-4 sm:-mx-6 px-4 sm:px-6 py-1.5 transition-all duration-300 pointer-events-none`}>
           <button
             onClick={() => setIsHeaderCollapsed(false)}
             className="pointer-events-auto px-4 py-2 bg-white/95 dark:bg-[#161b22]/95 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full text-xs font-bold shadow-xl shadow-black/10 dark:shadow-black/40 backdrop-blur-xl flex items-center gap-2 transition-all duration-200 active:scale-95 border border-gray-200 dark:border-gray-700"
-            title="Tampilkan Header & Filter"
+            title={t('showHeader') || (language === 'en' ? 'Show Filters & Actions' : 'Tampilkan Filter & Aksi')}
+            aria-label={t('showHeader') || (language === 'en' ? 'Show Filters & Actions' : 'Tampilkan Filter & Aksi')}
           >
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
             <FiEye className="w-3.5 h-3.5 text-blue-500" />
-            <span>{activeTabLabel} ({activeCount}) • Buka Filter & Aksi</span>
+            <span>{activeTabLabel} ({activeCount}) • {t('filterAndActions') || (language === 'en' ? 'Open Filters & Actions' : 'Buka Filter & Aksi')}</span>
             <FiChevronDown className="w-3.5 h-3.5 text-gray-400" />
           </button>
         </div>
       ) : (
-        <div className="sticky top-[118px] sm:top-[142px] z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
+        <div className={`sticky ${isNavCollapsed ? 'top-[92px] sm:top-[104px]' : 'top-[118px] sm:top-[142px]'} z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300`}>
           <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-2.5 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-md dark:shadow-black/40">
             {/* Row 1: Category Tabs + Quick Collapse */}
             <div className="flex items-center justify-between gap-2 sm:gap-6 w-full xl:w-auto">
@@ -759,15 +761,15 @@ export default function Portfolio({
                 </div>
               </div>
 
-              {/* Mobile Quick Collapse / Umpetin Toggle */}
+              {/* Mobile Quick Collapse Toggle */}
               <button
                 onClick={() => setIsHeaderCollapsed(true)}
                 className="xl:hidden p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center gap-1 shrink-0"
-                title="Umpetin / Sembunyikan Header"
-                aria-label="Umpetin / Sembunyikan Header"
+                title={t('hideHeader') || (language === 'en' ? 'Hide Filters & Actions' : 'Sembunyikan Filter & Aksi')}
+                aria-label={t('hideHeader') || (language === 'en' ? 'Hide Filters & Actions' : 'Sembunyikan Filter & Aksi')}
               >
                 <FiEyeOff className="w-3.5 h-3.5 text-blue-500" />
-                <span className="text-[10px] font-semibold hidden xs:inline">Umpetin</span>
+                <span className="text-[10px] font-semibold hidden xs:inline">{t('hide') || (language === 'en' ? 'Hide' : 'Sembunyikan')}</span>
               </button>
             </div>
 
@@ -794,13 +796,13 @@ export default function Portfolio({
               {/* WA */}
               <button onClick={copyToWhatsApp} className="h-9 sm:h-10 bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 flex-shrink-0">
                 <FaWhatsapp className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Copy</span>
+                <span className="hidden sm:inline">{t('copy') || (language === 'en' ? 'Copy' : 'Salin')}</span>
               </button>
 
               {/* Snap */}
-              <button onClick={() => onSnap && onSnap()} className="h-9 sm:h-10 bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95 flex-shrink-0">
+              <button onClick={() => onSnap && onSnap()} className="h-9 sm:h-10 bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95 flex-shrink-0" title={t('snap') || 'Snap'}>
                 <FiCamera className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Snap</span>
+                <span className="hidden sm:inline">{t('snap') || 'Snap'}</span>
               </button>
 
               {/* Settings */}
@@ -819,10 +821,10 @@ export default function Portfolio({
               <button
                 onClick={() => setIsHeaderCollapsed(true)}
                 className="hidden xl:flex h-10 px-2.5 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-xl items-center gap-1.5 text-xs font-semibold border border-gray-200 dark:border-gray-800 transition-all hover:text-gray-900 dark:hover:text-white"
-                title="Umpetin / Sembunyikan Header"
+                title={t('hideHeader') || (language === 'en' ? 'Hide Filters & Actions' : 'Sembunyikan Filter & Aksi')}
               >
                 <FiEyeOff className="w-3.5 h-3.5 text-blue-500" />
-                <span>Umpetin</span>
+                <span>{t('hide') || (language === 'en' ? 'Hide' : 'Sembunyikan')}</span>
               </button>
             </div>
           </div>
@@ -1070,7 +1072,7 @@ export default function Portfolio({
                 {t('bankAndWallet') || 'Bank & E-Wallet'}
                 <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.cash} {t('asset') || 'Aset'}</span>
               </h3>
-              <button onClick={(e) => exportPortfolioToCSV('cash', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title="Export Bank Data">
+              <button onClick={(e) => exportPortfolioToCSV('cash', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title={t('exportBankData') || (language === 'en' ? 'Export Bank Data' : 'Ekspor Data Bank')}>
                 <FiDownload className="w-4 h-4" />
               </button>
             </div>
@@ -1095,7 +1097,7 @@ export default function Portfolio({
                 {t('stocks') || 'Saham'}
                 <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.stocks} {t('asset') || 'Aset'}</span>
               </h3>
-              <button onClick={(e) => exportPortfolioToCSV('stock', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title="Export Stocks">
+              <button onClick={(e) => exportPortfolioToCSV('stock', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title={t('exportStocks') || (language === 'en' ? 'Export Stocks' : 'Ekspor Saham')}>
                 <FiDownload className="w-4 h-4" />
               </button>
             </div>
@@ -1120,7 +1122,7 @@ export default function Portfolio({
                 {t('crypto') || 'Kripto'}
                 <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.crypto} {t('asset') || 'Aset'}</span>
               </h3>
-              <button onClick={(e) => exportPortfolioToCSV('crypto', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title="Export Crypto">
+              <button onClick={(e) => exportPortfolioToCSV('crypto', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title={t('exportCrypto') || (language === 'en' ? 'Export Crypto' : 'Ekspor Kripto')}>
                 <FiDownload className="w-4 h-4" />
               </button>
             </div>
@@ -1145,7 +1147,7 @@ export default function Portfolio({
                 {t('gold') || 'Emas'}
                 <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.gold} {t('asset') || 'Aset'}</span>
               </h3>
-              <button onClick={(e) => exportPortfolioToCSV('gold', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title="Export Gold">
+              <button onClick={(e) => exportPortfolioToCSV('gold', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title={t('exportGold') || (language === 'en' ? 'Export Gold' : 'Ekspor Emas')}>
                 <FiDownload className="w-4 h-4" />
               </button>
             </div>

@@ -8,7 +8,7 @@ import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
 import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { FiLogOut, FiCreditCard, FiSettings, FiCheck } from 'react-icons/fi';
+import { FiLogOut, FiCreditCard, FiSettings, FiCheck, FiEyeOff, FiChevronDown } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { fetchExchangeRate } from '../lib/fetchExchangeRate';
@@ -338,6 +338,9 @@ export default function Home() {
     }
     return false;
   });
+
+  // Collapsible Navigation Bar State
+  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('hideBalance', hideBalance);
@@ -3520,31 +3523,62 @@ export default function Home() {
 
         <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 pb-24 sm:pb-20">
 
-          {/* Navigation Controls (Sticky) - Mobile Optimized */}
-          <div className="sticky top-14 sm:top-16 z-30 flex justify-center mb-4 sm:mb-8 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2 sm:py-3 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl">
-            <div className="flex items-center p-1 sm:p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-xl sm:rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 w-full sm:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-              {[
-                { id: 'portfolio', label: t('portfolio'), mobileLabel: t('portfolio'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
-                { id: 'add', label: t('addAsset'), mobileLabel: t('add'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> },
-                { id: 'history', label: t('history'), mobileLabel: t('history'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                     relative flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2.5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex-1 sm:flex-none min-w-0
-                     ${activeTab === tab.id
-                      ? 'text-white bg-blue-600 shadow-lg shadow-blue-900/20'
-                      : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#0d1117]'}
-                   `}
-                >
-                  {tab.icon}
-                  <span className="hidden xs:inline sm:hidden">{tab.mobileLabel}</span>
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </button>
-              ))}
+          {/* Navigation Controls (Sticky) - Mobile & Desktop Collapsible */}
+          {isNavCollapsed ? (
+            <div className="sticky top-14 sm:top-16 z-30 flex justify-center mb-2 sm:mb-4 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1 pointer-events-none transition-all duration-300">
+              <button
+                onClick={() => setIsNavCollapsed(false)}
+                className="pointer-events-auto px-4 py-1.5 bg-white/95 dark:bg-[#161b22]/95 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full text-xs font-bold shadow-lg shadow-black/10 dark:shadow-black/30 backdrop-blur-xl flex items-center gap-2 transition-all duration-200 active:scale-95 border border-gray-200 dark:border-gray-700"
+                title={t('showNav') || (language === 'en' ? 'Show Navigation' : 'Tampilkan Navigasi')}
+                aria-label={t('showNav') || (language === 'en' ? 'Show Navigation' : 'Tampilkan Navigasi')}
+              >
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200">
+                  {activeTab === 'portfolio' ? t('portfolio') : activeTab === 'add' ? t('addAsset') : t('history')}
+                </span>
+                <span className="text-gray-400 text-[10px] hidden xs:inline">• {t('showMenu') || (language === 'en' ? 'Show Menu' : 'Tampilkan Menu')}</span>
+                <FiChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              </button>
             </div>
-          </div>
+          ) : (
+            <div className="sticky top-14 sm:top-16 z-30 flex justify-center mb-4 sm:mb-8 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2 sm:py-3 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
+              <div className="flex items-center justify-between sm:justify-center p-1 sm:p-1.5 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-xl sm:rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 w-full sm:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] gap-1 sm:gap-2">
+                <div className="flex items-center gap-1 flex-1 sm:flex-none">
+                  {[
+                    { id: 'portfolio', label: t('portfolio'), mobileLabel: t('portfolio'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
+                    { id: 'add', label: t('addAsset'), mobileLabel: t('add'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> },
+                    { id: 'history', label: t('history'), mobileLabel: t('history'), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`
+                         relative flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2.5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex-1 sm:flex-none min-w-0
+                         ${activeTab === tab.id
+                          ? 'text-white bg-blue-600 shadow-lg shadow-blue-900/20'
+                          : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#0d1117]'}
+                       `}
+                    >
+                      {tab.icon}
+                      <span className="hidden xs:inline sm:hidden">{tab.mobileLabel}</span>
+                      <span className="hidden sm:inline">{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sembunyikan Navigasi / Hide Nav Button */}
+                <button
+                  onClick={() => setIsNavCollapsed(true)}
+                  className="p-2 sm:px-2.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg sm:rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex items-center gap-1 shrink-0 ml-1 text-xs"
+                  title={t('hideNav') || (language === 'en' ? 'Hide Navigation' : 'Sembunyikan Navigasi')}
+                  aria-label={t('hideNav') || (language === 'en' ? 'Hide Navigation' : 'Sembunyikan Navigasi')}
+                >
+                  <FiEyeOff className="w-4 h-4 text-gray-400 hover:text-blue-500" />
+                  <span className="hidden md:inline font-semibold text-[11px] text-gray-500 dark:text-gray-400">{t('hide') || (language === 'en' ? 'Hide' : 'Sembunyikan')}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
@@ -3602,8 +3636,8 @@ export default function Home() {
                       <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-yellow-600 group-hover:text-white transition-all text-yellow-600 dark:text-yellow-500">
                         <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">Emas (Gold)</h3>
-                      <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">Tabungan Emas & Batangan</p>
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">{t('addGold') || (language === 'en' ? 'Gold' : 'Emas')}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">{t('addGoldDesc') || (language === 'en' ? 'Gold Savings & Bullion' : 'Tabungan Emas & Batangan')}</p>
                       <ErrorBoundary>
                         <GoldInput onAdd={(...args) => executeWithPriceCheck(addGold, 'Add Gold', ...args)} onComplete={() => setActiveTab('portfolio')} />
                       </ErrorBoundary>
@@ -3616,6 +3650,7 @@ export default function Home() {
                 <ErrorBoundary>
                   <Portfolio
                     assets={assets}
+                    isNavCollapsed={isNavCollapsed}
                     onUpdateStock={(...args) => executeWithPriceCheck(updateStock, 'Update Stock', ...args)}
                     onUpdateCrypto={(...args) => executeWithPriceCheck(updateCrypto, 'Update Crypto', ...args)}
                     onUpdateGold={(...args) => executeWithPriceCheck(updateGold, 'Update Gold', ...args)}
