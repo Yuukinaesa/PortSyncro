@@ -8,7 +8,7 @@ import { useLanguage } from '../lib/languageContext';
 import { useRouter } from 'next/router';
 import { collection, addDoc, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, where, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { FiLogOut, FiCreditCard, FiSettings, FiCheck, FiEyeOff, FiChevronDown, FiChevronUp, FiSearch, FiX } from 'react-icons/fi';
+import { FiLogOut, FiCreditCard, FiSettings, FiCheck, FiEye, FiEyeOff, FiChevronDown, FiChevronUp, FiSearch, FiX } from 'react-icons/fi';
 import { calculatePortfolioValue, validateTransaction, isPriceDataAvailable, getRealPriceData, calculatePositionFromTransactions, formatIDR, formatUSD, validateIDXLots } from '../lib/utils';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { fetchExchangeRate } from '../lib/fetchExchangeRate';
@@ -363,6 +363,31 @@ export default function Home() {
       // Ignore storage errors
     }
   }, []);
+
+  // User Profile Dropdown Menu State (Mobile & Desktop)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+
+  // Close user dropdown on click outside or escape key
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setIsUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isUserMenuOpen]);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -3564,6 +3589,36 @@ export default function Home() {
                     </button>
                   );
                 })}
+
+                {/* Sembunyikan / Tampilkan Ringkasan Toggle (Desktop) */}
+                {activeTab === 'portfolio' && (
+                  <>
+                    <div className="h-4 w-px bg-gray-300 dark:bg-gray-700 mx-1"></div>
+                    <button
+                      type="button"
+                      onClick={() => setHeaderCollapsedWithPersistence(!isHeaderCollapsed)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        isHeaderCollapsed
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-gray-800/60'
+                      }`}
+                      title={isHeaderCollapsed ? (t('expandCards') || 'Tampilkan Ringkasan') : (t('hideCards') || 'Sembunyikan Ringkasan')}
+                      aria-label={isHeaderCollapsed ? (t('expandCards') || 'Tampilkan Ringkasan') : (t('hideCards') || 'Sembunyikan Ringkasan')}
+                    >
+                      {isHeaderCollapsed ? (
+                        <>
+                          <FiEye className="w-3.5 h-3.5" />
+                          <span>{t('show') || 'Tampilkan'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <FiEyeOff className="w-3.5 h-3.5" />
+                          <span>{t('hide') || 'Sembunyikan'}</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
               </nav>
             </div>
 
@@ -3623,14 +3678,69 @@ export default function Home() {
 
               <div className="h-5 w-px bg-gray-200 dark:bg-gray-800 hidden sm:block"></div>
 
-              {/* User Avatar & Name Badge */}
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0">
-                  {(user?.email || 'U')[0].toUpperCase()}
-                </div>
-                <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[100px] sm:max-w-[130px] hidden sm:inline" title={user?.email}>
-                  {user?.email?.split('@')[0]}
-                </span>
+              {/* User Avatar & Name Badge (Interactive with Dropdown for Mobile & Desktop) */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsUserMenuOpen(prev => !prev)}
+                  className="flex items-center gap-1.5 sm:gap-2 p-1 sm:px-2 sm:py-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700 active:scale-95 group focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  aria-expanded={isUserMenuOpen}
+                  aria-label="User profile menu"
+                  title={user?.email || "User profile"}
+                >
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0 group-hover:ring-2 ring-blue-500/40 transition-all">
+                    {(user?.email || 'U')[0].toUpperCase()}
+                  </div>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[100px] sm:max-w-[130px] hidden sm:inline">
+                    {user?.email?.split('@')[0]}
+                  </span>
+                </button>
+
+                {/* User Profile Popover / Dropdown Menu */}
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-[#161b22] rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 py-3 px-3 z-50 animate-fade-in">
+                    <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100 dark:border-gray-800">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0">
+                        {(user?.email || 'U')[0].toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate" title={user?.email}>
+                          {user?.email || 'Pengguna'}
+                        </p>
+                        <p className="text-[10px] text-emerald-500 font-medium flex items-center gap-1 mt-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>Online • PortSyncro</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setIsSettingsOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-left"
+                      >
+                        <FiSettings className="w-4 h-4 text-gray-400" />
+                        <span>{t('settings') || 'Pengaturan'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          logout();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all text-left"
+                      >
+                        <FiLogOut className="w-4 h-4" />
+                        <span>{t('logout') || 'Keluar'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Logout Button */}

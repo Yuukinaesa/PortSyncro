@@ -836,10 +836,9 @@ export default function Portfolio({
         </div>
       </div>
 
-      {/* Control Panel Bar (Clean static layout - scrolls naturally with page, zero floating bugs) */}
-      {isHeaderCollapsed ? null : (
-        <div className="w-full transition-all duration-300">
-          <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-2.5 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-sm">
+      {/* Control Panel Bar (Sticky - sticks directly below top navbar, following smoothly on scroll) */}
+      <div className="sticky top-14 sm:top-16 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/95 dark:bg-[#0d1117]/95 backdrop-blur-md transition-all">
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-2.5 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-sm">
             {/* Row 1: Category Tabs */}
             <div className="flex items-center gap-2 sm:gap-4 w-full xl:w-auto">
               <div className="flex items-center gap-1.5 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -915,10 +914,12 @@ export default function Portfolio({
             </div>
           </div>
         </div>
-      )}
 
-      {/* Summary Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+      {/* Summary Cards Grid & Profit/Loss Banner (Collapsible via isHeaderCollapsed) */}
+      {!isHeaderCollapsed && (
+        <div className="space-y-6 transition-all duration-300">
+          {/* Summary Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
 
         {/* 1. Total Portfolio */}
         <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative overflow-hidden group shadow-sm">
@@ -1154,6 +1155,8 @@ export default function Portfolio({
           </div>
         </div>
       </div>
+    </div>
+  )}
 
       {/* Floating Price Loading Indicator (Docked to Bottom-Right, Non-Intrusive) */}
       {debouncedLoading && (
