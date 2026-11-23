@@ -227,15 +227,27 @@ export default async function handler(req, res) {
       })
       : Promise.resolve({});
 
-    const [stockPrices, cryptoPrices, goldPrices] = await Promise.allSettled([
-      stockPromise,
-      cryptoPromise,
-      goldPromise
-    ]);
+    // Timeout guard: 8.5 seconds max so Vercel never times out with 504
+    const timeoutGuard = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 8500));
+    const allFetches = Promise.allSettled([stockPromise, cryptoPromise, goldPromise]);
 
-    const stockResult = (stockPrices.status === 'fulfilled' && stockPrices.value) ? stockPrices.value : {};
-    const cryptoResult = (cryptoPrices.status === 'fulfilled' && cryptoPrices.value) ? cryptoPrices.value : {};
-    const goldResult = (goldPrices.status === 'fulfilled' && goldPrices.value) ? goldPrices.value : {};
+    const raceOutcome = await Promise.race([allFetches, timeoutGuard]);
+
+    let stockResult = {};
+    let cryptoResult = {};
+    let goldResult = {};
+
+    if (raceOutcome !== 'TIMEOUT' && Array.isArray(raceOutcome)) {
+      const [stockPrices, cryptoPrices, goldPrices] = raceOutcome;
+      stockResult = (stockPrices.status === 'fulfilled' && stockPrices.value) ? stockPrices.value : {};
+      cryptoResult = (cryptoPrices.status === 'fulfilled' && cryptoPrices.value) ? cryptoPrices.value : {};
+      goldResult = (goldPrices.status === 'fulfilled' && goldPrices.value) ? goldPrices.value : {};
+    } else {
+      secureLogger.warn('/api/prices reached 8.5s timeout guard. Returning best available prices.');
+      try { stockResult = (await Promise.race([stockPromise, Promise.resolve({})])) || {}; } catch {}
+      try { cryptoResult = (await Promise.race([cryptoPromise, Promise.resolve({})])) || {}; } catch {}
+      try { goldResult = (await Promise.race([goldPromise, Promise.resolve({})])) || {}; } catch {}
+    }
 
     const prices = {
       ...stockResult,
@@ -257,3 +269,8 @@ export default async function handler(req, res) {
     });
   }
 }
+
+// Ensure Vercel serverless functions have adequate execution duration headroom
+export const config = {
+  maxDuration: 60,
+};

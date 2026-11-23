@@ -929,52 +929,34 @@ export default function Portfolio({
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
 
         {/* 1. Total Portfolio */}
-        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative overflow-hidden group shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('totalPortfolio') || 'Total Portfolio'}</span>
-              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-[#1f2937] flex items-center justify-center text-blue-600 dark:text-blue-400">
-                <FiDollarSign className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="space-y-1 mb-2">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-                {getMasked(formatIDR(totals.totalIDR))}
-              </h2>
-              <p className="text-xs text-gray-500 font-mono">
-                {getMasked(formatUSD(totals.totalUSD))}
-              </p>
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative overflow-hidden group shadow-sm">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('totalPortfolio') || 'Total Portfolio'}</span>
+            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-[#1f2937] flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <FiDollarSign className="w-4 h-4" />
             </div>
           </div>
-
-          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500 mb-1">
-              Invested
+          <div className="space-y-1 mb-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+              {getMasked(formatIDR(totals.totalIDR))}
+            </h2>
+            <p className="text-xs text-gray-500 font-mono">
+              {getMasked(formatUSD(totals.totalUSD))}
             </p>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-gray-700 dark:text-gray-300 transform transition-colors">
-                {getMasked(formatIDR(gains.totalCost))}
-              </span>
-              <span className="text-xs text-gray-500 font-mono">
-                {getMasked(formatUSD(gains.totalCostUSD))}
-              </span>
-            </div>
 
-            {/* Non-Stablecoin (Aktif) vs Stablecoin Breakdown */}
-            {stablecoinData.hasStablecoins && (
-              <div className="mt-2.5 pt-2 border-t border-dashed border-gray-100 dark:border-gray-800/80 flex items-center justify-between text-[11px]">
-                <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5" title="Modal aset fluktuatif (Saham & BTC/Kripto)">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                  <span>{t('active') || 'Aktif'}:</span>
-                  <strong className="font-semibold text-gray-700 dark:text-gray-300">
-                    {getMasked(formatIDR(Math.max(0, gains.totalCost - (stablecoinData.combined.costIDR || stablecoinData.combined.valIDR))))}
-                  </strong>
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500 mb-1">
+                Invested
+              </p>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-300 transform transition-colors">
+                  {getMasked(formatIDR(gains.totalCost))}
                 </span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-mono font-medium" title="Modal standby di stablecoin (USDT/USDC)">
-                  {getMasked(formatUSD(stablecoinData.combined.valUSD))}
+                <span className="text-xs text-gray-500 font-mono">
+                  {getMasked(formatUSD(gains.totalCostUSD))}
                 </span>
               </div>
-            )}
+            </div>
           </div>
         </div>
 

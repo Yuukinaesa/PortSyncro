@@ -663,12 +663,16 @@ export default function Home() {
           return; // Don't throw error for rate limiting
         }
         secureLogger.warn(`API error: ${response.status}`);
-        setRateLimitNotification({
-          isOpen: true,
-          title: 'Gagal Memuat Harga',
-          message: `Terjadi kesalahan saat memuat harga dari server (HTTP ${response.status}). Periksa koneksi internet Anda atau coba lagi beberapa saat lagi.`,
-          type: 'warning'
-        });
+        // If we already have prices loaded, do NOT show an intrusive blocking modal to disrupt the user
+        const hasExistingPrices = prices && Object.keys(prices).length > 0;
+        if (!hasExistingPrices && retryAttempt >= 1) {
+          setRateLimitNotification({
+            isOpen: true,
+            title: 'Gagal Memuat Harga',
+            message: `Terjadi kesalahan saat memuat harga dari server (HTTP ${response.status}). Periksa koneksi internet Anda atau coba lagi beberapa saat lagi.`,
+            type: 'warning'
+          });
+        }
         return;
       }
 
@@ -700,16 +704,19 @@ export default function Home() {
 
     } catch (error) {
       secureLogger.error('Error fetching prices:', error);
-      setRateLimitNotification({
-        isOpen: true,
-        title: 'Masalah Koneksi / API',
-        message: `Gagal memperbarui harga real-time: ${error.message || error}. Pastikan koneksi internet Anda aktif.`,
-        type: 'warning'
-      });
+      const hasExistingPrices = prices && Object.keys(prices).length > 0;
+      if (!hasExistingPrices && retryAttempt >= 1) {
+        setRateLimitNotification({
+          isOpen: true,
+          title: 'Masalah Koneksi / API',
+          message: `Gagal memperbarui harga real-time: ${error.message || error}. Pastikan koneksi internet Anda aktif.`,
+          type: 'warning'
+        });
+      }
     } finally {
       setPricesLoading(false);
     }
-  }, [exchangeRate, user, updatePrices, t]);
+  }, [exchangeRate, user, updatePrices, prices, t]);
 
   useEffect(() => {
     performPriceFetchRef.current = performPriceFetch;
