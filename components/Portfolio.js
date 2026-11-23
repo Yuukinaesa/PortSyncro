@@ -123,6 +123,8 @@ export default function Portfolio({
   }, [propExchangeRateError, propExchangeRateSource, propLastExchangeRateUpdate, exchangeRateError, exchangeRateSource, lastExchangeRateUpdate]);
 
   const [activeAssetTab, setActiveAssetTab] = useState('all');
+  const [cryptoCardView, setCryptoCardView] = useState('all'); // 'all', 'combined', 'usdt', 'usdc'
+  const [cryptoTableFilter, setCryptoTableFilter] = useState('all'); // 'all', 'combined', 'usdt', 'usdc'
   const [internalHeaderCollapsed, setInternalHeaderCollapsed] = useState(false);
   const isHeaderCollapsed = propIsHeaderCollapsed !== undefined ? propIsHeaderCollapsed : internalHeaderCollapsed;
   const setIsHeaderCollapsed = useCallback((val) => {
@@ -450,6 +452,121 @@ export default function Portfolio({
     };
   }, [assets, prices, exchangeRate]);
 
+  // Stablecoin (USDT & USDC) Analytics & Breakdown
+  const stablecoinData = useMemo(() => {
+    let usdtAmount = 0;
+    let usdtValUSD = 0;
+    let usdtValIDR = 0;
+    let usdtCostUSD = 0;
+    let usdtCostIDR = 0;
+    let usdtCount = 0;
+
+    let usdcAmount = 0;
+    let usdcValUSD = 0;
+    let usdcValIDR = 0;
+    let usdcCostUSD = 0;
+    let usdcCostIDR = 0;
+    let usdcCount = 0;
+
+    const safeExchangeRate = exchangeRate || 0;
+
+    (assets?.crypto || []).forEach(crypto => {
+      const sym = (crypto.symbol || '').toUpperCase().trim();
+      if (sym !== 'USDT' && sym !== 'USDC') return;
+
+      const amount = parseFloat(crypto.amount) || 0;
+      if (amount <= 0 && !crypto.isManual) return;
+
+      let price;
+      if ((crypto.useManualPrice || crypto.isManual) && (crypto.manualPrice || crypto.price || crypto.avgPrice)) {
+        price = parseFloat(crypto.manualPrice || crypto.price || crypto.avgPrice) || 0;
+      } else {
+        price = (prices ? prices[sym]?.price : null) || crypto.currentPrice || 1.0;
+      }
+
+      const valUSD = price * amount;
+      const valIDR = valUSD * safeExchangeRate;
+      const costBasisUSD = (parseFloat(crypto.avgPrice) || 1.0) * amount;
+      const costBasisIDR = costBasisUSD * safeExchangeRate;
+
+      if (sym === 'USDT') {
+        usdtAmount += amount;
+        usdtValUSD += valUSD;
+        usdtValIDR += valIDR;
+        usdtCostUSD += costBasisUSD;
+        usdtCostIDR += costBasisIDR;
+        usdtCount++;
+      } else if (sym === 'USDC') {
+        usdcAmount += amount;
+        usdcValUSD += valUSD;
+        usdcValIDR += valIDR;
+        usdcCostUSD += costBasisUSD;
+        usdcCostIDR += costBasisIDR;
+        usdcCount++;
+      }
+    });
+
+    const combinedAmount = usdtAmount + usdcAmount;
+    const combinedValUSD = usdtValUSD + usdcValUSD;
+    const combinedValIDR = usdtValIDR + usdcValIDR;
+    const combinedCostUSD = usdtCostUSD + usdcCostUSD;
+    const combinedCostIDR = usdtCostIDR + usdcCostIDR;
+    const combinedCount = usdtCount + usdcCount;
+
+    // Gains & Profits
+    const usdtGainUSD = usdtValUSD - usdtCostUSD;
+    const usdtGainIDR = usdtValIDR - usdtCostIDR;
+    const usdtGainPercent = usdtCostUSD > 0 ? (usdtGainUSD / usdtCostUSD) * 100 : 0;
+
+    const usdcGainUSD = usdcValUSD - usdcCostUSD;
+    const usdcGainIDR = usdcValIDR - usdcCostIDR;
+    const usdcGainPercent = usdcCostUSD > 0 ? (usdcGainUSD / usdcCostUSD) * 100 : 0;
+
+    const combinedGainUSD = combinedValUSD - combinedCostUSD;
+    const combinedGainIDR = combinedValIDR - combinedCostIDR;
+    const combinedGainPercent = combinedCostUSD > 0 ? (combinedGainUSD / combinedCostUSD) * 100 : 0;
+
+    // Relative to Total Crypto
+    const totalCryptoUSD = totals.totalCryptoUSD || 0;
+    const combinedPercentOfCrypto = totalCryptoUSD > 0 ? (combinedValUSD / totalCryptoUSD) * 100 : 0;
+    const usdtPercentOfCrypto = totalCryptoUSD > 0 ? (usdtValUSD / totalCryptoUSD) * 100 : 0;
+    const usdcPercentOfCrypto = totalCryptoUSD > 0 ? (usdcValUSD / totalCryptoUSD) * 100 : 0;
+
+    return {
+      usdt: {
+        amount: usdtAmount,
+        valUSD: usdtValUSD,
+        valIDR: usdtValIDR,
+        gainUSD: usdtGainUSD,
+        gainIDR: usdtGainIDR,
+        gainPercent: usdtGainPercent,
+        count: usdtCount,
+        percentOfCrypto: usdtPercentOfCrypto
+      },
+      usdc: {
+        amount: usdcAmount,
+        valUSD: usdcValUSD,
+        valIDR: usdcValIDR,
+        gainUSD: usdcGainUSD,
+        gainIDR: usdcGainIDR,
+        gainPercent: usdcGainPercent,
+        count: usdcCount,
+        percentOfCrypto: usdcPercentOfCrypto
+      },
+      combined: {
+        amount: combinedAmount,
+        valUSD: combinedValUSD,
+        valIDR: combinedValIDR,
+        gainUSD: combinedGainUSD,
+        gainIDR: combinedGainIDR,
+        gainPercent: combinedGainPercent,
+        count: combinedCount,
+        percentOfCrypto: combinedPercentOfCrypto
+      },
+      hasStablecoins: combinedCount > 0
+    };
+  }, [assets, prices, exchangeRate, totals.totalCryptoUSD]);
+
   // Search Filter
   const filteredAssets = useMemo(() => {
     const query = searchQuery.toLowerCase();
@@ -470,6 +587,23 @@ export default function Portfolio({
       cash: (assets?.cash || []).filter(filterItem)
     };
   }, [assets, searchQuery]);
+
+  const displayedCryptoAssets = useMemo(() => {
+    const list = filteredAssets.crypto || [];
+    if (cryptoTableFilter === 'combined') {
+      return list.filter(c => {
+        const s = (c.symbol || '').toUpperCase().trim();
+        return s === 'USDT' || s === 'USDC';
+      });
+    }
+    if (cryptoTableFilter === 'usdt') {
+      return list.filter(c => (c.symbol || '').toUpperCase().trim() === 'USDT');
+    }
+    if (cryptoTableFilter === 'usdc') {
+      return list.filter(c => (c.symbol || '').toUpperCase().trim() === 'USDC');
+    }
+    return list;
+  }, [filteredAssets.crypto, cryptoTableFilter]);
 
   const uniqueFilteredCounts = useMemo(() => ({
     stocks: new Set((filteredAssets.stocks || []).map(s => (s.ticker || '').toUpperCase())).size,
@@ -902,41 +1036,230 @@ export default function Portfolio({
           <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.stocksPercent.toFixed(1)}% {t('fromPortfolio')}</p>
         </div>
 
-        {/* 4. Kripto */}
-        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('crypto') || 'Kripto'}</span>
-            <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-[#1f2937] flex items-center justify-center text-purple-600 dark:text-purple-400">
-              <FiActivity className="w-4 h-4" />
+        {/* 4. Kripto (With Interactive Stablecoin USDT / USDC / Combined Tabs) */}
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-4 sm:p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm flex flex-col justify-between transition-all">
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('crypto') || 'Kripto'}</span>
+                {cryptoCardView !== 'all' && (
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                    cryptoCardView === 'combined'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                      : cryptoCardView === 'usdt'
+                        ? 'bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800'
+                        : 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+                  }`}>
+                    {cryptoCardView === 'combined' ? 'USDT+USDC' : cryptoCardView.toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                cryptoCardView === 'all'
+                  ? 'bg-purple-100 dark:bg-[#1f2937] text-purple-600 dark:text-purple-400'
+                  : cryptoCardView === 'combined'
+                    ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+                    : cryptoCardView === 'usdt'
+                      ? 'bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400'
+                      : 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
+              }`}>
+                <FiActivity className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-          <div className="space-y-1 mb-2">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-              {getMasked(formatIDR(totals.totalCryptoIDR))}
-            </h2>
-            <p className="text-xs text-gray-500 font-mono mb-2">
-              {getMasked(formatUSD(totals.totalCryptoUSD))}
-            </p>
-            <div className="flex items-center gap-2 text-xs">
-              {(() => {
-                const roundedCryptoGain = Math.round(gains.totalCryptoGainIDR);
+
+            {/* Sub-Tabs: Semua | USDT+USDC | USDT | USDC */}
+            <div className="flex items-center gap-1 p-0.5 sm:p-1 bg-gray-100 dark:bg-[#0d1117] rounded-xl mb-3 border border-gray-200/60 dark:border-gray-800/80">
+              {[
+                { id: 'all', label: t('all') || 'Semua' },
+                { id: 'combined', label: 'USDT+USDC' },
+                { id: 'usdt', label: 'USDT' },
+                { id: 'usdc', label: 'USDC' },
+              ].map(tab => {
+                const isActive = cryptoCardView === tab.id;
                 return (
-                  <>
-                    <span className={roundedCryptoGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedCryptoGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                      {roundedCryptoGain > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalCryptoGainIDR))}
-                    </span>
-                    <span className={roundedCryptoGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedCryptoGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
-                      ({getMasked(gains.cryptoGainPercent.toFixed(1))}%)
-                    </span>
-                  </>
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setCryptoCardView(tab.id);
+                      setCryptoTableFilter(tab.id);
+                    }}
+                    className={`
+                      flex-1 py-1 px-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all text-center truncate
+                      ${isActive
+                        ? (tab.id === 'all'
+                            ? 'bg-purple-600 text-white shadow-sm'
+                            : tab.id === 'combined'
+                              ? 'bg-emerald-600 text-white shadow-sm'
+                              : tab.id === 'usdt'
+                                ? 'bg-teal-600 text-white shadow-sm'
+                                : 'bg-blue-600 text-white shadow-sm')
+                        : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white dark:hover:bg-gray-800/60'}
+                    `}
+                    title={tab.label}
+                  >
+                    {tab.label}
+                  </button>
                 );
-              })()}
+              })}
+            </div>
+
+            {/* Values Display */}
+            {cryptoCardView === 'all' && (
+              <div className="space-y-1 mb-2 animate-fade-in-up">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                  {getMasked(formatIDR(totals.totalCryptoIDR))}
+                </h2>
+                <p className="text-xs text-gray-500 font-mono mb-2">
+                  {getMasked(formatUSD(totals.totalCryptoUSD))}
+                </p>
+                <div className="flex items-center gap-2 text-xs">
+                  {(() => {
+                    const roundedCryptoGain = Math.round(gains.totalCryptoGainIDR);
+                    return (
+                      <>
+                        <span className={roundedCryptoGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedCryptoGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                          {roundedCryptoGain > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalCryptoGainIDR))}
+                        </span>
+                        <span className={roundedCryptoGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedCryptoGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                          ({getMasked(gains.cryptoGainPercent.toFixed(1))}%)
+                        </span>
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
+                  <div style={{ width: `${totals.cryptoPercent}%` }} className="bg-purple-500 h-full rounded-full"></div>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</p>
+              </div>
+            )}
+
+            {cryptoCardView === 'combined' && (
+              <div className="space-y-1 mb-2 animate-fade-in-up">
+                <h2 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">
+                  {getMasked(formatIDR(stablecoinData.combined.valIDR))}
+                </h2>
+                <p className="text-xs text-gray-500 font-mono mb-2">
+                  {getMasked(formatUSD(stablecoinData.combined.valUSD))}
+                  <span className="text-[10px] text-gray-400 ml-1.5 font-sans">({getMasked(formatQuantity(stablecoinData.combined.amount))} Token)</span>
+                </p>
+                <div className="flex items-center gap-2 text-xs">
+                  {(() => {
+                    const roundedGain = Math.round(stablecoinData.combined.gainIDR);
+                    return (
+                      <>
+                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                          {roundedGain > 0 ? '+' : ''}{getMasked(formatIDR(stablecoinData.combined.gainIDR))}
+                        </span>
+                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                          ({getMasked(stablecoinData.combined.gainPercent.toFixed(1))}%)
+                        </span>
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
+                  <div style={{ width: `${Math.min(stablecoinData.combined.percentOfCrypto, 100)}%` }} className="bg-emerald-500 h-full rounded-full"></div>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : stablecoinData.combined.percentOfCrypto.toFixed(1)}% dari total Kripto</p>
+              </div>
+            )}
+
+            {cryptoCardView === 'usdt' && (
+              <div className="space-y-1 mb-2 animate-fade-in-up">
+                <h2 className="text-xl font-bold text-teal-600 dark:text-teal-400 tracking-tight">
+                  {getMasked(formatIDR(stablecoinData.usdt.valIDR))}
+                </h2>
+                <p className="text-xs text-gray-500 font-mono mb-2">
+                  {getMasked(formatUSD(stablecoinData.usdt.valUSD))}
+                  <span className="text-[10px] text-gray-400 ml-1.5 font-sans">({getMasked(formatQuantity(stablecoinData.usdt.amount))} USDT)</span>
+                </p>
+                <div className="flex items-center gap-2 text-xs">
+                  {(() => {
+                    const roundedGain = Math.round(stablecoinData.usdt.gainIDR);
+                    return (
+                      <>
+                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                          {roundedGain > 0 ? '+' : ''}{getMasked(formatIDR(stablecoinData.usdt.gainIDR))}
+                        </span>
+                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                          ({getMasked(stablecoinData.usdt.gainPercent.toFixed(1))}%)
+                        </span>
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
+                  <div style={{ width: `${Math.min(stablecoinData.usdt.percentOfCrypto, 100)}%` }} className="bg-teal-500 h-full rounded-full"></div>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : stablecoinData.usdt.percentOfCrypto.toFixed(1)}% dari total Kripto ({stablecoinData.usdt.count} Akun)</p>
+              </div>
+            )}
+
+            {cryptoCardView === 'usdc' && (
+              <div className="space-y-1 mb-2 animate-fade-in-up">
+                <h2 className="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">
+                  {getMasked(formatIDR(stablecoinData.usdc.valIDR))}
+                </h2>
+                <p className="text-xs text-gray-500 font-mono mb-2">
+                  {getMasked(formatUSD(stablecoinData.usdc.valUSD))}
+                  <span className="text-[10px] text-gray-400 ml-1.5 font-sans">({getMasked(formatQuantity(stablecoinData.usdc.amount))} USDC)</span>
+                </p>
+                <div className="flex items-center gap-2 text-xs">
+                  {(() => {
+                    const roundedGain = Math.round(stablecoinData.usdc.gainIDR);
+                    return (
+                      <>
+                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                          {roundedGain > 0 ? '+' : ''}{getMasked(formatIDR(stablecoinData.usdc.gainIDR))}
+                        </span>
+                        <span className={roundedGain > 0 ? 'text-emerald-600 dark:text-emerald-400' : roundedGain < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'}>
+                          ({getMasked(stablecoinData.usdc.gainPercent.toFixed(1))}%)
+                        </span>
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
+                  <div style={{ width: `${Math.min(stablecoinData.usdc.percentOfCrypto, 100)}%` }} className="bg-blue-500 h-full rounded-full"></div>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : stablecoinData.usdc.percentOfCrypto.toFixed(1)}% dari total Kripto ({stablecoinData.usdc.count} Akun)</p>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Breakdown Helper */}
+          <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between text-[10px] text-gray-500">
+            <span className="font-medium text-gray-400">Stablecoin:</span>
+            <div className="flex items-center gap-2 font-mono">
+              <button
+                type="button"
+                onClick={() => {
+                  setCryptoCardView('usdt');
+                  setCryptoTableFilter('usdt');
+                }}
+                className={`hover:text-teal-500 transition-colors flex items-center gap-1 ${cryptoCardView === 'usdt' ? 'text-teal-600 dark:text-teal-400 font-bold' : ''}`}
+                title="Lihat USDT"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                <span>USDT: {getMasked(formatUSD(stablecoinData.usdt.valUSD))}</span>
+              </button>
+              <span>•</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCryptoCardView('usdc');
+                  setCryptoTableFilter('usdc');
+                }}
+                className={`hover:text-blue-500 transition-colors flex items-center gap-1 ${cryptoCardView === 'usdc' ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}`}
+                title="Lihat USDC"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                <span>USDC: {getMasked(formatUSD(stablecoinData.usdc.valUSD))}</span>
+              </button>
             </div>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
-            <div style={{ width: `${totals.cryptoPercent}%` }} className="bg-purple-500 h-full rounded-full"></div>
-          </div>
-          <p className="text-[10px] text-gray-500 mt-2">{hideBalance ? '•••' : totals.cryptoPercent.toFixed(1)}% {t('fromPortfolio')}</p>
         </div>
 
         {/* 5. Emas */}
@@ -1097,26 +1420,82 @@ export default function Portfolio({
 
         {(activeAssetTab === 'all' || activeAssetTab === 'crypto') && filteredAssets.crypto.length > 0 && (
           <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-            <div className="flex items-center gap-2 mb-4 px-2 justify-between">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                {t('crypto') || 'Kripto'}
-                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">{uniqueFilteredCounts.crypto} {t('asset') || 'Aset'}</span>
-              </h3>
-              <button onClick={(e) => exportPortfolioToCSV('crypto', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors" title={t('exportCrypto') || (language === 'en' ? 'Export Crypto' : 'Ekspor Kripto')}>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4 px-2 justify-between">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  {t('crypto') || 'Kripto'}
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#161b22] px-2 py-1 rounded-full">
+                    {displayedCryptoAssets.length} {t('asset') || 'Aset'}
+                  </span>
+                </h3>
+
+                {/* Stablecoin Quick Filter Pills */}
+                {stablecoinData.hasStablecoins && (
+                  <div className="flex items-center gap-1 p-0.5 bg-gray-100 dark:bg-[#161b22] rounded-xl border border-gray-200 dark:border-gray-800 text-xs">
+                    {[
+                      { id: 'all', label: t('all') || 'Semua' },
+                      { id: 'combined', label: 'USDT+USDC', count: stablecoinData.combined.count },
+                      { id: 'usdt', label: 'USDT', count: stablecoinData.usdt.count },
+                      { id: 'usdc', label: 'USDC', count: stablecoinData.usdc.count },
+                    ].map(st => (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => {
+                          setCryptoTableFilter(st.id);
+                          setCryptoCardView(st.id);
+                        }}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                          cryptoTableFilter === st.id
+                            ? (st.id === 'all'
+                                ? 'bg-purple-600 text-white shadow-sm'
+                                : st.id === 'combined'
+                                  ? 'bg-emerald-600 text-white shadow-sm'
+                                  : st.id === 'usdt'
+                                    ? 'bg-teal-600 text-white shadow-sm'
+                                    : 'bg-blue-600 text-white shadow-sm')
+                            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        {st.label} {st.count !== undefined ? `(${st.count})` : ''}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button onClick={(e) => exportPortfolioToCSV('crypto', e)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors self-end sm:self-auto" title={t('exportCrypto') || (language === 'en' ? 'Export Crypto' : 'Ekspor Kripto')}>
                 <FiDownload className="w-4 h-4" />
               </button>
             </div>
-            <AssetTable
-              type="crypto"
-              assets={filteredAssets.crypto}
-              prices={prices}
-              exchangeRate={exchangeRate}
-              hideBalance={hideBalance}
-              onUpdate={onUpdateCrypto}
-              onDelete={onDeleteCrypto}
-              onSell={onSellCrypto}
-              onPriceRefreshNeeded={onRefreshPrices}
-            />
+
+            {displayedCryptoAssets.length === 0 ? (
+              <div className="p-8 text-center bg-white dark:bg-[#161b22] rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                <p className="text-sm text-gray-500">Tidak ada aset {cryptoTableFilter.toUpperCase()} ditemukan</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCryptoTableFilter('all');
+                    setCryptoCardView('all');
+                  }}
+                  className="mt-2 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline"
+                >
+                  Tampilkan Semua Kripto
+                </button>
+              </div>
+            ) : (
+              <AssetTable
+                type="crypto"
+                assets={displayedCryptoAssets}
+                prices={prices}
+                exchangeRate={exchangeRate}
+                hideBalance={hideBalance}
+                onUpdate={onUpdateCrypto}
+                onDelete={onDeleteCrypto}
+                onSell={onSellCrypto}
+                onPriceRefreshNeeded={onRefreshPrices}
+              />
+            )}
           </div>
         )}
 
