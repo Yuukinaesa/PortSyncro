@@ -1192,16 +1192,21 @@ export default function Portfolio({
           {/* Clean, Non-Intrusive Stablecoin Summary Row */}
           {stablecoinData.hasStablecoins && (
             <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between text-[11px]">
-              <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5 shrink-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                 Stablecoin:
               </span>
-              <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">
-                {getMasked(formatUSD(stablecoinData.combined.valUSD))}
-                <span className="text-gray-400 font-normal text-[10px] ml-1">
-                  ({stablecoinData.combined.percentOfCrypto.toFixed(0)}%)
-                </span>
-              </span>
+              <div
+                className="text-right font-mono"
+                title={`USDT: ${formatUSD(stablecoinData.usdt.valUSD)} (~${formatIDR(stablecoinData.usdt.valIDR)}) | USDC: ${formatUSD(stablecoinData.usdc.valUSD)} (~${formatIDR(stablecoinData.usdc.valIDR)})`}
+              >
+                <div className="font-semibold text-gray-800 dark:text-gray-200 text-[11px] leading-tight">
+                  {getMasked(formatIDR(stablecoinData.combined.valIDR))}
+                </div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">
+                  {getMasked(formatUSD(stablecoinData.combined.valUSD))}
+                </div>
+              </div>
             </div>
           )}
         </div>
