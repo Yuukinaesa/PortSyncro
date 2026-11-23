@@ -497,10 +497,28 @@ export default function Home() {
     }
   }, [pricesLoading, portfolioLoading]);
 
-  // Keep assetsRef in sync with latest assets
+  // Keep assetsRef, userRef, exchangeRateRef, pricesRef in sync
   useEffect(() => {
     assetsRef.current = assets;
   }, [assets]);
+
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  const exchangeRateRef = useRef(exchangeRate);
+  useEffect(() => {
+    exchangeRateRef.current = exchangeRate;
+  }, [exchangeRate]);
+
+  const pricesRef = useRef(prices);
+  useEffect(() => {
+    pricesRef.current = prices;
+  }, [prices]);
+
+  const isFetchingPricesRef = useRef(false);
+  const fetchExchangeRateDataRef = useRef(null);
 
   // Add refs for intervals
   const refreshIntervalRef = useRef(null);
@@ -557,16 +575,22 @@ export default function Home() {
   // Separate function for actual price fetching
   const performPriceFetchRef = useRef(null);
   const performPriceFetch = useCallback(async (retryAttempt = 0) => {
+    const currentUser = userRef.current;
     // Prevent fetching if user is not authenticated
-    if (!user) {
+    if (!currentUser) {
       secureLogger.log('Skip price fetch - User not authenticated');
       return;
     }
 
+    if (isFetchingPricesRef.current) {
+      secureLogger.log('Price fetch already in progress, skipping duplicate call');
+      return;
+    }
+    isFetchingPricesRef.current = true;
     setPricesLoading(true);
 
     try {
-      // CRITICAL FIX: Use assetsRef.current to access latest assets without dependency
+      // Use assetsRef.current to access latest assets without dependency
       const currentAssets = assetsRef.current;
 
       if (!currentAssets) {
@@ -587,8 +611,6 @@ export default function Home() {
           return stock.ticker;
         }
         // Fallback/Default to IDX
-        // If ticker already has .JK, leave it. If not, append .JK.
-        // This ensures compatibility with existing data that might be IDX implied.
         const cleanTicker = stock.ticker.trim().toUpperCase();
         return cleanTicker.endsWith('.JK') ? cleanTicker : `${cleanTicker}.JK`;
       });
@@ -597,7 +619,6 @@ export default function Home() {
         .filter(crypto => crypto && crypto.symbol && crypto.symbol.trim() && crypto.symbol.toUpperCase() !== 'INVALID')
         .map(crypto => crypto.symbol);
 
-      // CRITICAL FIX: Check if we have ANY assets (stocks, crypto, OR gold)
       const hasGold = currentAssets?.gold && currentAssets.gold.length > 0;
 
       if (stockTickers.length === 0 && cryptoSymbols.length === 0 && !hasGold) {
@@ -608,18 +629,18 @@ export default function Home() {
       const requestData = {
         stocks: stockTickers.filter(ticker => ticker && ticker.trim()),
         crypto: cryptoSymbols.filter(symbol => symbol && symbol.trim()),
-        gold: true // CRITICAL: ALWAYS fetch gold prices (needed for all gold assets + new gold input)
+        gold: true // Always fetch gold prices
       };
 
       secureLogger.log(`Fetching prices (Attempt ${retryAttempt}):`, requestData);
 
-      const token = user ? await user.getIdToken() : null;
+      const token = currentUser ? await currentUser.getIdToken() : null;
+      const currentRate = exchangeRateRef.current;
 
       const response = await fetch(`/api/prices?_t=${Date.now()}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Cache-busting headers to prevent PWA/browser caching in production
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0',
@@ -627,10 +648,8 @@ export default function Home() {
         },
         body: JSON.stringify({
           ...requestData,
-          exchangeRate: typeof exchangeRate === 'number' ? exchangeRate : null,
-          // userId is now redundant if token is verified, but keeping for backward compat if needed temporarily
-          userId: user?.uid || null,
-          // Add timestamp to force cache busting at body level too
+          exchangeRate: typeof currentRate === 'number' ? currentRate : null,
+          userId: currentUser?.uid || null,
           timestamp: Date.now()
         }),
       });
@@ -638,33 +657,11 @@ export default function Home() {
       if (!response.ok) {
         if (response.status === 429) {
           secureLogger.warn('Rate limit hit, will retry later');
-          // Mark rate limit hit in refresh optimizer
           refreshOptimizer.markRateLimitHit();
-
-          // Show rate limit notification with retry option
-          setRateLimitNotification({
-            isOpen: true,
-            title: t('rateLimitExceeded'),
-            message: t('rateLimitMessage') + ' Click OK to retry in 30 seconds.',
-            type: 'warning',
-            onConfirm: () => {
-              setRateLimitNotification(null);
-              // Retry after 30 seconds
-              setTimeout(async () => {
-                try {
-                  await performPriceFetchRef.current?.(0);
-                } catch (retryError) {
-                  secureLogger.error('Retry failed:', retryError);
-                }
-              }, 30000);
-            }
-          });
-
-          return; // Don't throw error for rate limiting
+          return;
         }
         secureLogger.warn(`API error: ${response.status}`);
-        // If we already have prices loaded, do NOT show an intrusive blocking modal to disrupt the user
-        const hasExistingPrices = prices && Object.keys(prices).length > 0;
+        const hasExistingPrices = pricesRef.current && Object.keys(pricesRef.current).length > 0;
         if (!hasExistingPrices && retryAttempt >= 1) {
           setRateLimitNotification({
             isOpen: true,
@@ -679,32 +676,12 @@ export default function Home() {
       const data = await response.json();
       secureLogger.log('Received prices:', data.prices);
 
-      // Reset rate limit status on successful request
       refreshOptimizer.resetRateLimit();
-
       updatePrices(data.prices);
-
-      // Check for suspicious 0% changes (Possible stale/failed data)
-      // Only check if we haven't retried too many times
-      if (retryAttempt < 2) {
-        const hasSuspiciousZero = Object.values(data.prices || {}).some(
-          p => p.price > 0 && p.change === 0
-        );
-
-        if (hasSuspiciousZero) {
-          secureLogger.log(`Found suspicious 0% change items. Scheduling auto-retry (Attempt ${retryAttempt + 1})...`);
-          setTimeout(() => {
-            performPriceFetchRef.current?.(retryAttempt + 1);
-          }, 5000); // Retry after 5 seconds
-        }
-      }
-
-      // Note: updatePrices already calls updatePortfolioValues internally
-      // which updates all assets with current prices. No need for rebuildPortfolio here.
 
     } catch (error) {
       secureLogger.error('Error fetching prices:', error);
-      const hasExistingPrices = prices && Object.keys(prices).length > 0;
+      const hasExistingPrices = pricesRef.current && Object.keys(pricesRef.current).length > 0;
       if (!hasExistingPrices && retryAttempt >= 1) {
         setRateLimitNotification({
           isOpen: true,
@@ -714,9 +691,10 @@ export default function Home() {
         });
       }
     } finally {
+      isFetchingPricesRef.current = false;
       setPricesLoading(false);
     }
-  }, [exchangeRate, user, updatePrices, prices, t]);
+  }, [updatePrices]);
 
   useEffect(() => {
     performPriceFetchRef.current = performPriceFetch;
@@ -727,16 +705,14 @@ export default function Home() {
   const fetchPrices = useCallback(async (immediate = false) => {
     if (pricesLoading && !immediate) {
       secureLogger.log('Skipping fetch - already loading prices');
-      return; // Prevent concurrent requests
+      return;
     }
 
-    // Use refresh optimizer to prevent excessive calls
     if (!immediate) {
       await refreshOptimizer.triggerRefresh(async () => {
         await performPriceFetch();
       });
     } else {
-      // For immediate refresh, check if we can refresh or queue it
       if (refreshOptimizer.canRefresh()) {
         await performPriceFetch();
       } else {
@@ -748,7 +724,7 @@ export default function Home() {
     }
   }, [pricesLoading, performPriceFetch]);
 
-  // Update exchange rate function - STABILIZED
+  // Update exchange rate function - STABILIZED & CACHED
   const fetchExchangeRateData = useCallback(async () => {
     try {
       const rateData = await fetchExchangeRate();
@@ -757,9 +733,13 @@ export default function Home() {
       }
     } catch (error) {
       secureLogger.error('Error fetching exchange rate:', error);
-      updateExchangeRate(null);
+      updateExchangeRate(16850);
     }
-  }, [updateExchangeRate]); // Add back the dependency
+  }, [updateExchangeRate]);
+
+  useEffect(() => {
+    fetchExchangeRateDataRef.current = fetchExchangeRateData;
+  }, [fetchExchangeRateData]);
 
   // Manual refresh exchange rate function (for button clicks)
   const handleRefreshExchangeRate = useCallback(async () => {
@@ -770,28 +750,28 @@ export default function Home() {
       }
     } catch (error) {
       secureLogger.error('Error fetching exchange rate:', error);
-      updateExchangeRate(null);
+      updateExchangeRate(16850);
     }
-  }, [updateExchangeRate]); // Add back the dependency
+  }, [updateExchangeRate]);
 
   // Manual trigger for immediate refresh (prices only, not exchange rate)
   const triggerImmediateRefresh = useCallback(async () => {
     secureLogger.log('Manual refresh triggered (prices only)');
     try {
-      await performPriceFetch(); // Force immediate refresh
+      await performPriceFetch();
       rebuildPortfolio();
       secureLogger.log('Manual refresh completed');
     } catch (error) {
       secureLogger.error('Error in manual refresh:', error);
     }
-  }, [performPriceFetch, rebuildPortfolio]); // Add back the dependencies
+  }, [performPriceFetch, rebuildPortfolio]);
 
   // Update prices function
   const triggerPriceUpdate = useCallback(async () => {
     if (assets?.stocks?.length > 0 || assets?.crypto?.length > 0) {
       await performPriceFetch();
     }
-  }, [assets?.stocks?.length, assets?.crypto?.length, performPriceFetch]); // Add back the dependencies
+  }, [assets?.stocks?.length, assets?.crypto?.length, performPriceFetch]);
 
   // Auto-refresh prices after restore when assets are populated
   useEffect(() => {
@@ -799,81 +779,40 @@ export default function Home() {
       const hasAssets = (assets?.stocks?.length > 0 || assets?.crypto?.length > 0);
       if (hasAssets) {
         secureLogger.log('Assets updated after restore, fetching prices...');
-        performPriceFetch(true); // Immediate fetch
+        performPriceFetch(true);
         setRestoreComplete(false);
       }
     }
   }, [assets, restoreComplete, performPriceFetch]);
 
-  // Set up intervals for exchange rate and price updates - OPTIMIZED & PRODUCTION READY
+  // Set up intervals for exchange rate and price updates - STABLE & LEAK-FREE
   useEffect(() => {
-    // Only set up intervals after initialization
     if (!isInitialized) return;
 
-    const logMessage = (msg) => {
-      secureLogger.log(`[AUTO-REFRESH] ${msg}`);
-    };
-
-    logMessage('Setting up refresh intervals - isInitialized: ' + isInitialized);
-
-    // CRITICAL FIX: Reset ref on component mount to ensure refresh works after page reload
-    // This ensures that when user presses F5 (page refresh), prices will be fetched again
-    if (!isInitializingRef.current) {
-      initialRefreshDoneRef.current = false;
-    }
-
-    // Initial refresh when component mounts (immediate) - EVERY TIME PAGE LOADS
-    if (!initialRefreshDoneRef.current && !isInitializingRef.current) {
-      isInitializingRef.current = true;
-
-      logMessage('Starting initial data fetch...');
-      fetchExchangeRateData();
-
-      // Immediate price refresh when web is opened or refreshed - ALWAYS FETCH
-      // CRITICAL: Always fetch prices on load, even if no assets yet (for gold prices)
-      logMessage('IMMEDIATE REFRESH triggered (page load/refresh)');
-      performPriceFetch();
-
+    // Run initial fetch ONCE when initialized
+    if (!initialRefreshDoneRef.current) {
       initialRefreshDoneRef.current = true;
-      isInitializingRef.current = false;
-      logMessage('Initial setup completed');
+      fetchExchangeRateDataRef.current?.();
+      performPriceFetchRef.current?.();
     }
 
-    // Exchange rate update every 5 minutes (less frequent)
-    logMessage('Setting up EXCHANGE RATE interval (every 5 minutes)');
+    // Exchange rate update every 5 minutes
     exchangeIntervalRef.current = setInterval(() => {
-      logMessage('AUTOMATIC EXCHANGE RATE REFRESH triggered (5 minute interval)');
-      fetchExchangeRateData();
+      fetchExchangeRateDataRef.current?.();
     }, 300000);
 
-    // Price refresh every 2 minutes - optimized for better UX
-    // CRITICAL: ALWAYS refresh prices (including gold) even if no gold assets yet
-    // This ensures gold prices are available when user wants to add new gold
-    logMessage('Setting up PRICE REFRESH interval (every 2 minutes)');
+    // Price refresh every 2 minutes
     refreshIntervalRef.current = setInterval(() => {
-      // Access assets from REF to avoid stale closure (since assets is not in dependency)
       const currentAssets = assetsRef.current;
       const hasStocksOrCrypto = (currentAssets?.stocks?.length > 0 || currentAssets?.crypto?.length > 0);
       const hasGold = currentAssets?.gold?.length > 0;
-      const hasAnyAssets = hasStocksOrCrypto || hasGold;
-
-      logMessage(`AUTOMATIC PRICE REFRESH check - hasAssets: ${hasAnyAssets} (stocks/crypto: ${hasStocksOrCrypto}, gold: ${hasGold})`);
-
-      // CRITICAL: Always fetch if we have ANY assets (stocks, crypto, OR gold)
-      // This ensures gold prices always stay fresh for existing gold holdings
-      if (hasAnyAssets) {
-        logMessage('AUTOMATIC PRICE REFRESH triggered (2 minute interval)');
-        performPriceFetch();
-      } else {
-        logMessage('No assets to refresh, skipping automatic refresh');
+      if (hasStocksOrCrypto || hasGold) {
+        performPriceFetchRef.current?.();
       }
-    }, 120000); // Refresh every 2 minutes for better UX
-
-    logMessage('All intervals set up successfully');
+    }, 120000);
 
     // Clean up intervals on unmount
     return () => {
-      logMessage('Cleaning up refresh intervals');
       if (exchangeIntervalRef.current) {
         clearInterval(exchangeIntervalRef.current);
         exchangeIntervalRef.current = null;
@@ -882,13 +821,8 @@ export default function Home() {
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
       }
-      logMessage('Interval cleanup completed');
     };
-    // CRITICAL FIX: 'assets' MUST NOT be in dependencies
-    // Reason: Every price update changes assets, which triggers cleanup/setup loop
-    // Result: Intervals never complete full cycle, auto-refresh NEVER works
-    // Solution: Use assetsRef.current inside callbacks for latest data
-  }, [isInitialized, fetchExchangeRateData, performPriceFetch]); // ✅ Removed 'assets'
+  }, [isInitialized]);
 
 
   // Manual refresh functions
