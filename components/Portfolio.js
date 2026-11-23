@@ -613,8 +613,19 @@ export default function Portfolio({
   const isInvestedActiveMode = investedMode === 'active' && stablecoinData.hasStablecoins;
   const displayedCostIDR = isInvestedActiveMode ? investedBreakdown.activeCostIDR : (gains.totalCost || 0);
   const displayedCostUSD = isInvestedActiveMode ? investedBreakdown.activeCostUSD : (gains.totalCostUSD || 0);
-  const displayedValIDR = isInvestedActiveMode ? investedBreakdown.activeValIDR : (totals.totalIDR || 0);
-  const displayedValUSD = isInvestedActiveMode ? investedBreakdown.activeValUSD : (totals.totalUSD || 0);
+
+  // Nilai pasar khusus aset invested (saham, kripto, emas - tanpa saldo kas bank) setelah kena profit/loss
+  const currentInvestedValIDR = Math.max(0, (gains.totalCost || 0) + (gains.totalGainIDR || 0));
+  const currentInvestedValUSD = Math.max(0, (gains.totalCostUSD || 0) + (gains.totalGainUSD || 0));
+  const displayedInvestedValIDR = isInvestedActiveMode ? investedBreakdown.activeValIDR : currentInvestedValIDR;
+  const displayedInvestedValUSD = isInvestedActiveMode ? investedBreakdown.activeValUSD : currentInvestedValUSD;
+
+  // Total Portofolio Waktu Utuh sebelum kena profit/loss (Modal Invested + Saldo Kas Bank)
+  const initialPortoIDR = (gains.totalCost || 0) + (totals.totalCashIDR || 0);
+  const initialPortoUSD = (gains.totalCostUSD || 0) + (totals.totalCashUSD || 0);
+
+  const displayedValIDR = displayedInvestedValIDR;
+  const displayedValUSD = displayedInvestedValUSD;
   const displayedReturnPercent = isInvestedActiveMode ? investedBreakdown.activeReturnPercent : (gains.gainPercent || 0);
 
   // Search Filter
@@ -699,6 +710,7 @@ export default function Portfolio({
       csvRows.push(['Exchange Rate (1 USD)', formatIDR(exchangeRate)]);
       csvRows.push(['Total Portfolio Value (IDR)', formatIDR(totals.totalIDR)]);
       csvRows.push(['Total Portfolio Value (USD)', formatUSD(totals.totalUSD)]);
+      csvRows.push(['Total Portofolio Utuh Sebelum P/L (Modal + Kas)', `${formatIDR(initialPortoIDR)} (${formatUSD(initialPortoUSD)})`]);
       csvRows.push(['Versi 1: Total Modal Invested (Termasuk USDT & USDC)', `${formatIDR(gains.totalCost)} (${formatUSD(gains.totalCostUSD)})`]);
       csvRows.push(['   - Return Modal Total', `${(gains.gainPercent || 0).toFixed(2)}%`]);
       csvRows.push(['Versi 2: Modal Invested Aktif (Tanpa USDT & USDC)', `${formatIDR(investedBreakdown.activeCostIDR)} (${formatUSD(investedBreakdown.activeCostUSD)})`]);
@@ -883,10 +895,11 @@ export default function Portfolio({
         csvRows.push([]);
         csvRows.push(['=== RINGKASAN PORTOFOLIO / PORTFOLIO SUMMARY ===']);
         csvRows.push(['Total Portofolio (Market Value)', formatIDR(totals.totalIDR), formatUSD(totals.totalUSD)]);
+        csvRows.push(['Total Portofolio Utuh Sebelum P/L (Modal + Kas)', formatIDR(initialPortoIDR), formatUSD(initialPortoUSD)]);
         csvRows.push(['Versi 1: Total Modal Invested (Termasuk USDT & USDC)', formatIDR(gains.totalCost), formatUSD(gains.totalCostUSD), `Return: ${(gains.gainPercent || 0).toFixed(2)}%`]);
         csvRows.push(['Versi 2: Modal Invested Aktif (Tanpa USDT & USDC)', formatIDR(investedBreakdown.activeCostIDR), formatUSD(investedBreakdown.activeCostUSD), `Return Aktif: ${(investedBreakdown.activeReturnPercent || 0).toFixed(2)}%`]);
         csvRows.push(['Standby Stablecoin (USDT + USDC)', formatIDR(investedBreakdown.stablecoinCostIDR), formatUSD(investedBreakdown.stablecoinCostUSD)]);
-        csvRows.push(['Saldo Kas / Bank & E-Wallet', formatIDR(totals.totalBankIDR), formatUSD(totals.totalBankUSD)]);
+        csvRows.push(['Saldo Kas / Bank & E-Wallet', formatIDR(totals.totalCashIDR), formatUSD(totals.totalCashUSD)]);
         csvRows.push(['Total Untung / Rugi (P&L)', formatIDR(gains.totalGainIDR), formatUSD(gains.totalGainUSD)]);
       }
 
@@ -1032,6 +1045,15 @@ export default function Portfolio({
               <p className="text-xs text-gray-500 font-mono">
                 {getMasked(formatUSD(totals.totalUSD))}
               </p>
+              <div
+                className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono pt-0.5"
+                title="Total seluruh kekayaan waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)"
+              >
+                <span>Porto Utuh:</span>
+                <span className="text-gray-600 dark:text-gray-300 font-medium">
+                  {getMasked(formatIDR(initialPortoIDR))}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -1292,12 +1314,23 @@ export default function Portfolio({
                 className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
               ></div>
             </div>
-            <div className="flex justify-between text-[11px] text-gray-400 font-mono">
-              <span title={isInvestedActiveMode ? 'Modal Aktif tanpa USDT/USDC' : 'Total Modal Seluruh Aset'}>
-                Modal: {getMasked(formatIDR(displayedCostIDR))}
+            {/* Modal Invested (Waktu Utuh Sebelum P/L vs Nilai Aset Invested Sekarang) */}
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-gray-400" title={isInvestedActiveMode ? 'Modal Aktif waktu uang masih utuh sebelum kena profit/loss' : 'Modal Invested waktu uang masih utuh sebelum kena profit/loss'}>
+                Modal: <span className="text-gray-700 dark:text-gray-300 font-semibold">{getMasked(formatIDR(displayedCostIDR))}</span>
               </span>
-              <span title={isInvestedActiveMode ? 'Nilai Pasar Aset Fluktuatif tanpa USDT/USDC' : 'Total Nilai Portofolio'}>
-                Nilai: {getMasked(formatIDR(displayedValIDR))}
+              <span className="text-gray-400" title="Nilai pasar aset yang diinvestasikan saat ini (setelah profit/loss)">
+                Nilai: <span className="text-gray-700 dark:text-gray-300 font-semibold">{getMasked(formatIDR(displayedInvestedValIDR))}</span>
+              </span>
+            </div>
+
+            {/* Total Portofolio (Waktu Utuh Sebelum P/L vs Total Portofolio Sekarang) */}
+            <div className="flex justify-between text-[10px] text-gray-400 font-mono pt-1 border-t border-gray-100 dark:border-gray-800/60">
+              <span title="Total portofolio waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)">
+                Porto Utuh: <span className="text-gray-600 dark:text-gray-400 font-medium">{getMasked(formatIDR(initialPortoIDR))}</span>
+              </span>
+              <span title="Total nilai seluruh portofolio sekarang setelah kena profit/loss">
+                Porto Sekarang: <span className="text-gray-600 dark:text-gray-400 font-medium">{getMasked(formatIDR(totals.totalIDR))}</span>
               </span>
             </div>
           </div>
