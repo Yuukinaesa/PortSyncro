@@ -159,39 +159,50 @@ export default async function handler(req, res) {
     const bodyObj = (req.body && typeof req.body === 'object') ? req.body : {};
     const { stocks = [], crypto = [], gold = false, exchangeRate = null } = bodyObj;
 
-    // Validate input
-    if ((!stocks || stocks.length === 0) && (!crypto || crypto.length === 0) && !gold) {
-      return res.status(400).json({
-        message: 'No stocks, crypto, or gold request provided',
-        prices: {},
-        timestamp: new Date().toISOString()
-      });
+    // STRICT TYPE & ARRAY VALIDATION: Check array types before accessing .length
+    if (!Array.isArray(stocks) || !Array.isArray(crypto)) {
+      return res.status(400).json({ message: 'Invalid input format. Stocks and crypto must be arrays.' });
     }
 
     // Limit array size to prevent DoS
     const MAX_ITEMS = 200;
-    if ((stocks && stocks.length > MAX_ITEMS) || (crypto && crypto.length > MAX_ITEMS)) {
-      secureLogger.warn(`Request exceeded max items limit. Stocks: ${stocks?.length}, Crypto: ${crypto?.length}`);
+    if (stocks.length > MAX_ITEMS || crypto.length > MAX_ITEMS) {
+      secureLogger.warn(`Request exceeded max items limit. Stocks: ${stocks.length}, Crypto: ${crypto.length}`);
       return res.status(400).json({
         message: `Too many items. Maximum ${MAX_ITEMS} items allowed per category.`,
         error: 'LIMIT_EXCEEDED'
       });
     }
 
-    if ((stocks && !Array.isArray(stocks)) || (crypto && !Array.isArray(crypto))) {
-      return res.status(400).json({ message: 'Invalid input format. Stocks and crypto must be arrays.' });
+    // STRICT SANITIZATION & WHITELIST: Only allow valid alphanumeric ticker symbols (prevents URL injection and runtime type errors)
+    const safeStocks = stocks
+      .filter(s => typeof s === 'string')
+      .map(s => s.trim().slice(0, 20))
+      .filter(s => /^[A-Za-z0-9.:=\-_^]+$/.test(s));
+
+    const safeCrypto = crypto
+      .filter(c => typeof c === 'string')
+      .map(c => c.trim().slice(0, 20))
+      .filter(c => /^[A-Za-z0-9\-_]+$/.test(c));
+
+    if (safeStocks.length === 0 && safeCrypto.length === 0 && !gold) {
+      return res.status(400).json({
+        message: 'No valid stocks, crypto, or gold request provided',
+        prices: {},
+        timestamp: new Date().toISOString()
+      });
     }
 
     // Parallel fetch with error boundaries
-    const stockPromise = stocks && stocks.length > 0
-      ? fetchStockPrices(stocks).catch(error => {
+    const stockPromise = safeStocks.length > 0
+      ? fetchStockPrices(safeStocks).catch(error => {
         secureLogger.error('Error fetching stock prices:', error);
         return {};
       })
       : Promise.resolve({});
 
-    const cryptoPromise = crypto && crypto.length > 0
-      ? fetchCryptoPrices(crypto).catch(error => {
+    const cryptoPromise = safeCrypto.length > 0
+      ? fetchCryptoPrices(safeCrypto).catch(error => {
         secureLogger.error('Error fetching crypto prices:', error);
         return {};
       })

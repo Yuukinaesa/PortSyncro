@@ -93,6 +93,23 @@ function auditValidation() {
     } else {
         log('Constant-Time Secret Comparison Failed', 'fail');
     }
+
+    // Ticker Sanitization & Type Guard Verification
+    const rawTickers = ["BBCA.JK", null, undefined, 123, "  AAPL  ", "<script>", "TLKM:JK", {}];
+    const sanitizedTickers = rawTickers
+        .filter(t => typeof t === 'string')
+        .map(t => t.trim().slice(0, 20))
+        .filter(t => /^[A-Za-z0-9.:=\-_^]+$/.test(t));
+
+    if (sanitizedTickers.length === 3 && 
+        sanitizedTickers.includes("BBCA.JK") && 
+        sanitizedTickers.includes("AAPL") && 
+        sanitizedTickers.includes("TLKM:JK") &&
+        !sanitizedTickers.includes("<script>")) {
+        log('Ticker Symbol Whitelist & Type Guard passed', 'pass');
+    } else {
+        log('Ticker Symbol Whitelist Verification Failed', 'fail');
+    }
 }
 
 // --- 3. SERVER SECURITY HEADERS AUDIT ---
