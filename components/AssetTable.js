@@ -566,7 +566,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800 bg-white dark:bg-[#161b22]">
               {sortedGroups.map((group, groupIndex) => {
-                const renderRow = (asset, idx, isChild, isSummary) => {
+                const renderRow = (asset, idx, isChild, isSummary, isLastChild = false, totalChildren = 1) => {
                   const val = calculateAssetValue(asset, asset.currency, exchangeRate);
                   const lookupKey = type === 'stock'
                     ? (asset.market === 'US' ? (asset.ticker || '').toUpperCase() : `${(asset.ticker || '').toUpperCase()}.JK`)
@@ -663,32 +663,60 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
 
                   const rowClass = isSummary
-                    ? 'bg-gray-100 dark:bg-[#0d1117] font-semibold text-gray-900 dark:text-white'
+                    ? 'bg-blue-50/40 dark:bg-blue-950/20 font-semibold text-gray-900 dark:text-white border-t border-blue-200/50 dark:border-blue-900/40'
                     : (isChild
-                      ? 'bg-gray-50 dark:bg-[#161b22] text-gray-500 dark:text-gray-400'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300');
+                      ? `bg-gray-50/70 dark:bg-[#121722] text-gray-700 dark:text-gray-300 hover:bg-gray-100/70 dark:hover:bg-[#161d2a] transition-colors ${isLastChild ? 'border-b border-gray-200/80 dark:border-gray-800' : ''}`
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors');
                   const isEditing = type === 'cash' && editingAmountIndex === idx;
 
                   return (
                     <tr key={idx} className={rowClass}>
                       {/* ITEM */}
-                      <td className="px-4 py-4">
+                      <td className={`px-4 py-3.5 ${isChild ? 'pl-6 sm:pl-8' : ''}`}>
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold text-white ${type === 'stock' ? 'bg-blue-600' : type === 'crypto' ? 'bg-purple-600' : type === 'gold' ? 'bg-yellow-600' : 'bg-green-600'}`}>
-                            {(asset.ticker || asset.symbol || '').substring(0, 1)}
-                          </div>
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              {isChild && <span className="text-gray-400 dark:text-gray-600">└─</span>}
-                              <span className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          {!isChild ? (
+                            <div className={`w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold text-white shadow-sm shrink-0 ${type === 'stock' ? 'bg-blue-600' : type === 'crypto' ? 'bg-purple-600' : type === 'gold' ? 'bg-yellow-600' : 'bg-green-600'}`}>
+                              {(asset.ticker || asset.symbol || '').substring(0, 1)}
+                            </div>
+                          ) : (
+                            <div className="w-8 flex items-center justify-center font-mono font-bold text-blue-500/80 dark:text-blue-400/80 text-sm select-none shrink-0">
+                              {isLastChild ? '└─' : '├─'}
+                            </div>
+                          )}
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                                 {asset.ticker || asset.symbol}
                                 {type === 'stock' && asset.market === 'US' && (
                                   <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded font-bold border border-red-200 dark:border-red-900/50">US</span>
                                 )}
                               </span>
-                              {isSummary && <span className="text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 px-1 rounded">{t('total') || 'TOTAL'}</span>}
+                              {isSummary && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-200 px-2 py-0.5 rounded-full font-semibold border border-blue-200 dark:border-blue-800">
+                                    {t('total') || 'Total'} {t('combined') || 'Gabungan'}
+                                  </span>
+                                  <span className="text-[10px] bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-semibold px-2 py-0.5 rounded-full border border-indigo-200/80 dark:border-indigo-800/60">
+                                    {totalChildren} {type === 'stock' ? 'Broker' : (type === 'crypto' ? 'Exchange' : 'Tempat')}
+                                  </span>
+                                </div>
+                              )}
                             </div>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{isSummary ? (t('combined') || 'Gabungan') : (asset.broker || asset.exchange || 'Manual Input')}</span>
+                            <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                              {isSummary ? (
+                                <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                                  Total akumulasi ({totalChildren} {type === 'stock' ? 'broker' : (type === 'crypto' ? 'exchange' : 'tempat')})
+                                </span>
+                              ) : isChild ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-700 dark:text-gray-200 bg-gray-200/80 dark:bg-gray-800 px-2 py-0.5 rounded-md border border-gray-300/70 dark:border-gray-700">
+                                  <span className="text-blue-500">📍</span> {asset.broker || asset.exchange || 'Manual Input'}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                  <span>📍</span> {asset.broker || asset.exchange || 'Manual Input'}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -807,12 +835,35 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
                 const rows = [];
 
+                // Insert visual separation / spacer row between distinct asset groups
+                if (groupIndex > 0) {
+                  rows.push(
+                    <tr
+                      key={`group-gap-${groupIndex}`}
+                      className="!border-y-0 !border-none select-none pointer-events-none"
+                      aria-hidden="true"
+                    >
+                      <td
+                        colSpan={type === 'cash' ? 3 : 8}
+                        className="p-0 !border-none bg-gray-100/75 dark:bg-[#0a0e17] h-3.5 sm:h-4 transition-colors"
+                      >
+                        <div className="h-full w-full flex items-center justify-center px-4">
+                          <div className="w-full border-t border-dashed border-gray-300/70 dark:border-gray-800/80"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+
                 // If multiple assets with same ticker/symbol: show TOTAL row + detail rows
                 if (group.summary && group.assets.length > 1) {
                   // Add summary row with "TOTAL Gabungan" badge
-                  rows.push(renderRow(group.summary, `summary-${groupIndex}`, false, true));
-                  // Then add all detail rows immediately after
-                  group.assets.forEach((asset, i) => rows.push(renderRow(asset, `child-${groupIndex}-${i}`, true, false)));
+                  rows.push(renderRow(group.summary, `summary-${groupIndex}`, false, true, false, group.assets.length));
+                  // Then add all detail rows immediately after with hierarchical tree connectors
+                  group.assets.forEach((asset, i) => {
+                    const isLastChild = i === group.assets.length - 1;
+                    rows.push(renderRow(asset, `child-${groupIndex}-${i}`, true, false, isLastChild, group.assets.length));
+                  });
                 } else if (group.assets.length === 1 && type !== 'cash') {
                   // Single asset: just show it normally
                   rows.push(renderRow(group.assets[0], `single-${groupIndex}`, false, false));
@@ -828,16 +879,10 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
         </div>
       </div>
 
-      {/* Mobile Cards View (Preserved as requested, new Desktop style applied above) */}
-      <div className="block lg:hidden space-y-4">
-        {sortedGroups.flatMap((group, gIdx) => {
-          // Prepare list: if summary exists and multiple assets, show Summary first
-          const mobileAssets = (group.summary && group.assets.length > 1)
-            ? [{ ...group.summary, _isSummary: true }, ...group.assets]
-            : group.assets;
-
-          return mobileAssets.map((asset, idx) => {
-            const isSummary = asset._isSummary;
+      {/* Mobile Cards View */}
+      <div className="block lg:hidden space-y-5">
+        {(() => {
+          const renderMobileCard = (asset, uniqueId, isSummary = false, isChild = false, childIndex = 0, totalChildren = 1) => {
             const assetValue = calculateAssetValue(asset, asset.currency, exchangeRate);
             const lookupKey = type === 'stock'
               ? (asset.market === 'US' ? (asset.ticker || '').toUpperCase() : `${(asset.ticker || '').toUpperCase()}.JK`)
@@ -864,8 +909,6 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
             // Calculate Avg Price & Modal for Mobile -- Sync with Desktop Logic
             let avgIDR = 0, avgUSD = 0, modalIDR = 0, modalUSD = 0, currentIDR = 0, currentUSD = 0;
-
-            // CRITICAL FIX: Use live price from memoizedPrices (same as desktop fix)
             let livePrice = 0;
 
             if (type === 'stock') {
@@ -897,48 +940,100 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
               currentUSD = exchangeRate ? activePrice / exchangeRate : 0;
             }
 
-
-            const isProfit = gainIDR >= 0;
-            const isChangePos = change >= 0;
-
-            const uniqueId = `mobile-${gIdx}-${idx}`;
-            // Check if editing
             const isEditing = type === 'cash' && editingAmountIndex === uniqueId;
 
             return (
-              <div key={uniqueId} className="bg-white dark:bg-[#161b22] rounded-3xl p-5 border border-gray-200 dark:border-gray-800 shadow-sm relative overflow-hidden group">
+              <div
+                key={uniqueId}
+                className={`rounded-3xl p-5 border shadow-sm relative overflow-hidden transition-all ${
+                  isSummary
+                    ? 'bg-blue-50/30 dark:bg-[#121926] border-blue-200 dark:border-blue-900/60 ring-1 ring-blue-500/20'
+                    : isChild
+                    ? 'bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800/80 hover:border-gray-300 dark:hover:border-gray-700'
+                    : 'bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
+                }`}
+              >
                 {/* Top Row: Icon + Ticker + Actions */}
                 <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-sm shadow-inner 
-                      ${type === 'stock' ? 'bg-blue-50 dark:bg-[#1f2937] text-blue-600 dark:text-blue-400' : type === 'crypto' ? 'bg-purple-50 dark:bg-[#1f2937] text-purple-600 dark:text-purple-400' : type === 'gold' ? 'bg-yellow-50 dark:bg-[#1f2937] text-yellow-600 dark:text-yellow-400' : 'bg-green-50 dark:bg-[#1f2937] text-emerald-600 dark:text-emerald-400'}
-                    `}>
-                      {(asset.ticker || asset.symbol || '').substring(0, 2)}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-gray-900 dark:text-white text-base flex items-center gap-2 tracking-tight">
-                        {asset.ticker || asset.symbol}
-                        {type === 'stock' && asset.market === 'US' && <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-bold border border-red-200 dark:border-red-900/50">US</span>}
-                        {(asset.useManualPrice || asset.isManual) && <span className="text-[10px] bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500 px-2 py-0.5 rounded-full font-bold border border-yellow-200 dark:border-yellow-900/50">MANUAL</span>}
-                        {isSummary && <span className="text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 px-1 rounded">{t('total') || 'Total'}</span>}
+                  <div className="flex items-center gap-3 min-w-0">
+                    {!isChild ? (
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-sm shadow-inner shrink-0 ${
+                        type === 'stock' ? 'bg-blue-50 dark:bg-[#1f2937] text-blue-600 dark:text-blue-400' :
+                        type === 'crypto' ? 'bg-purple-50 dark:bg-[#1f2937] text-purple-600 dark:text-purple-400' :
+                        type === 'gold' ? 'bg-yellow-50 dark:bg-[#1f2937] text-yellow-600 dark:text-yellow-400' :
+                        'bg-green-50 dark:bg-[#1f2937] text-emerald-600 dark:text-emerald-400'
+                      }`}>
+                        {(asset.ticker || asset.symbol || '').substring(0, 2)}
+                      </div>
+                    ) : (
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-mono font-bold text-blue-500 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/40 border border-blue-200/50 dark:border-blue-900/40 text-xs shrink-0 select-none">
+                        {childIndex === totalChildren - 1 ? '└─' : '├─'}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-gray-900 dark:text-white text-base flex items-center gap-2 tracking-tight flex-wrap">
+                        <span>{asset.ticker || asset.symbol}</span>
+                        {type === 'stock' && asset.market === 'US' && (
+                          <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-bold border border-red-200 dark:border-red-900/50">US</span>
+                        )}
+                        {(asset.useManualPrice || asset.isManual) && (
+                          <span className="text-[10px] bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500 px-2 py-0.5 rounded-full font-bold border border-yellow-200 dark:border-yellow-900/50">MANUAL</span>
+                        )}
+                        {isSummary && (
+                          <span className="text-[10px] bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-200 px-2 py-0.5 rounded-full font-semibold border border-blue-200 dark:border-blue-800">
+                            {t('total') || 'Total'} {t('combined') || 'Gabungan'}
+                          </span>
+                        )}
                       </h3>
-                      <p className="text-xs text-gray-500 font-mono mt-0.5">{isSummary ? (t('combined') || 'Gabungan') : (type === 'stock' ? asset.broker : (type === 'crypto' ? asset.exchange : (type === 'gold' ? asset.broker : 'Bank')))}</p>
+                      <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        {isSummary ? (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                            {totalChildren} {type === 'stock' ? 'Broker Sekuritas' : (type === 'crypto' ? 'Crypto Exchange' : 'Tempat')}
+                          </span>
+                        ) : isChild ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700">
+                            <span className="text-blue-500">📍</span> {asset.broker || asset.exchange || 'Manual Input'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
+                            <span>📍</span> {asset.broker || asset.exchange || 'Manual Input'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 shrink-0">
                     {!isEditing && !isSummary && (
                       <>
-                        {onUpdate && <button onClick={() => type === 'cash' ? handleEditAmount(uniqueId, asset) : openEditModal(asset)} className="p-3 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl text-blue-600 dark:text-blue-400 border border-gray-200 dark:border-gray-800 transition-colors active:scale-95"><FiEdit2 size={18} /></button>}
-                        {onDelete && <button onClick={() => handleDeleteClick(idx, asset)} className="p-3 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl text-red-600 dark:text-red-500 border border-gray-200 dark:border-gray-800 transition-colors active:scale-95"><FiTrash2 size={18} /></button>}
+                        {onUpdate && (
+                          <button
+                            onClick={() => type === 'cash' ? handleEditAmount(uniqueId, asset) : openEditModal(asset)}
+                            className="p-2.5 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl text-blue-600 dark:text-blue-400 border border-gray-200 dark:border-gray-800 transition-colors active:scale-95"
+                            title="Edit"
+                            aria-label="Edit"
+                          >
+                            <FiEdit2 size={16} />
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            onClick={() => handleDeleteClick(uniqueId, asset)}
+                            className="p-2.5 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl text-red-600 dark:text-red-500 border border-gray-200 dark:border-gray-800 transition-colors active:scale-95"
+                            title="Delete"
+                            aria-label="Delete"
+                          >
+                            <FiTrash2 size={16} />
+                          </button>
+                        )}
                       </>
                     )}
                   </div>
                 </div>
 
-
                 {/* Data Grid */}
                 <div className="flex flex-col gap-3 text-sm mb-4">
-
                   {/* Row 1: Amount & Market Price */}
                   <div className="grid grid-cols-2 gap-3">
                     {/* Amount */}
@@ -954,7 +1049,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                             aria-label={t('editAmount') || 'Edit Amount'}
                           />
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono mt-1 text-right">
-                           Est. Total Aset: {formatIDR(parseFloat(normalizeNumberInput(newAmount)) || 0)}
+                            Est. Total Aset: {formatIDR(parseFloat(normalizeNumberInput(newAmount)) || 0)}
                           </p>
                           <div className="flex justify-end gap-2">
                             <button onClick={() => handleSaveAmount(uniqueId, asset)} className="text-[10px] bg-green-600 px-2 py-1 rounded text-white">Save</button>
@@ -974,7 +1069,6 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     </div>
 
                     {/* Market Price */}
-                    {/* Market Price - Hide for Cash */}
                     {type !== 'cash' && (
                       <div className="text-right p-3 bg-gray-50 dark:bg-[#0d1117] rounded-xl border border-gray-200 dark:border-gray-800/50">
                         <p className="text-gray-500 text-[10px] mb-1 font-semibold uppercase tracking-wider flex justify-end items-center gap-1">
@@ -995,7 +1089,6 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   {/* Row 2: Avg Price & Modal (Cost Basis) */}
                   {type !== 'cash' && (
                     <div className="grid grid-cols-2 gap-3">
-                      {/* Avg Price */}
                       <div className="p-3 bg-gray-50 dark:bg-[#0d1117] rounded-xl border border-gray-200 dark:border-gray-800/50">
                         <p className="text-gray-500 text-[10px] mb-1 font-semibold uppercase tracking-wider">{t('avgPrice')?.toUpperCase() || 'RATA-RATA'}</p>
                         <p className="font-bold text-gray-600 dark:text-gray-300 font-mono text-xs">
@@ -1006,7 +1099,6 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                         </p>
                       </div>
 
-                      {/* Total Cost */}
                       <div className="text-right p-3 bg-gray-50 dark:bg-[#0d1117] rounded-xl border border-gray-200 dark:border-gray-800/50">
                         <p className="text-gray-500 text-[10px] mb-1 font-semibold uppercase tracking-wider">{t('totalCost')?.toUpperCase() || 'MODAL'}</p>
                         <p className="font-bold text-gray-600 dark:text-gray-300 font-mono text-xs">
@@ -1020,17 +1112,15 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   )}
                 </div>
 
-                {/* Footer: Valuation & Profit - Enhanced for better spacing */}
+                {/* Footer: Valuation & Profit */}
                 {type !== 'cash' && (
                   <div className="bg-gray-100/50 dark:bg-[#0d1117] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col gap-4">
-                    {/* Valuation Block */}
                     <div>
                       <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-1">{t('totalValue')?.toUpperCase() || 'NILAI ASET'}</p>
                       <p className="font-bold text-gray-900 dark:text-white text-lg tracking-tight font-mono">{getMasked(formatIDR(valueIDR))}</p>
                       <p className="text-gray-500 dark:text-gray-400 text-xs font-mono">{getMasked(formatUSD(valueUSD))}</p>
                     </div>
 
-                    {/* Profit/Loss Block - Stacked below */}
                     <div>
                       <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-1">{t('profitLoss')?.toUpperCase() || 'P/L'}</p>
                       <div className="flex flex-col">
@@ -1059,17 +1149,66 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   </div>
                 )}
 
-                {
-                  onSell && (
-                    <button onClick={() => handleSellClick(idx, asset)} className="w-full py-4 bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-gray-700 dark:text-gray-200 rounded-xl flex items-center justify-center gap-2 text-sm font-bold border border-gray-300 dark:border-gray-700 transition-all hover:border-gray-400 dark:hover:border-gray-600 active:scale-95 shadow-lg">
-                      <FiDollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />{type === 'cash' ? 'Tarik Saldo' : 'Jual Aset'}
-                    </button>
-                  )
-                }
+                {/* Sell Button - only on individual/child assets, not summary */}
+                {!isSummary && onSell && (
+                  <button
+                    onClick={() => handleSellClick(uniqueId, asset)}
+                    className="w-full mt-3 py-3.5 bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-gray-700 dark:text-gray-200 rounded-xl flex items-center justify-center gap-2 text-sm font-bold border border-gray-300 dark:border-gray-700 transition-all hover:border-gray-400 dark:hover:border-gray-600 active:scale-95 shadow-sm"
+                  >
+                    <FiDollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    {type === 'cash' ? 'Tarik Saldo' : 'Jual Aset'}
+                  </button>
+                )}
               </div>
             );
+          };
+
+          return sortedGroups.map((group, gIdx) => {
+            const isMulti = group.summary && group.assets.length > 1;
+
+            if (isMulti) {
+              return (
+                <div
+                  key={`mobile-group-${gIdx}`}
+                  className="bg-gray-50/70 dark:bg-[#0c1017] rounded-3xl p-3 sm:p-4 border border-blue-200/50 dark:border-blue-900/30 shadow-sm space-y-3"
+                >
+                  {/* Group Header Badge */}
+                  <div className="flex items-center justify-between px-2 pt-1 pb-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                        {group.summary.ticker || group.summary.symbol}
+                      </span>
+                      <span className="text-[10px] bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-200 px-2 py-0.5 rounded-full font-semibold">
+                        Total Gabungan
+                      </span>
+                    </div>
+                    <span className="text-[10px] bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-semibold px-2 py-0.5 rounded-full border border-indigo-200/80 dark:border-indigo-800/60">
+                      {group.assets.length} {type === 'stock' ? 'Broker' : (type === 'crypto' ? 'Exchange' : 'Tempat')}
+                    </span>
+                  </div>
+
+                  {/* Render Summary Card */}
+                  {renderMobileCard({ ...group.summary, _isSummary: true }, `mobile-${gIdx}-summary`, true, false, 0, group.assets.length)}
+
+                  {/* Child Cards Container with Tree Indent */}
+                  <div className="pl-2 sm:pl-3 border-l-2 border-blue-400/40 dark:border-blue-500/40 space-y-3 pt-1">
+                    <div className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5 pb-0.5 px-1">
+                      <span>↳ Rincian Tempat Simpan ({group.assets.length})</span>
+                    </div>
+                    {group.assets.map((asset, cIdx) =>
+                      renderMobileCard(asset, `mobile-${gIdx}-child-${cIdx}`, false, true, cIdx, group.assets.length)
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            // Single Asset Group or Cash
+            return group.assets.map((asset, cIdx) =>
+              renderMobileCard(asset, `mobile-${gIdx}-single-${cIdx}`, false, false, cIdx, 1)
+            );
           });
-        })}
+        })()}
       </div>
 
       {
