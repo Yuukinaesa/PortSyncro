@@ -8,7 +8,7 @@ const options = {
     }
 };
 
-const req = https.get(url, { ...options, rejectUnauthorized: false }, (res) => {
+const req = https.get(url, options, (res) => {
     let data = '';
     res.on('data', c => data += c);
     res.on('end', () => {
