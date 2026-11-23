@@ -126,6 +126,7 @@ export default function Portfolio({
   const [activeAssetTab, setActiveAssetTab] = useState('all');
   const [cryptoTableFilter, setCryptoTableFilter] = useState('all'); // 'all', 'combined', 'usdt', 'usdc'
   const [showInvestedBreakdown, setShowInvestedBreakdown] = useState(false);
+  const [showPlBreakdown, setShowPlBreakdown] = useState(false);
   const [internalHeaderCollapsed, setInternalHeaderCollapsed] = useState(false);
   const isHeaderCollapsed = propIsHeaderCollapsed !== undefined ? propIsHeaderCollapsed : internalHeaderCollapsed;
   const setIsHeaderCollapsed = useCallback((val) => {
@@ -1217,8 +1218,11 @@ export default function Portfolio({
         </div>
       </div>
 
-      {/* BIG P/L Card (Executive Multi-Column Layout) */}
-      <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 sm:p-6 border border-gray-200 dark:border-gray-800 relative group shadow-sm mt-4">
+      {/* BIG P/L Card (Executive Multi-Column Layout with Interactive Breakdown) */}
+      <div 
+        onClick={() => setShowPlBreakdown(prev => !prev)}
+        className="bg-white dark:bg-[#161b22] rounded-2xl p-5 sm:p-6 border border-gray-200 dark:border-gray-800 relative group shadow-sm mt-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700/60 transition-all duration-300"
+      >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Left: Total Gain/Loss Values */}
           <div className="space-y-1">
@@ -1253,8 +1257,27 @@ export default function Portfolio({
 
           {/* Right: Portfolio Health & Return Progress Meter */}
           <div className="w-full md:w-80 lg:w-96 flex flex-col justify-center space-y-2">
-            <div className="flex justify-between text-xs text-gray-500 font-medium">
-              <span>Return Modal</span>
+            <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
+              <div className="flex items-center gap-1.5">
+                <span>Return Modal</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowPlBreakdown(prev => !prev);
+                  }}
+                  className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all duration-200 ${
+                    showPlBreakdown
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900/60'
+                  }`}
+                  title="Klik untuk melihat rincian modal aktif vs stablecoin"
+                >
+                  <MdTouchApp className={`w-3 h-3 ${showPlBreakdown ? '' : 'animate-pulse'}`} />
+                  <span>{showPlBreakdown ? 'Tutup' : 'Tap Rincian'}</span>
+                  <FiChevronDown className={`w-3 h-3 transition-transform duration-300 ${showPlBreakdown ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
               <span className="font-mono font-bold text-gray-700 dark:text-gray-300">
                 {hideBalance ? '•••' : `${Math.abs(gains.gainPercent).toFixed(1)}%`}
               </span>
@@ -1271,6 +1294,74 @@ export default function Portfolio({
             </div>
           </div>
         </div>
+
+        {/* Interactive P/L Modal Breakdown (Toggled via Tap/Click) */}
+        {showPlBreakdown && (
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-800 space-y-2.5 text-xs animate-in fade-in slide-in-from-top-1 duration-200"
+          >
+            <div className="flex items-center justify-between text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+              <span className="flex items-center gap-1.5">
+                <span>Rincian Modal & Imbal Hasil</span>
+                <span className="text-[10px] text-gray-400 font-normal">(Modal Aktif vs Standby Stablecoin)</span>
+              </span>
+              <span className="text-[10px] text-gray-400 font-mono">Total Modal: {getMasked(formatIDR(gains.totalCost))}</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* 1. Modal Aktif */}
+              <div className="bg-gray-50/80 dark:bg-[#0d1117] p-3 rounded-xl border border-gray-100 dark:border-gray-800/80">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-800 dark:text-gray-200">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span>Modal Aktif (Fluktuatif)</span>
+                  </span>
+                  <span className="text-xs font-bold text-gray-900 dark:text-white font-mono">
+                    {getMasked(formatIDR(investedBreakdown.activeCostIDR))}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
+                  <span>Saham, Kripto (non-stable) & Emas</span>
+                  <span className={`font-mono font-semibold ${
+                    gains.totalGainIDR < 0 ? 'text-rose-500' : 'text-emerald-500'
+                  }`}>
+                    Return Aktif: {investedBreakdown.activeCostIDR > 0 ? `${((gains.totalGainIDR / investedBreakdown.activeCostIDR) * 100).toFixed(1)}%` : '0%'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 2. Standby Stablecoin */}
+              <div className="bg-emerald-50/40 dark:bg-[#0d1117] p-3 rounded-xl border border-emerald-100 dark:border-gray-800/80">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Standby (Stablecoin)</span>
+                  </span>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                    {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    {investedBreakdown.usdtUSD > 0 && (
+                      <span>USDT: <strong className="text-gray-700 dark:text-gray-300 font-mono">{getMasked(formatUSD(investedBreakdown.usdtUSD))}</strong></span>
+                    )}
+                    {investedBreakdown.usdcUSD > 0 && (
+                      <span>USDC: <strong className="text-gray-700 dark:text-gray-300 font-mono">{getMasked(formatUSD(investedBreakdown.usdcUSD))}</strong></span>
+                    )}
+                    {!investedBreakdown.hasStablecoins && <span>$0.00 (0%)</span>}
+                  </div>
+                  <span className="font-mono">~{getMasked(formatIDR(investedBreakdown.stablecoinCostIDR))}</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[9.5px] text-gray-400 dark:text-gray-500 italic pt-0.5 leading-tight">
+              *Return Modal total ({Math.abs(gains.gainPercent).toFixed(1)}%) dihitung dari seluruh modal termasuk stablecoin. Return Aktif hanya mengukur performa aset yang bergerak.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )}
