@@ -655,7 +655,9 @@ export default function Portfolio({
 
       const escape = (str) => {
         if (str === null || str === undefined) return '""';
-        return `"${String(str).replace(/"/g, '""')}"`;
+        let s = String(str);
+        if (s.startsWith('=')) s = "'" + s;
+        return `"${s.replace(/"/g, '""')}"`;
       };
 
       // Helper to format number for CSV (avoiding currency symbols for easier calculation in Excel if desired, 
@@ -798,7 +800,8 @@ export default function Portfolio({
         });
       }
 
-      const csvContent = csvRows.map(row => row.map(escape).join(",")).join("\n");
+      const BOM = '\uFEFF';
+      const csvContent = BOM + csvRows.map(row => row.map(escape).join(",")).join("\n");
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
