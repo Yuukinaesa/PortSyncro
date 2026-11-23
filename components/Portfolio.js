@@ -839,6 +839,87 @@ export default function Portfolio({
         </div>
       </div>
 
+      {/* Control Panel Bar (Sticky - sticks directly below top navbar, following smoothly on scroll) */}
+      {!isHeaderCollapsed && (
+        <div className="sticky top-14 sm:top-16 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/95 dark:bg-[#0d1117]/95 backdrop-blur-md transition-all">
+          <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-2.5 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-sm">
+            {/* Row 1: Category Tabs */}
+            <div className="flex items-center gap-2 sm:gap-4 w-full xl:w-auto">
+              <div className="flex items-center gap-1.5 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="grid grid-cols-5 gap-1 w-full min-w-[320px] md:min-w-0 md:flex md:space-x-1">
+                  {['all', 'cash', 'stock', 'crypto', 'gold'].map(tab => {
+                    const count = tab === 'all'
+                      ? assetCount.stocks + assetCount.crypto + assetCount.gold + assetCount.cash
+                      : (tab === 'cash' ? assetCount.cash : (tab === 'stock' ? assetCount.stocks : (tab === 'gold' ? assetCount.gold : assetCount.crypto)));
+                    const labels = {
+                      all: t('all') || 'Semua',
+                      cash: t('bank') || 'Bank',
+                      stock: t('stocks') || 'Saham',
+                      crypto: t('crypto') || 'Kripto',
+                      gold: t('gold') || 'Emas'
+                    };
+                    const isActive = activeAssetTab === tab;
+
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveAssetTab(tab)}
+                        className={`
+                            px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-xl flex flex-col items-center justify-center transition-all duration-200 w-full md:w-auto md:min-w-[80px]
+                            ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200'}
+                         `}
+                      >
+                        <span className="text-[11px] sm:text-xs font-bold truncate w-full text-center">{labels[tab]}</span>
+                        <span className="text-[10px] opacity-80">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Action Buttons */}
+            <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-0.5 justify-start xl:justify-end shrink-0">
+              {/* Refresh */}
+              <button onClick={handleRefresh} className="h-9 w-9 sm:h-10 sm:w-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl flex items-center justify-center text-gray-500 dark:text-gray-400 transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95 flex-shrink-0" title="Refresh">
+                <FiRefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${debouncedLoading ? "animate-spin text-blue-500" : ""}`} />
+              </button>
+
+              {/* Action buttons group */}
+              {/* Export */}
+              <button onClick={(e) => exportPortfolioToCSV('all', e)} className="h-9 sm:h-10 bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all border border-gray-200 dark:border-gray-700 hover:scale-105 active:scale-95 flex-shrink-0">
+                <FiDownload className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">{t('exportPortfolio') || 'Ekspor'}</span>
+              </button>
+
+              {/* WA */}
+              <button onClick={copyToWhatsApp} className="h-9 sm:h-10 bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 flex-shrink-0">
+                <FaWhatsapp className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t('copy') || (language === 'en' ? 'Copy' : 'Salin')}</span>
+              </button>
+
+              {/* Snap */}
+              <button onClick={() => onSnap && onSnap()} className="h-9 sm:h-10 bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95 flex-shrink-0" title={t('snap') || 'Snap'}>
+                <FiCamera className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t('snap') || 'Snap'}</span>
+              </button>
+
+              {/* Settings */}
+              <button onClick={onOpenSettings} className="h-9 sm:h-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95 flex-shrink-0">
+                <FiSettings className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t('settings') || 'Settings'}</span>
+              </button>
+
+              {/* Add */}
+              <button onClick={() => onAddAsset && onAddAsset()} className="h-9 sm:h-10 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95 flex-shrink-0">
+                <FiPlusCircle className="w-3.5 h-3.5" />
+                <span>{t('add') || 'Tambah'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards Grid & Profit/Loss Banner (Collapsible via isHeaderCollapsed) */}
       {!isHeaderCollapsed && (
         <div className="space-y-6 transition-all duration-300">
@@ -1082,84 +1163,7 @@ export default function Portfolio({
     </div>
   )}
 
-      {/* Control Panel Bar (Sticky - sticks directly below top navbar, following smoothly on scroll) */}
-      <div className="sticky top-14 sm:top-16 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/95 dark:bg-[#0d1117]/95 backdrop-blur-md transition-all">
-        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-2.5 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-sm">
-          {/* Row 1: Category Tabs */}
-          <div className="flex items-center gap-2 sm:gap-4 w-full xl:w-auto">
-            <div className="flex items-center gap-1.5 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <div className="grid grid-cols-5 gap-1 w-full min-w-[320px] md:min-w-0 md:flex md:space-x-1">
-                {['all', 'cash', 'stock', 'crypto', 'gold'].map(tab => {
-                  const count = tab === 'all'
-                    ? assetCount.stocks + assetCount.crypto + assetCount.gold + assetCount.cash
-                    : (tab === 'cash' ? assetCount.cash : (tab === 'stock' ? assetCount.stocks : (tab === 'gold' ? assetCount.gold : assetCount.crypto)));
-                  const labels = {
-                    all: t('all') || 'Semua',
-                    cash: t('bank') || 'Bank',
-                    stock: t('stocks') || 'Saham',
-                    crypto: t('crypto') || 'Kripto',
-                    gold: t('gold') || 'Emas'
-                  };
-                  const isActive = activeAssetTab === tab;
 
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveAssetTab(tab)}
-                      className={`
-                          px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-xl flex flex-col items-center justify-center transition-all duration-200 w-full md:w-auto md:min-w-[80px]
-                          ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200'}
-                       `}
-                    >
-                      <span className="text-[11px] sm:text-xs font-bold truncate w-full text-center">{labels[tab]}</span>
-                      <span className="text-[10px] opacity-80">({count})</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Row 2: Action Buttons */}
-          <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-0.5 justify-start xl:justify-end shrink-0">
-            {/* Refresh */}
-            <button onClick={handleRefresh} className="h-9 w-9 sm:h-10 sm:w-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl flex items-center justify-center text-gray-500 dark:text-gray-400 transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95 flex-shrink-0" title="Refresh">
-              <FiRefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${debouncedLoading ? "animate-spin text-blue-500" : ""}`} />
-            </button>
-
-            {/* Action buttons group */}
-            {/* Export */}
-            <button onClick={(e) => exportPortfolioToCSV('all', e)} className="h-9 sm:h-10 bg-gray-100 dark:bg-[#1f2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-emerald-600 dark:text-emerald-400 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all border border-gray-200 dark:border-gray-700 hover:scale-105 active:scale-95 flex-shrink-0">
-              <FiDownload className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">{t('exportPortfolio') || 'Ekspor'}</span>
-            </button>
-
-            {/* WA */}
-            <button onClick={copyToWhatsApp} className="h-9 sm:h-10 bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 flex-shrink-0">
-              <FaWhatsapp className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t('copy') || (language === 'en' ? 'Copy' : 'Salin')}</span>
-            </button>
-
-            {/* Snap */}
-            <button onClick={() => onSnap && onSnap()} className="h-9 sm:h-10 bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800/30 hover:scale-105 active:scale-95 flex-shrink-0" title={t('snap') || 'Snap'}>
-              <FiCamera className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t('snap') || 'Snap'}</span>
-            </button>
-
-            {/* Settings */}
-            <button onClick={onOpenSettings} className="h-9 sm:h-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95 flex-shrink-0">
-              <FiSettings className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t('settings') || 'Settings'}</span>
-            </button>
-
-            {/* Add */}
-            <button onClick={() => onAddAsset && onAddAsset()} className="h-9 sm:h-10 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95 flex-shrink-0">
-              <FiPlusCircle className="w-3.5 h-3.5" />
-              <span>{t('add') || 'Tambah'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Floating Price Loading Indicator (Docked to Bottom-Right, Non-Intrusive) */}
       {debouncedLoading && (
