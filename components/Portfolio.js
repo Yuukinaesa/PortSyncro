@@ -132,25 +132,7 @@ export default function Portfolio({
       onToggleHeaderCollapse(val);
     }
   }, [onToggleHeaderCollapse]);
-  const [isActionCollapsed, setIsActionCollapsed] = useState(false);
-  const [isAutoHidden, setIsAutoHidden] = useState(false);
-  const lastScrollYRef = useRef(0);
 
-  // Auto-collapse actions on mobile when scrolling down to keep viewport clean
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentY = window.scrollY;
-      if (currentY > 120 && currentY > lastScrollYRef.current + 10) {
-        setIsAutoHidden(true);
-      } else if (currentY < lastScrollYRef.current - 10 || currentY <= 50) {
-        setIsAutoHidden(false);
-      }
-      lastScrollYRef.current = currentY;
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const [notification, setNotification] = useState(null);
   const { t, language } = useLanguage();
@@ -854,10 +836,10 @@ export default function Portfolio({
         </div>
       </div>
 
-      {/* Control Panel Bar (Sticky & Frosted: top-16 on desktop, top-[112px] on mobile) */}
+      {/* Control Panel Bar (Clean static layout - scrolls naturally with page, zero floating bugs) */}
       {isHeaderCollapsed ? null : (
-        <div className="sticky top-[112px] md:top-16 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-gray-50/90 dark:bg-[#0d1117]/90 backdrop-blur-xl transition-all duration-300">
-          <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-2.5 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-md dark:shadow-black/40">
+        <div className="w-full transition-all duration-300">
+          <div className="bg-white dark:bg-[#161b22] rounded-2xl p-2.5 sm:p-3 flex flex-col xl:flex-row items-center justify-between gap-2.5 sm:gap-4 border border-gray-200 dark:border-gray-800 shadow-sm">
             {/* Row 1: Category Tabs */}
             <div className="flex items-center gap-2 sm:gap-4 w-full xl:w-auto">
               <div className="flex items-center gap-1.5 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -893,14 +875,8 @@ export default function Portfolio({
               </div>
             </div>
 
-            {/* Row 2: Action Buttons (Smooth auto-collapse on mobile scroll or toggle) */}
-            <div
-              className={`
-                flex items-center gap-2 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-0.5 justify-start xl:justify-end transition-all duration-300
-                ${(isActionCollapsed || isAutoHidden) ? 'max-h-0 xl:max-h-none opacity-0 xl:opacity-100 overflow-hidden pointer-events-none xl:pointer-events-auto py-0 my-0' : 'max-h-20 opacity-100'}
-              `}
-              style={{ flexShrink: 0 }}
-            >
+            {/* Row 2: Action Buttons */}
+            <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-0.5 justify-start xl:justify-end shrink-0">
               {/* Refresh */}
               <button onClick={handleRefresh} className="h-9 w-9 sm:h-10 sm:w-10 bg-gray-100 dark:bg-[#0d1117] hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl flex items-center justify-center text-gray-500 dark:text-gray-400 transition-all border border-gray-200 dark:border-gray-800 hover:scale-105 active:scale-95 flex-shrink-0" title="Refresh">
                 <FiRefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${debouncedLoading ? "animate-spin text-blue-500" : ""}`} />
