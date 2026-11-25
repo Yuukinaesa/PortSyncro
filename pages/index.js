@@ -3110,8 +3110,8 @@ export default function Home() {
 
       let transactionsData = [];
 
-      // Check if it's new format (v2.0) or legacy format
-      if (data.version === '2.0' && data.portfolio) {
+      // Check if it's new format (v2.x or object with portfolio & transactions) or legacy format
+      if ((data.version?.startsWith('2.') || (data.portfolio && Array.isArray(data.transactions))) && data.portfolio) {
         // New format - use transactions directly
         transactionsData = data.transactions || [];
       } else if (Array.isArray(data)) {

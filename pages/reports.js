@@ -635,7 +635,7 @@ export default function Reports() {
             'Date',
             'Day',
             `Total Value ${currencyLabel}`,
-            `Initial Portfolio / Porto Utuh ${currencyLabel}`,
+            `Modal Awal + Kas / Porto Utuh ${currencyLabel}`,
             `Total Invested (Inc. Stable) ${currencyLabel}`,
             `Active Invested (Excl. Stable) ${currencyLabel}`,
             `Net Profit ${currencyLabel}`,
@@ -784,7 +784,7 @@ export default function Reports() {
         const initialPortoVal = currency === 'IDR' ? initialPorto : (initialPorto / impliedRate);
 
         csvRows.push(['Metric', `Value (${currencyLabel})`, 'Percentage']);
-        csvRows.push(['Initial Portfolio / Porto Utuh', fmtCurrency(initialPortoVal), '🌱']);
+        csvRows.push(['Modal Awal + Kas (Porto Utuh)', fmtCurrency(initialPortoVal), '🌱']);
         csvRows.push(['Current Portfolio', fmtCurrency(endVal), '💰']);
         csvRows.push(['Total Invested', fmtCurrency(invested), '📦']);
         csvRows.push(['Net Change', (netChange >= 0 ? '+' : '') + fmtCurrency(netChange), (netChange >= 0 ? '+' : '') + netChangePct.toFixed(1) + '%']);

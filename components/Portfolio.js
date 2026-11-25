@@ -712,12 +712,12 @@ export default function Portfolio({
       csvRows.push(['Exchange Rate (1 USD)', formatIDR(exchangeRate)]);
       csvRows.push(['Total Portfolio Value (IDR)', formatIDR(totals.totalIDR)]);
       csvRows.push(['Total Portfolio Value (USD)', formatUSD(totals.totalUSD)]);
-      csvRows.push(['Total Portofolio Utuh Sebelum P/L (Modal + Kas)', `${formatIDR(initialPortoIDR)} (${formatUSD(initialPortoUSD)})`]);
-      csvRows.push(['Versi 1: Total Modal Invested (Termasuk USDT & USDC)', `${formatIDR(gains.totalCost)} (${formatUSD(gains.totalCostUSD)})`]);
+      csvRows.push(['Modal Awal + Kas Sebelum P/L (Porto Utuh)', `${formatIDR(initialPortoIDR)} (${formatUSD(initialPortoUSD)})`]);
+      csvRows.push(['Modal Beli Investasi (Termasuk Stablecoin)', `${formatIDR(gains.totalCost)} (${formatUSD(gains.totalCostUSD)})`]);
       csvRows.push(['   - Return Modal Total', `${(gains.gainPercent || 0).toFixed(2)}%`]);
-      csvRows.push(['Versi 2: Modal Invested Aktif (Tanpa USDT & USDC)', `${formatIDR(investedBreakdown.activeCostIDR)} (${formatUSD(investedBreakdown.activeCostUSD)})`]);
+      csvRows.push(['Modal Beli Aktif (Tanpa Stablecoin)', `${formatIDR(investedBreakdown.activeCostIDR)} (${formatUSD(investedBreakdown.activeCostUSD)})`]);
       csvRows.push(['   - Return Modal Aktif', `${(investedBreakdown.activeReturnPercent || 0).toFixed(2)}%`]);
-      csvRows.push(['Standby Stablecoin (USDT + USDC)', `${formatUSD(investedBreakdown.stablecoinCostUSD)} (~${formatIDR(investedBreakdown.stablecoinCostIDR)})`]);
+      csvRows.push(['Standby Stablecoin (Kas USD)', `${formatUSD(investedBreakdown.stablecoinCostUSD)} (~${formatIDR(investedBreakdown.stablecoinCostIDR)})`]);
       csvRows.push(['Total Untung/Rugi (P&L)', `${formatIDR(gains.totalGainIDR)} (${formatUSD(gains.totalGainUSD)})`]);
       csvRows.push([]); // Empty row
 
