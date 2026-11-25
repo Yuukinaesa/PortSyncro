@@ -12,7 +12,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { isDemoAccountAvailable } from '../lib/utils';
-import { secureLogger, validateInput } from './../lib/security';
+import { secureLogger, validateInput, timingSafeCompare } from './../lib/security';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUserPlus, FiActivity } from 'react-icons/fi';
 
 
@@ -33,7 +33,7 @@ export default function Register() {
     setError('');
     setLoading(true);
 
-    if (password !== confirmPassword) {
+    if (!timingSafeCompare(password, confirmPassword)) {
       setError(t('passwordsDoNotMatch'));
       setLoading(false);
       return;

@@ -8,7 +8,9 @@ export default [
       "out/**",
       "build/**",
       "next-env.d.ts",
-      "node_modules/**"
+      "node_modules/**",
+      "public/**",
+      "scripts/**"
     ]
   },
   pluginSecurity.configs.recommended,

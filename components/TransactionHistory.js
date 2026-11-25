@@ -245,8 +245,7 @@ export default function TransactionHistory({
 
     if (currency === 'IDR') {
       // For IDR, format with dot as thousands separator
-      const rounded = Math.round(num);
-      return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return formatNumber(Math.round(num));
     } else {
       // For USD, format with comma as thousands separator and 2 decimal places
       return num.toLocaleString('en-US', {

@@ -618,7 +618,7 @@ export default function Reports() {
 
         const csvRows = [];
         const escape = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
-        const fmtIDR = (n) => 'Rp.' + Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const fmtIDR = (n) => formatIDR(Math.round(n || 0));
         const fmtUSD = (n) => '$' + parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const fmtQty = (n) => parseFloat(n || 0).toLocaleString('id-ID', { maximumFractionDigits: 7 });
 
@@ -741,7 +741,7 @@ export default function Reports() {
             return;
         }
 
-        const fmtIDR = (n) => 'Rp.' + Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const fmtIDR = (n) => formatIDR(Math.round(n || 0));
         const fmtUSD = (n) => '$' + parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const escape = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
 
