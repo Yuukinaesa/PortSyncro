@@ -5,6 +5,7 @@ const path = require('path');
 // Scripts are located in the same directory as this runner
 const scripts = [
     { name: 'Security Scan', file: 'audit_security_scan.js' },
+    { name: 'Deep Secret Scan', file: 'audit_deep_scan.js' },
     { name: 'Strict Logic', file: 'strict_logic_test.mjs' },
     { name: 'Strict Workflow', file: 'strict_workflow_test.mjs' },
     { name: 'Environment Verify', file: 'audit_test_verify_env.js' },

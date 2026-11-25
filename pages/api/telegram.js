@@ -57,12 +57,33 @@ export default async function handler(req, res) {
       });
     }
 
-    const host = req.headers.host;
-    const proto = req.headers['x-forwarded-proto'] || 'https';
-    const currentWebhookUrl = `${proto}://${host}/api/telegram`;
+    const rawHost = (req.headers.host || '').toLowerCase().trim();
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // Strict host validation to prevent Host Header Injection / Webhook hijacking
+    const isAllowedHost = rawHost === 'portsyncro.arfan.biz.id' || 
+                          rawHost.endsWith('.vercel.app') || 
+                          rawHost.startsWith('localhost') || 
+                          rawHost.startsWith('127.0.0.1');
+
+    // Canonical deployment URL pinned strictly to trusted domains
+    let targetBaseUrl = 'https://portsyncro.arfan.biz.id';
+    if (!isProduction && (rawHost.startsWith('localhost') || rawHost.startsWith('127.0.0.1'))) {
+      targetBaseUrl = `http://${rawHost}`;
+    } else if (rawHost.endsWith('.vercel.app')) {
+      targetBaseUrl = `https://${rawHost}`;
+    }
+    const currentWebhookUrl = `${targetBaseUrl}/api/telegram`;
 
     // 1-Click Setup: Register webhook & bot commands
     if (req.query.setup === 'true' || req.query.setWebhook === 'true') {
+      if (!isAllowedHost) {
+        return res.status(403).json({
+          ok: false,
+          error: 'Forbidden: Untrusted host header detected.'
+        });
+      }
+
       try {
         const setupPayload = {
           url: currentWebhookUrl,
@@ -106,6 +127,9 @@ export default async function handler(req, res) {
         // Query fresh webhook info after setup
         const infoResp = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
         const infoResult = await infoResp.json();
+        if (infoResult.result && infoResult.result.ip_address) {
+          delete infoResult.result.ip_address; // Prevent exposing server egress IP
+        }
 
         return res.status(200).json({
           ok: setResult.ok,
@@ -132,6 +156,10 @@ export default async function handler(req, res) {
       ]);
       const meData = await meResp.json();
       const infoData = await infoResp.json();
+
+      if (infoData.result && infoData.result.ip_address) {
+        delete infoData.result.ip_address; // Prevent exposing server egress IP
+      }
 
       const registeredUrl = infoData.result?.url || '';
       const isMatching = registeredUrl === currentWebhookUrl;
