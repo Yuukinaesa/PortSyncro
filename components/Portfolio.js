@@ -1050,22 +1050,24 @@ export default function Portfolio({
             </div>
             {/* Modal Awal + Kas (Sebelum P/L) */}
             <div
-              className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-800/80"
+              className="flex items-center justify-between gap-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-800/80"
               title={t('initialPortoDesc') || (language === 'en' ? 'Total net worth before gains/losses (Invested Capital + Cash Balance)' : 'Total seluruh kekayaan waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)')}
             >
-              <span className="font-medium text-gray-600 dark:text-gray-300">{t('initialPorto') || (language === 'en' ? 'Initial Capital + Cash' : 'Modal Awal + Kas')}:</span>
-              <span className="font-mono font-bold text-gray-900 dark:text-gray-100">
-                {getMasked(formatIDR(initialPortoIDR))}
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsMetricsGuideOpen(true)}
-                className="text-gray-400 hover:text-blue-500 transition-colors p-0.5"
-                title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
-                aria-label="Metrics Guide"
-              >
-                <FiInfo className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1 min-w-0">
+                <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{t('initialPorto') || 'Modal Awal + Kas'}:</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 font-mono font-bold text-gray-900 dark:text-gray-100">
+                <span>{getMasked(formatIDR(initialPortoIDR))}</span>
+                <button
+                  type="button"
+                  onClick={() => setIsMetricsGuideOpen(true)}
+                  className="text-gray-400 hover:text-blue-500 transition-colors p-0.5"
+                  title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
+                  aria-label="Metrics Guide"
+                >
+                  <FiInfo className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
 

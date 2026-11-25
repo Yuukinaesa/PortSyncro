@@ -3592,7 +3592,7 @@ export default function Home() {
             </div>
 
             {/* Center: Search Bar */}
-            <div className="flex-1 max-w-[140px] xs:max-w-[180px] sm:max-w-sm md:max-w-xs lg:max-w-sm mx-1 sm:mx-2">
+            <div className="flex-1 min-w-[120px] xs:min-w-[140px] max-w-[160px] xs:max-w-[200px] sm:max-w-xs md:max-w-sm lg:max-w-md mx-1 sm:mx-2">
               <div className="relative group w-full">
                 <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
                   <FiSearch className="w-3.5 h-3.5" />
@@ -3610,7 +3610,7 @@ export default function Home() {
                     }
                   }}
                   placeholder={t('searchPlaceholder') || (language === 'en' ? 'Search...' : 'Cari...')}
-                  className="w-full bg-gray-100/90 dark:bg-[#161b22] hover:bg-gray-100 dark:hover:bg-[#1c222c] focus:bg-white dark:focus:bg-[#0d1117] text-gray-900 dark:text-white pl-8 sm:pl-9 pr-7 sm:pr-8 py-1.5 text-xs rounded-xl border border-gray-200/80 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className="w-full bg-gray-100/90 dark:bg-[#161b22] hover:bg-gray-100 dark:hover:bg-[#1c222c] focus:bg-white dark:focus:bg-[#0d1117] text-gray-900 dark:text-white pl-7 sm:pl-8 pr-6 sm:pr-7 py-1.5 text-xs rounded-xl border border-gray-200/80 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 />
                 {searchQuery ? (
                   <button
