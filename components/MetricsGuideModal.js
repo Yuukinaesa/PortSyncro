@@ -55,62 +55,59 @@ export default function MetricsGuideModal({ isOpen, onClose }) {
         {/* Body Content */}
         <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar text-xs leading-relaxed text-gray-600 dark:text-gray-300">
           
-          {/* Card 1: Porto Utuh */}
-          <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/50">
-            <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300 text-sm mb-1.5">
-              <span>🌱</span>
-              <h4>{t('guideInitialPortoTitle') || (isEn ? 'Pre-P/L Portfolio (Porto Utuh)' : 'Porto Utuh (Sebelum P/L)')}</h4>
+          {/* Card 1: Modal Awal + Kas */}
+          <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/50">
+            <div className="font-bold text-emerald-800 dark:text-emerald-300 text-sm mb-1.5">
+              <h4>{t('guideInitialPortoTitle') || (isEn ? '🌱 Initial Capital + Cash (Pre-P/L)' : '🌱 Modal Awal + Kas (Porto Utuh)')}</h4>
             </div>
-            <p>
+            <p className="leading-relaxed">
               {isEn
-                ? 'Your intact net worth before any market gains or losses. Calculated as: Invested Capital (Stocks + Crypto + Gold) + Cash Balance (Bank & E-Wallet).'
-                : 'Total seluruh kekayaan Anda waktu uang masih utuh sebelum mengalami keuntungan atau kerugian pasar. Dihitung dari: Modal Investasi (Saham + Kripto + Emas) + Saldo Kas (Bank & E-Wallet).'}
+                ? 'Your total money before any market gains or losses. It is calculated from: Capital spent to buy assets (Stocks + Crypto + Gold) + Cash remaining in your accounts (Bank & E-Wallet).'
+                : 'Total seluruh uang Anda saat masih utuh sebelum mengalami keuntungan atau kerugian pasar. Dihitung dari: Modal Beli Aset (Saham + Kripto + Emas) + Saldo Kas (Bank & E-Wallet).'}
             </p>
-            <div className="mt-2 pt-2 border-t border-emerald-200/50 dark:border-emerald-800/40 font-mono text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center justify-between">
-              <span>{isEn ? 'Golden Formula:' : 'Rumus Matematis:'}</span>
-              <span className="font-semibold">{isEn ? 'Current Porto − Pre-P/L Porto = Gain/Loss' : 'Porto Sekarang − Porto Utuh = Untung/Rugi'}</span>
+            <div className="mt-2.5 pt-2 border-t border-emerald-200/50 dark:border-emerald-800/40 font-mono text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center justify-between">
+              <span className="font-sans font-medium">{isEn ? 'Golden Formula:' : 'Rumus Matematis:'}</span>
+              <span className="font-semibold">{isEn ? 'Current Portfolio − Initial Capital = Gain/Loss' : 'Porto Sekarang − Modal Awal = Untung/Rugi'}</span>
             </div>
           </div>
 
           {/* Card 2: Tanpa Stablecoin vs Total */}
-          <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/50">
-            <div className="flex items-center gap-2 font-bold text-blue-800 dark:text-blue-300 text-sm mb-1.5">
-              <span>⚖️</span>
-              <h4>{t('guideStableTitle') || (isEn ? 'Why is there an "Excl. Stable" Mode?' : 'Kenapa Ada Mode "Tanpa Stable"?')}</h4>
+          <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/50">
+            <div className="font-bold text-blue-800 dark:text-blue-300 text-sm mb-1.5">
+              <h4>{t('guideStableTitle') || (isEn ? '⚖️ Why is there an "Excl. Stable" Option?' : '⚖️ Kenapa Ada Pilihan "Tanpa Stable"?')}</h4>
             </div>
-            <p className="mb-2">
+            <p className="mb-2 leading-relaxed">
               {isEn
-                ? 'Stablecoins (USDT & USDC) are pegged to $1.00 USD and serve as DIGITAL CASH / STANDBY DRY POWDER on exchanges, not speculative volatile assets.'
-                : 'Stablecoin (USDT & USDC) bernilai konstan $1.00 USD dan berfungsi sebagai KAS DIGITAL / DANA STANDBY di bursa kripto (bukan aset fluktuatif).'}
+                ? 'Stablecoins (such as USDT & USDC) stay fixed at $1.00 USD and serve as DIGITAL CASH or standby dry powder on crypto exchanges (not speculative volatile assets).'
+                : 'Stablecoin (seperti USDT & USDC) nilainya stabil $1.00 USD dan berfungsi sebagai KAS DOLAR atau dana siap pakai di bursa kripto (bukan aset yang naik-turun).'}
             </p>
-            <div className="space-y-1.5 text-[11px] pl-2 border-l-2 border-blue-400 dark:border-blue-600">
+            <div className="space-y-2 text-[11px] pl-3 border-l-2 border-blue-400 dark:border-blue-600">
               <p>
-                <strong className="text-gray-800 dark:text-gray-200">{isEn ? 'Total Portfolio:' : 'Total Portofolio:'}</strong>{' '}
-                {isEn ? 'Always 100% intact, including all Bank cash and Stablecoins.' : 'Uang Anda selalu 100% utuh, termasuk kas Bank dan Stablecoin.'}
+                <strong className="text-gray-900 dark:text-gray-100">{isEn ? 'Total Portfolio Mode:' : 'Mode Total:'}</strong>{' '}
+                {isEn ? 'Your net worth is always 100% intact, counting Bank cash and Stablecoins.' : 'Uang Anda selalu 100% utuh, termasuk tabungan Bank dan Stablecoin.'}
               </p>
               <p>
-                <strong className="text-gray-800 dark:text-gray-200">{isEn ? 'Excl. Stable (Active Capital):' : 'Tanpa Stable (Modal Aktif):'}</strong>{' '}
+                <strong className="text-gray-900 dark:text-gray-100">{isEn ? 'Excl. Stable Mode:' : 'Mode Tanpa Stable:'}</strong>{' '}
                 {isEn
                   ? 'Measures pure ROI only from assets taking real market risk (Stocks, Volatile Crypto, Gold) without dilution from idle dollar cash reserves.'
-                  : 'Mengukur persentase performa return murni dari modal yang benar-benar berisiko di pasar (Saham, Kripto aktif, Emas) agar tidak terencerkan oleh saldo dolar mengendap.'}
+                  : 'Melihat persentase untung/rugi murni dari modal yang benar-benar berisiko di pasar (Saham, Kripto fluktuatif, Emas) tanpa terbias oleh saldo dolar yang cuma mengendap.'}
               </p>
             </div>
           </div>
 
           {/* Card 3: Modal vs Nilai */}
-          <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/50">
-            <div className="flex items-center gap-2 font-bold text-purple-800 dark:text-purple-300 text-sm mb-1.5">
-              <span>📦</span>
-              <h4>{t('guideCostVsValueTitle') || (isEn ? 'Cost vs Market Value' : 'Modal vs Nilai Pasar')}</h4>
+          <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/50">
+            <div className="font-bold text-purple-800 dark:text-purple-300 text-sm mb-1.5">
+              <h4>{t('guideCostVsValueTitle') || (isEn ? '📦 Invested Cost vs Current Value' : '📦 Modal Beli vs Nilai Sekarang')}</h4>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <div className="p-2 rounded-xl bg-white/60 dark:bg-gray-900/40">
-                <p className="font-bold text-gray-800 dark:text-gray-200 mb-0.5">{isEn ? 'Cost / Invested' : 'Modal / Cost'}</p>
-                <p>{isEn ? 'Total actual money spent to purchase assets.' : 'Uang pokok yang dikeluarkan untuk beli aset.'}</p>
+            <div className="grid grid-cols-2 gap-2.5 text-[11px] mt-2">
+              <div className="p-2.5 rounded-xl bg-white/70 dark:bg-gray-900/50 border border-purple-100/50 dark:border-purple-900/30">
+                <p className="font-bold text-gray-900 dark:text-gray-100 mb-0.5">{isEn ? 'Invested Cost' : 'Modal Beli'}</p>
+                <p className="text-gray-600 dark:text-gray-300">{isEn ? 'Actual money spent to purchase assets.' : 'Uang asli yang Anda keluarkan saat membeli aset.'}</p>
               </div>
-              <div className="p-2 rounded-xl bg-white/60 dark:bg-gray-900/40">
-                <p className="font-bold text-gray-800 dark:text-gray-200 mb-0.5">{isEn ? 'Current Value' : 'Nilai Sekarang'}</p>
-                <p>{isEn ? 'Worth of those assets at current live prices.' : 'Nilai pasar aset saat ini setelah pergerakan harga.'}</p>
+              <div className="p-2.5 rounded-xl bg-white/70 dark:bg-gray-900/50 border border-purple-100/50 dark:border-purple-900/30">
+                <p className="font-bold text-gray-900 dark:text-gray-100 mb-0.5">{isEn ? 'Current Value' : 'Nilai Sekarang'}</p>
+                <p className="text-gray-600 dark:text-gray-300">{isEn ? 'Worth of those assets at current market prices.' : 'Harga aset tersebut di pasar saat ini setelah naik/turun.'}</p>
               </div>
             </div>
           </div>

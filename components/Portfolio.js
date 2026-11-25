@@ -1047,51 +1047,53 @@ export default function Portfolio({
               <p className="text-xs text-gray-500 font-mono">
                 {getMasked(formatUSD(totals.totalUSD))}
               </p>
+              {/* Modal Awal + Kas (Sebelum P/L) */}
               <div
-                className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono pt-0.5"
+                className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 pt-1.5 border-t border-gray-100 dark:border-gray-800/80 mt-2"
                 title={t('initialPortoDesc') || (language === 'en' ? 'Total net worth before gains/losses (Invested Capital + Cash Balance)' : 'Total seluruh kekayaan waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)')}
               >
-                <span>{t('initialPorto') || (language === 'en' ? 'Pre-P/L Portfolio' : 'Porto Utuh')}:</span>
-                <span className="text-gray-600 dark:text-gray-300 font-medium">
+                <span className="font-medium text-gray-600 dark:text-gray-300">{t('initialPorto') || (language === 'en' ? 'Initial Capital + Cash' : 'Modal Awal + Kas')}:</span>
+                <span className="font-mono font-bold text-gray-900 dark:text-gray-100">
                   {getMasked(formatIDR(initialPortoIDR))}
                 </span>
                 <button
                   type="button"
                   onClick={() => setIsMetricsGuideOpen(true)}
-                  className="text-gray-400 hover:text-blue-500 transition-colors p-0.5 ml-0.5"
+                  className="text-gray-400 hover:text-blue-500 transition-colors p-1"
                   title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
                   aria-label="Metrics Guide"
                 >
-                  <FiInfo className="w-3 h-3" />
+                  <FiInfo className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
-            <div className="flex items-center justify-between mb-1">
+          {/* Sub-Card: Modal Investasi (Dedicated Container with Comfortable Padding & High-Contrast Fonts) */}
+          <div className="mt-4 p-3 rounded-2xl bg-gray-50/90 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-2">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500">
-                  {isInvestedActiveMode ? (t('activeInvested') || (language === 'en' ? 'Active Invested' : 'Modal Aktif')) : (t('totalInvested') || (language === 'en' ? 'Total Invested' : 'Total Modal'))}
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                  {isInvestedActiveMode ? (t('activeCapital') || (language === 'en' ? 'Active Capital' : 'Modal Aktif')) : (t('totalInvested') || (language === 'en' ? 'Total Invested' : 'Modal Investasi'))}
                 </p>
                 {stablecoinData.hasStablecoins && (
                   <button
                     type="button"
                     onClick={() => setIsMetricsGuideOpen(true)}
                     className="text-gray-400 hover:text-blue-500 transition-colors"
-                    title={t('guideStableTitle') || (language === 'en' ? 'Why exclude stablecoins?' : 'Kenapa Ada Mode Tanpa Stable?')}
+                    title={t('guideStableTitle') || (language === 'en' ? 'Why exclude stablecoins?' : 'Kenapa Ada Pilihan Tanpa Stable?')}
                     aria-label="Stablecoin Mode Guide"
                   >
-                    <FiHelpCircle className="w-3 h-3" />
+                    <FiHelpCircle className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
               {stablecoinData.hasStablecoins && (
-                <div className="inline-flex p-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 text-[10px] font-medium">
+                <div className="inline-flex p-0.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-medium shadow-xs">
                   <button
                     type="button"
                     onClick={() => handleSetInvestedMode('all')}
-                    className={`px-2 py-0.5 rounded-md transition-all ${
+                    className={`px-2.5 py-1 rounded-md transition-all text-xs ${
                       !isInvestedActiveMode
                         ? 'bg-blue-600 text-white font-semibold shadow-xs'
                         : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
@@ -1103,35 +1105,37 @@ export default function Portfolio({
                   <button
                     type="button"
                     onClick={() => handleSetInvestedMode('active')}
-                    className={`px-2 py-0.5 rounded-md transition-all ${
+                    className={`px-2.5 py-1 rounded-md transition-all text-xs ${
                       isInvestedActiveMode
                         ? 'bg-blue-600 text-white font-semibold shadow-xs'
                         : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
                     }`}
-                    title={language === 'en' ? 'Excl. Stable: Active capital taking market risk (excluding standby USDT & USDC)' : 'Tanpa Stable: Modal aktif berisiko pasar (tanpa standby USDT & USDC)'}
+                    title={language === 'en' ? 'Excl. Stable: Active capital taking market risk (excluding standby USDT & USDC)' : 'Tanpa Stable: Modal aktif berisiko pasar (tanpa kas standby USDT & USDC)'}
                   >
                     {t('exclStableShort') || (language === 'en' ? 'Excl. Stable' : 'Tanpa Stable')}
                   </button>
                 </div>
               )}
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-gray-700 dark:text-gray-300 transform transition-colors">
+            
+            <div className="flex items-baseline justify-between">
+              <span className="text-base font-bold text-gray-900 dark:text-white font-mono tracking-tight">
                 {getMasked(formatIDR(displayedCostIDR))}
               </span>
-              <span className="text-xs text-gray-500 font-mono">
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                 {getMasked(formatUSD(displayedCostUSD))}
               </span>
             </div>
+
             {stablecoinData.hasStablecoins && (
-              <div className="mt-1.5 flex items-center justify-between text-[10px] text-gray-400 font-mono">
-                <span title={isInvestedActiveMode ? (language === 'en' ? 'Total capital of all assets' : 'Total Modal seluruh aset') : (language === 'en' ? 'Active capital without USDT/USDC' : 'Modal Aktif tanpa USDT/USDC')}>
+              <div className="pt-2 border-t border-gray-200/60 dark:border-gray-700/60 flex items-center justify-between text-xs font-mono">
+                <span className="text-gray-600 dark:text-gray-300 font-medium" title={isInvestedActiveMode ? (language === 'en' ? 'Total capital of all assets' : 'Total Modal seluruh aset') : (language === 'en' ? 'Active capital without USDT/USDC' : 'Modal Aktif tanpa USDT/USDC')}>
                   {isInvestedActiveMode
                     ? `${t('total') || 'Total'}: ${getMasked(formatIDR(gains.totalCost))}`
                     : `${t('active') || (language === 'en' ? 'Active' : 'Aktif')}: ${getMasked(formatIDR(investedBreakdown.activeCostIDR))}`}
                 </span>
-                <span className="text-emerald-600 dark:text-emerald-400" title={language === 'en' ? 'Standby USDT & USDC (USD Digital Cash)' : 'Standby USDT & USDC (Kas Dolar Digital)'}>
-                  {t('stablecoin') || 'Stable'}: {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium" title={language === 'en' ? 'Standby USDT & USDC (USD Digital Cash)' : 'Kas Dolar Siap Pakai (USDT & USDC)'}>
+                  {t('stablecoinCash') || (language === 'en' ? 'USD Cash' : 'Kas Dolar')}: {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}
                 </span>
               </div>
             )}
@@ -1325,48 +1329,80 @@ export default function Portfolio({
           </div>
 
           {/* Right: Portfolio Health & Return Progress Meter */}
-          <div className="w-full md:w-80 lg:w-96 flex flex-col justify-center space-y-2">
-            <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-              <div className="flex items-center gap-1.5">
-                <span>{t('capitalReturn') || (language === 'en' ? 'Capital Return' : 'Return Modal')}</span>
-                <button
-                  type="button"
-                  onClick={() => setIsMetricsGuideOpen(true)}
-                  className="text-gray-400 hover:text-blue-500 transition-colors p-0.5"
-                  title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
-                  aria-label="Metrics Guide"
-                >
-                  <FiInfo className="w-3 h-3" />
-                </button>
+          <div className="w-full md:w-84 lg:w-96 flex flex-col justify-center space-y-3">
+            <div>
+              <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 font-medium mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{t('capitalReturn') || (language === 'en' ? 'Capital Return' : 'Return Modal')}</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsMetricsGuideOpen(true)}
+                    className="text-gray-400 hover:text-blue-500 transition-colors p-0.5"
+                    title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
+                    aria-label="Metrics Guide"
+                  >
+                    <FiInfo className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <span className="font-mono font-bold text-gray-900 dark:text-white text-xs">
+                  {hideBalance ? '•••' : `${Math.abs(displayedReturnPercent).toFixed(1)}%`}
+                </span>
               </div>
-              <span className="font-mono font-bold text-gray-700 dark:text-gray-300">
-                {hideBalance ? '•••' : `${Math.abs(displayedReturnPercent).toFixed(1)}%`}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-              <div
-                style={{ width: `${Math.min(Math.abs(displayedReturnPercent), 100)}%` }}
-                className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-              ></div>
-            </div>
-            {/* Modal Invested (Waktu Utuh Sebelum P/L vs Nilai Aset Invested Sekarang) */}
-            <div className="flex justify-between text-[11px] font-mono">
-              <span className="text-gray-400" title={isInvestedActiveMode ? (language === 'en' ? 'Active capital taking market risk before gains/losses' : 'Modal Aktif waktu uang masih utuh sebelum kena profit/loss') : (language === 'en' ? 'Total invested capital before gains/losses' : 'Modal Invested waktu uang masih utuh sebelum kena profit/loss')}>
-                {t('investedCost') || (language === 'en' ? 'Cost' : 'Modal')}: <span className="text-gray-700 dark:text-gray-300 font-semibold">{getMasked(formatIDR(displayedCostIDR))}</span>
-              </span>
-              <span className="text-gray-400" title={language === 'en' ? 'Current market value of invested assets after gains/losses' : 'Nilai pasar aset yang diinvestasikan saat ini (setelah profit/loss)'}>
-                {t('currentValue') || (language === 'en' ? 'Value' : 'Nilai')}: <span className="text-gray-700 dark:text-gray-300 font-semibold">{getMasked(formatIDR(displayedInvestedValIDR))}</span>
-              </span>
+              <div className="w-full bg-gray-200 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
+                <div
+                  style={{ width: `${Math.min(Math.abs(displayedReturnPercent), 100)}%` }}
+                  className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                ></div>
+              </div>
             </div>
 
-            {/* Total Portofolio (Waktu Utuh Sebelum P/L vs Total Portofolio Sekarang) */}
-            <div className="flex justify-between text-[10px] text-gray-400 font-mono pt-1 border-t border-gray-100 dark:border-gray-800/60">
-              <span title={language === 'en' ? 'Total net worth before gains/losses (Invested Capital + Cash Balance)' : 'Total portofolio waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)'}>
-                {t('initialPorto') || (language === 'en' ? 'Pre-P/L Porto' : 'Porto Utuh')}: <span className="text-gray-600 dark:text-gray-400 font-medium">{getMasked(formatIDR(initialPortoIDR))}</span>
-              </span>
-              <span title={language === 'en' ? 'Total current net worth after gains/losses' : 'Total nilai seluruh portofolio sekarang setelah kena profit/loss'}>
-                {t('currentPorto') || (language === 'en' ? 'Current Porto' : 'Porto Sekarang')}: <span className="text-gray-600 dark:text-gray-400 font-medium">{getMasked(formatIDR(totals.totalIDR))}</span>
-              </span>
+            {/* High-Legibility Comparison Box (Comfortable Spacing & Crisp Contrast) */}
+            <div className="p-3 rounded-2xl bg-gray-50/90 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-2.5">
+              {/* Row 1: Modal Beli vs Nilai Investasi Sekarang */}
+              <div className="flex items-center justify-between text-xs font-mono">
+                <div className="flex flex-col">
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-sans">
+                    {t('investedCost') || (language === 'en' ? 'Invested Cost' : 'Modal Beli')}
+                  </span>
+                  <span className="font-bold text-gray-900 dark:text-gray-100 text-xs">
+                    {getMasked(formatIDR(displayedCostIDR))}
+                  </span>
+                </div>
+                <span className="text-gray-400 dark:text-gray-500 text-sm font-sans px-1">➔</span>
+                <div className="flex flex-col text-right">
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-sans">
+                    {t('currentValue') || (language === 'en' ? 'Current Value' : 'Nilai Sekarang')}
+                  </span>
+                  <span className="font-bold text-gray-900 dark:text-gray-100 text-xs">
+                    {getMasked(formatIDR(displayedInvestedValIDR))}
+                  </span>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-gray-200/60 dark:border-gray-700/60"></div>
+
+              {/* Row 2: Total Portofolio Sebelum vs Sesudah */}
+              <div className="flex items-center justify-between text-xs font-mono">
+                <div className="flex flex-col">
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-sans flex items-center gap-1">
+                    <span>🌱</span>
+                    <span>{t('initialPorto') || (language === 'en' ? 'Initial + Cash' : 'Modal Awal + Kas')}</span>
+                  </span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                    {getMasked(formatIDR(initialPortoIDR))}
+                  </span>
+                </div>
+                <span className="text-gray-400 dark:text-gray-500 text-sm font-sans px-1">➔</span>
+                <div className="flex flex-col text-right">
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-sans">
+                    {t('currentPorto') || (language === 'en' ? 'Current Portfolio' : 'Porto Sekarang')}
+                  </span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400 text-xs">
+                    {getMasked(formatIDR(totals.totalIDR))}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
