@@ -3,6 +3,7 @@
 // Handles webhook updates from Telegram and provides 1-click self-healing diagnostics
 
 import { handleUpdate, handleCallbackQuery, getTelegramApi } from '../../lib/telegramBot';
+import { getAdminDb } from '../../lib/firebaseAdmin';
 import { secureLogger, timingSafeCompare } from '../../lib/security';
 
 // Rate limiting for webhook (prevent abuse)
@@ -164,10 +165,30 @@ export default async function handler(req, res) {
       const registeredUrl = infoData.result?.url || '';
       const isMatching = registeredUrl === currentWebhookUrl;
 
+      // Check database status
+      const db = getAdminDb();
+      let dbStatus = 'unavailable';
+      let dbError = null;
+      if (db) {
+        try {
+          await db.collection('telegram_links').limit(1).get();
+          dbStatus = 'connected';
+        } catch (e) {
+          dbStatus = 'error';
+          dbError = e.message;
+        }
+      }
+
       return res.status(200).json({
         ok: true,
         bot: meData.result || null,
         webhook: infoData.result || null,
+        database: {
+          status: dbStatus,
+          hasClientEmail: Boolean(process.env.FIREBASE_CLIENT_EMAIL),
+          hasPrivateKey: Boolean(process.env.FIREBASE_PRIVATE_KEY),
+          error: dbError
+        },
         currentDomainWebhookUrl: currentWebhookUrl,
         isWebhookUrlMatching: isMatching,
         hasWebhookSecretEnv: Boolean(webhookSecret),
