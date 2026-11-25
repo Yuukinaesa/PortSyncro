@@ -1232,34 +1232,63 @@ export default function Portfolio({
       {/* BIG P/L Card (Executive Multi-Column Layout) */}
       <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 sm:p-6 border border-gray-200 dark:border-gray-800 relative group shadow-sm mt-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-          {/* Column 1: Total Gain/Loss Values */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-gray-500 text-xs font-semibold tracking-wide uppercase">{t('totalGainLoss') || 'Total Untung / Rugi'}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                gains.totalGainIDR > 0
-                  ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
-                  : gains.totalGainIDR < 0
-                    ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
-              }`}>
-                {gains.totalGainIDR > 0 ? (t('profitable') || 'Untung') : gains.totalGainIDR < 0 ? (t('loss') || 'Rugi') : (t('flat') || 'Flat')}
-              </span>
+          {/* Column 1: Total Gain/Loss Values + Return Modal Meter */}
+          <div className="space-y-3 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-gray-500 text-xs font-semibold tracking-wide uppercase">{t('totalGainLoss') || 'Total Untung / Rugi'}</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  gains.totalGainIDR > 0
+                    ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+                    : gains.totalGainIDR < 0
+                      ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+                }`}>
+                  {gains.totalGainIDR > 0 ? (t('profitable') || 'Untung') : gains.totalGainIDR < 0 ? (t('loss') || 'Rugi') : (t('flat') || 'Flat')}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2.5 flex-wrap">
+                <h2 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
+                  gains.totalGainIDR > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.totalGainIDR < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'
+                }`}>
+                  {gains.totalGainIDR > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalGainIDR))}
+                </h2>
+                <span className="text-xs sm:text-sm font-mono text-gray-500">
+                  {getMasked(formatUSD(gains.totalGainUSD))}
+                </span>
+                <span className={`text-xs sm:text-sm font-bold ${
+                  displayedReturnPercent > 0 ? 'text-emerald-600 dark:text-emerald-400' : displayedReturnPercent < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'
+                }`}>
+                  ({displayedReturnPercent > 0 ? '+' : ''}{getMasked(displayedReturnPercent.toFixed(1))}%)
+                </span>
+              </div>
             </div>
-            <div className="flex items-baseline gap-3 flex-wrap">
-              <h2 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
-                gains.totalGainIDR > 0 ? 'text-emerald-600 dark:text-emerald-400' : gains.totalGainIDR < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'
-              }`}>
-                {gains.totalGainIDR > 0 ? '+' : ''}{getMasked(formatIDR(gains.totalGainIDR))}
-              </h2>
-              <span className="text-sm font-mono text-gray-500">
-                {getMasked(formatUSD(gains.totalGainUSD))}
-              </span>
-              <span className={`text-sm font-bold ${
-                displayedReturnPercent > 0 ? 'text-emerald-600 dark:text-emerald-400' : displayedReturnPercent < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-500 dark:text-gray-400'
-              }`}>
-                ({displayedReturnPercent > 0 ? '+' : ''}{getMasked(displayedReturnPercent.toFixed(1))}%)
-              </span>
+
+            {/* Return Modal Progress Bar */}
+            <div className="pt-1">
+              <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 font-medium mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-600 dark:text-gray-300 font-semibold text-[11px] sm:text-xs">{t('capitalReturn') || (language === 'en' ? 'Capital Return' : 'Return Modal')}</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsMetricsGuideOpen(true)}
+                    className="text-gray-400 hover:text-blue-500 transition-colors p-0.5"
+                    title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
+                    aria-label="Metrics Guide"
+                  >
+                    <FiInfo className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <span className="font-mono font-bold text-gray-900 dark:text-white text-xs">
+                  {hideBalance ? '•••' : `${Math.abs(displayedReturnPercent).toFixed(1)}%`}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                <div
+                  style={{ width: `${Math.min(Math.abs(displayedReturnPercent), 100)}%` }}
+                  className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                ></div>
+              </div>
             </div>
           </div>
 
@@ -1335,36 +1364,9 @@ export default function Portfolio({
             )}
           </div>
 
-          {/* Column 3: Portfolio Health & Return Progress Meter */}
-          <div className="w-full flex flex-col justify-center space-y-3">
-            <div>
-              <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 font-medium mb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{t('capitalReturn') || (language === 'en' ? 'Capital Return' : 'Return Modal')}</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsMetricsGuideOpen(true)}
-                    className="text-gray-400 hover:text-blue-500 transition-colors p-0.5"
-                    title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
-                    aria-label="Metrics Guide"
-                  >
-                    <FiInfo className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <span className="font-mono font-bold text-gray-900 dark:text-white text-xs">
-                  {hideBalance ? '•••' : `${Math.abs(displayedReturnPercent).toFixed(1)}%`}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${Math.min(Math.abs(displayedReturnPercent), 100)}%` }}
-                  className={`h-full rounded-full transition-all duration-1000 ${gains.totalGainIDR >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                ></div>
-              </div>
-            </div>
-
-            {/* High-Legibility Comparison Box (Comfortable Spacing & Crisp Contrast) */}
-            <div className="p-3 rounded-2xl bg-gray-50/90 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-2.5">
+          {/* Column 3: High-Legibility Comparison Box */}
+          <div className="w-full flex flex-col justify-center">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gray-50/90 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-2.5">
               {/* Row 1: Modal Beli vs Nilai Investasi Sekarang */}
               <div className="flex items-center justify-between text-xs font-mono">
                 <div className="flex flex-col">
