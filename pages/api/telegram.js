@@ -50,10 +50,10 @@ export default async function handler(req, res) {
   // ═══════════════════════════════════════════════════════════════
   if (req.method === 'GET') {
     if (!botToken) {
-      return res.status(500).json({
+      return res.status(200).json({
         ok: false,
         error: 'TELEGRAM_BOT_TOKEN environment variable is not configured',
-        hint: 'Please set TELEGRAM_BOT_TOKEN in Vercel Project Settings > Environment Variables.'
+        hint: 'Please set TELEGRAM_BOT_TOKEN in Vercel Project Settings > Environment Variables, then redeploy.'
       });
     }
 
