@@ -1,43 +1,50 @@
 // pages/api/telegram-daily.js
 // Cron endpoint: Send daily portfolio recap to all autopilot users
-// Should be triggered by Vercel Cron or external cron at 00:00 WIB (17:00 UTC)
+// Triggered by Vercel Cron (configured in vercel.json) or external cron (e.g. cron-job.org)
 //
 // Usage:
-//   - Vercel Cron: add to vercel.json
-//   - External cron (e.g. cron-job.org): GET /api/telegram-daily?secret=YOUR_SECRET
+//   - Vercel Cron: Automatic via vercel.json (sends x-vercel-cron: 1)
+//   - External cron: GET /api/telegram-daily?secret=YOUR_CRON_SECRET
+//   - Manual / Test run: GET /api/telegram-daily?secret=YOUR_CRON_SECRET&force=true
 
 import { sendDailyReports } from '../../lib/telegramBot';
 import { secureLogger, timingSafeCompare } from '../../lib/security';
 
 export default async function handler(req, res) {
-  // Security: Check both query parameter and Authorization header for cron secret
   const cronSecret = process.env.CRON_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET;
   const isProduction = process.env.NODE_ENV === 'production';
 
-  if (isProduction && !cronSecret) {
-    secureLogger.error('[Cron] CRON_SECRET not set in production');
-    return res.status(500).json({ error: 'Cron security not configured' });
-  }
+  // 1. Detect Vercel Cron invocation header
+  const isVercelCron = req.headers['x-vercel-cron'] === '1' || req.headers['user-agent']?.includes('vercel-cron');
 
+  // 2. Detect secret in Authorization header or query parameter
   const authHeader = req.headers.authorization;
-  const isVercelCron = Boolean(cronSecret && authHeader && authHeader.startsWith('Bearer ') && timingSafeCompare(authHeader.slice(7), cronSecret));
+  const isBearerAuth = Boolean(cronSecret && authHeader && authHeader.startsWith('Bearer ') && timingSafeCompare(authHeader.slice(7), cronSecret));
   const isQuerySecret = Boolean(cronSecret && typeof req.query.secret === 'string' && timingSafeCompare(req.query.secret, cronSecret));
 
-  if (cronSecret && !isVercelCron && !isQuerySecret) {
+  // Determine authorization
+  const isAuthorized = isVercelCron || isBearerAuth || isQuerySecret || !isProduction;
+
+  if (cronSecret && !isAuthorized) {
     secureLogger.warn('[Cron] Unauthorized cron invocation attempt');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  secureLogger.log('[Cron] Starting daily report send...');
+  // Force send parameter for manual testing or ad-hoc runs
+  const forceSend = req.query.force === 'true' || req.query.test === 'true';
+
+  secureLogger.log(`[Cron] Starting daily report process (force: ${forceSend}, trigger: ${isVercelCron ? 'vercel-cron' : 'external/manual'})...`);
 
   try {
-    const result = await sendDailyReports();
+    const result = await sendDailyReports({ forceSend });
 
-    secureLogger.log('[Cron] Daily report result:', result);
+    secureLogger.log('[Cron] Daily report completed:', result);
 
     return res.status(200).json({
       ok: true,
       timestamp: new Date().toISOString(),
+      forceSend,
+      trigger: isVercelCron ? 'vercel-cron' : (isBearerAuth || isQuerySecret ? 'authenticated-request' : 'internal'),
       ...result
     });
   } catch (error) {
@@ -49,11 +56,9 @@ export default async function handler(req, res) {
   }
 }
 
-// Allow longer timeout for cron (Vercel Pro: 300s, Hobby: 10s)
-// For Hobby plan, the stagger logic handles this via multiple quick calls
 export const config = {
   api: {
     bodyParser: false,
   },
-  maxDuration: 60, // Max for Vercel Hobby plan
+  maxDuration: 60, // Maximum allowed timeout for Vercel Hobby plan
 };

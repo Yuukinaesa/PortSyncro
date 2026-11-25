@@ -12,6 +12,7 @@ const scripts = [
     { name: 'Precision Tests', file: 'test-precision.mjs' },
     { name: 'CSV Logic Test', file: 'test-csv.js' },
     { name: 'UI Metrics & I18N', file: 'test_ui_metrics_guide.mjs' },
+    { name: 'Telegram Endpoints', file: 'test_telegram_endpoints.mjs' },
     { name: 'Debug Gold Logic', file: 'debug_harga_emas_2.js' },
     // { name: 'Debug Structure', file: 'debug_he_structure.js' }, // Optional
     { name: 'Full System Audit', file: 'full_audit.js' },
