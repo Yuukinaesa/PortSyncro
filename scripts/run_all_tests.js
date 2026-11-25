@@ -14,6 +14,7 @@ const scripts = [
     { name: 'CSV Logic Test', file: 'test-csv.js' },
     { name: 'UI Metrics & I18N', file: 'test_ui_metrics_guide.mjs' },
     { name: 'Telegram Endpoints', file: 'test_telegram_endpoints.mjs' },
+    { name: 'Firestore REST Client', file: 'test_firebase_admin_rest.mjs' },
     { name: 'Debug Gold Logic', file: 'debug_harga_emas_2.js' },
     // { name: 'Debug Structure', file: 'debug_he_structure.js' }, // Optional
     { name: 'Full System Audit', file: 'full_audit.js' },
