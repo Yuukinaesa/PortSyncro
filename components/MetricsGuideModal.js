@@ -1,29 +1,44 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FiX, FiInfo, FiHelpCircle, FiShield, FiTrendingUp, FiDollarSign } from 'react-icons/fi';
 import { useLanguage } from '../lib/languageContext';
 
 export default function MetricsGuideModal({ isOpen, onClose }) {
   const { t, language } = useLanguage();
   const isEn = language === 'en';
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
     };
     if (isOpen) {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
       document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open');
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => {
+      document.body.style.paddingRight = '';
       document.body.style.overflow = 'unset';
+      document.body.classList.remove('modal-open');
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
       <div
         className="bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-scale-up"
         onClick={(e) => e.stopPropagation()}
@@ -124,6 +139,7 @@ export default function MetricsGuideModal({ isOpen, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

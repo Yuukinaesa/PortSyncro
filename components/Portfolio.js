@@ -1032,7 +1032,7 @@ export default function Portfolio({
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
 
         {/* 1. Total Portfolio */}
-        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative overflow-hidden group shadow-sm flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 relative group shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-start mb-4">
               <span className="text-gray-500 text-xs font-semibold tracking-wide">{t('totalPortfolio') || 'Total Portfolio'}</span>
@@ -1040,105 +1040,40 @@ export default function Portfolio({
                 <FiDollarSign className="w-4 h-4" />
               </div>
             </div>
-            <div className="space-y-1 mb-2">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+            <div className="space-y-1 mb-3">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
                 {getMasked(formatIDR(totals.totalIDR))}
               </h2>
               <p className="text-xs text-gray-500 font-mono">
                 {getMasked(formatUSD(totals.totalUSD))}
               </p>
-              {/* Modal Awal + Kas (Sebelum P/L) */}
-              <div
-                className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 pt-1.5 border-t border-gray-100 dark:border-gray-800/80 mt-2"
-                title={t('initialPortoDesc') || (language === 'en' ? 'Total net worth before gains/losses (Invested Capital + Cash Balance)' : 'Total seluruh kekayaan waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)')}
+            </div>
+            {/* Modal Awal + Kas (Sebelum P/L) */}
+            <div
+              className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-800/80"
+              title={t('initialPortoDesc') || (language === 'en' ? 'Total net worth before gains/losses (Invested Capital + Cash Balance)' : 'Total seluruh kekayaan waktu uang masih utuh sebelum kena profit/loss (Modal Investasi + Saldo Kas Bank)')}
+            >
+              <span className="font-medium text-gray-600 dark:text-gray-300">{t('initialPorto') || (language === 'en' ? 'Initial Capital + Cash' : 'Modal Awal + Kas')}:</span>
+              <span className="font-mono font-bold text-gray-900 dark:text-gray-100">
+                {getMasked(formatIDR(initialPortoIDR))}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsMetricsGuideOpen(true)}
+                className="text-gray-400 hover:text-blue-500 transition-colors p-0.5"
+                title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
+                aria-label="Metrics Guide"
               >
-                <span className="font-medium text-gray-600 dark:text-gray-300">{t('initialPorto') || (language === 'en' ? 'Initial Capital + Cash' : 'Modal Awal + Kas')}:</span>
-                <span className="font-mono font-bold text-gray-900 dark:text-gray-100">
-                  {getMasked(formatIDR(initialPortoIDR))}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsMetricsGuideOpen(true)}
-                  className="text-gray-400 hover:text-blue-500 transition-colors p-1"
-                  title={t('metricsGuideTitle') || (language === 'en' ? 'Metrics & Calculation Guide' : 'Panduan Hitungan Metrik')}
-                  aria-label="Metrics Guide"
-                >
-                  <FiInfo className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                <FiInfo className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
-          {/* Sub-Card: Modal Investasi (Dedicated Container with Comfortable Padding & High-Contrast Fonts) */}
-          <div className="mt-4 p-3 rounded-2xl bg-gray-50/90 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  {isInvestedActiveMode ? (t('activeCapital') || (language === 'en' ? 'Active Capital' : 'Modal Aktif')) : (t('totalInvested') || (language === 'en' ? 'Total Invested' : 'Modal Investasi'))}
-                </p>
-                {stablecoinData.hasStablecoins && (
-                  <button
-                    type="button"
-                    onClick={() => setIsMetricsGuideOpen(true)}
-                    className="text-gray-400 hover:text-blue-500 transition-colors"
-                    title={t('guideStableTitle') || (language === 'en' ? 'Why exclude stablecoins?' : 'Kenapa Ada Pilihan Tanpa Stable?')}
-                    aria-label="Stablecoin Mode Guide"
-                  >
-                    <FiHelpCircle className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-              {stablecoinData.hasStablecoins && (
-                <div className="inline-flex p-0.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-medium shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => handleSetInvestedMode('all')}
-                    className={`px-2.5 py-1 rounded-md transition-all text-xs ${
-                      !isInvestedActiveMode
-                        ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-                    }`}
-                    title={language === 'en' ? 'Total: All capital including USDT & USDC' : 'Total: Total modal seluruh aset termasuk USDT & USDC'}
-                  >
-                    {t('total') || 'Total'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSetInvestedMode('active')}
-                    className={`px-2.5 py-1 rounded-md transition-all text-xs ${
-                      isInvestedActiveMode
-                        ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-                    }`}
-                    title={language === 'en' ? 'Excl. Stable: Active capital taking market risk (excluding standby USDT & USDC)' : 'Tanpa Stable: Modal aktif berisiko pasar (tanpa kas standby USDT & USDC)'}
-                  >
-                    {t('exclStableShort') || (language === 'en' ? 'Excl. Stable' : 'Tanpa Stable')}
-                  </button>
-                </div>
-              )}
+          <div>
+            <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-3">
+              <div style={{ width: '100%' }} className="bg-blue-500 h-full rounded-full"></div>
             </div>
-            
-            <div className="flex items-baseline justify-between">
-              <span className="text-base font-bold text-gray-900 dark:text-white font-mono tracking-tight">
-                {getMasked(formatIDR(displayedCostIDR))}
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                {getMasked(formatUSD(displayedCostUSD))}
-              </span>
-            </div>
-
-            {stablecoinData.hasStablecoins && (
-              <div className="pt-2 border-t border-gray-200/60 dark:border-gray-700/60 flex items-center justify-between text-xs font-mono">
-                <span className="text-gray-600 dark:text-gray-300 font-medium" title={isInvestedActiveMode ? (language === 'en' ? 'Total capital of all assets' : 'Total Modal seluruh aset') : (language === 'en' ? 'Active capital without USDT/USDC' : 'Modal Aktif tanpa USDT/USDC')}>
-                  {isInvestedActiveMode
-                    ? `${t('total') || 'Total'}: ${getMasked(formatIDR(gains.totalCost))}`
-                    : `${t('active') || (language === 'en' ? 'Active' : 'Aktif')}: ${getMasked(formatIDR(investedBreakdown.activeCostIDR))}`}
-                </span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium" title={language === 'en' ? 'Standby USDT & USDC (USD Digital Cash)' : 'Kas Dolar Siap Pakai (USDT & USDC)'}>
-                  {t('stablecoinCash') || (language === 'en' ? 'USD Cash' : 'Kas Dolar')}: {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}
-                </span>
-              </div>
-            )}
+            <p className="text-[10px] text-gray-500 mt-2">100% {t('fromPortfolio') || 'dari portfolio'}</p>
           </div>
         </div>
 
@@ -1296,8 +1231,8 @@ export default function Portfolio({
 
       {/* BIG P/L Card (Executive Multi-Column Layout) */}
       <div className="bg-white dark:bg-[#161b22] rounded-2xl p-5 sm:p-6 border border-gray-200 dark:border-gray-800 relative group shadow-sm mt-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Left: Total Gain/Loss Values */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+          {/* Column 1: Total Gain/Loss Values */}
           <div className="space-y-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-gray-500 text-xs font-semibold tracking-wide uppercase">{t('totalGainLoss') || 'Total Untung / Rugi'}</span>
@@ -1328,8 +1263,80 @@ export default function Portfolio({
             </div>
           </div>
 
-          {/* Right: Portfolio Health & Return Progress Meter */}
-          <div className="w-full md:w-84 lg:w-96 flex flex-col justify-center space-y-3">
+          {/* Column 2: Modal Investasi (Sub-Card with Total / Tanpa Stable Mode & Breakdown) */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gray-50/90 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                  {isInvestedActiveMode ? (t('activeCapital') || (language === 'en' ? 'Active Capital' : 'Modal Aktif')) : (t('totalInvested') || (language === 'en' ? 'Total Invested' : 'Modal Investasi'))}
+                </p>
+                {stablecoinData.hasStablecoins && (
+                  <button
+                    type="button"
+                    onClick={() => setIsMetricsGuideOpen(true)}
+                    className="text-gray-400 hover:text-blue-500 transition-colors"
+                    title={t('guideStableTitle') || (language === 'en' ? 'Why exclude stablecoins?' : 'Kenapa Ada Pilihan Tanpa Stable?')}
+                    aria-label="Stablecoin Mode Guide"
+                  >
+                    <FiHelpCircle className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {stablecoinData.hasStablecoins && (
+                <div className="inline-flex p-0.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-medium shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleSetInvestedMode('all')}
+                    className={`px-2.5 py-1 rounded-md transition-all text-xs ${
+                      !isInvestedActiveMode
+                        ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                    }`}
+                    title={language === 'en' ? 'Total: All capital including USDT & USDC' : 'Total: Total modal seluruh aset termasuk USDT & USDC'}
+                  >
+                    {t('total') || 'Total'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetInvestedMode('active')}
+                    className={`px-2.5 py-1 rounded-md transition-all text-xs ${
+                      isInvestedActiveMode
+                        ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                    }`}
+                    title={language === 'en' ? 'Excl. Stable: Active capital taking market risk (excluding standby USDT & USDC)' : 'Tanpa Stable: Modal aktif berisiko pasar (tanpa kas standby USDT & USDC)'}
+                  >
+                    {t('exclStableShort') || (language === 'en' ? 'Excl. Stable' : 'Tanpa Stable')}
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-baseline justify-between">
+              <span className="text-base sm:text-lg font-bold text-gray-900 dark:text-white font-mono tracking-tight">
+                {getMasked(formatIDR(displayedCostIDR))}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                {getMasked(formatUSD(displayedCostUSD))}
+              </span>
+            </div>
+
+            {stablecoinData.hasStablecoins && (
+              <div className="pt-2 border-t border-gray-200/60 dark:border-gray-700/60 flex items-center justify-between text-xs font-mono">
+                <span className="text-gray-600 dark:text-gray-300 font-medium" title={isInvestedActiveMode ? (language === 'en' ? 'Total capital of all assets' : 'Total Modal seluruh aset') : (language === 'en' ? 'Active capital without USDT/USDC' : 'Modal Aktif tanpa USDT/USDC')}>
+                  {isInvestedActiveMode
+                    ? `${t('total') || 'Total'}: ${getMasked(formatIDR(gains.totalCost))}`
+                    : `${t('active') || (language === 'en' ? 'Active' : 'Aktif')}: ${getMasked(formatIDR(investedBreakdown.activeCostIDR))}`}
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium" title={language === 'en' ? 'Standby USDT & USDC (USD Digital Cash)' : 'Kas Dolar Siap Pakai (USDT & USDC)'}>
+                  {t('stablecoinCash') || (language === 'en' ? 'USD Cash' : 'Kas Dolar')}: {getMasked(formatUSD(investedBreakdown.stablecoinCostUSD))}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Column 3: Portfolio Health & Return Progress Meter */}
+          <div className="w-full flex flex-col justify-center space-y-3">
             <div>
               <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 font-medium mb-1.5">
                 <div className="flex items-center gap-1.5">
