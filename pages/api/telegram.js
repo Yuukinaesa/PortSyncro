@@ -43,6 +43,7 @@ function checkWebhookRateLimit(chatId) {
 }
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
 
@@ -165,18 +166,15 @@ export default async function handler(req, res) {
       const registeredUrl = infoData.result?.url || '';
       const isMatching = registeredUrl === currentWebhookUrl;
 
-      // Check database status
-      const db = getAdminDb();
-      let dbStatus = 'unavailable';
+      // Check database status without blocking network call
+      let dbStatus = 'missing_credentials';
       let dbError = null;
-      if (db) {
-        try {
-          await db.collection('telegram_links').limit(1).get();
-          dbStatus = 'connected';
-        } catch (e) {
-          dbStatus = 'error';
-          dbError = e.message;
-        }
+      try {
+        const db = getAdminDb();
+        dbStatus = db ? 'ready' : 'missing_credentials';
+      } catch (e) {
+        dbStatus = 'init_error';
+        dbError = e.message;
       }
 
       return res.status(200).json({
