@@ -211,13 +211,14 @@ export default async function handler(req, res) {
   try {
     const update = req.body;
 
-    // Validate update structure
-    if (!update || (!update.message && !update.callback_query)) {
+    // Validate update structure: support message, callback_query, channel_post, edited_message, edited_channel_post
+    const messageObj = update?.message || update?.channel_post || update?.edited_message || update?.edited_channel_post;
+    if (!update || (!messageObj && !update.callback_query)) {
       return res.status(200).json({ ok: true }); // Acknowledge but ignore empty pings
     }
 
     // Get chat ID for rate limiting
-    const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
+    const chatId = messageObj?.chat?.id || update.callback_query?.message?.chat?.id;
     
     // Rate limit check
     if (chatId && !checkWebhookRateLimit(chatId)) {
@@ -228,7 +229,7 @@ export default async function handler(req, res) {
     // Route to appropriate handler
     if (update.callback_query) {
       await handleCallbackQuery(update.callback_query);
-    } else if (update.message) {
+    } else if (messageObj) {
       await handleUpdate(update);
     }
 
