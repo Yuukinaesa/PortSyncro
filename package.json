@@ -51,7 +51,7 @@
     "eslint": "^9.16.0",
     "eslint-config-next": "16.4.6",
     "eslint-plugin-security": "^4.2.1",
-    "postcss": "^8.5.6",
+    "postcss": "^8.5.33",
     "snyk": "^1.1309.0"
   },
   "overrides": {
