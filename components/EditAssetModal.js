@@ -75,7 +75,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
 
     // Handle Avg Price Changes
     const handleAvgPriceChange = (val, currency) => {
-        const num = parseFloat(normalizeNumberInput(val));
+        const num = parseFloat(normalizeNumberInput(val, { preferDecimalDot: currency === 'USD' }));
         if (isNaN(num)) {
             if (currency === 'IDR') setAvgPriceIDR(val);
             else setAvgPriceUSD(val);
@@ -102,7 +102,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
     };
 
     const handleManualPriceChange = (val, currency) => {
-        const num = parseFloat(normalizeNumberInput(val));
+        const num = parseFloat(normalizeNumberInput(val, { preferDecimalDot: currency === 'USD' }));
         if (isNaN(num)) {
             if (currency === 'IDR') setManualCurrentPriceIDR(val);
             else setManualCurrentPriceUSD(val);
@@ -126,10 +126,12 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
 
     // Calculate Total Value whenever amount or price changes
     useEffect(() => {
-        const qty = parseFloat(normalizeNumberInput(amount)) || 0;
+        const isDecimalQty = type === 'crypto' || type === 'gold' || (type === 'stock' && market === 'US');
+        const isUSDPrice = type === 'crypto' || (type === 'stock' && market === 'US');
+        const qty = parseFloat(normalizeNumberInput(amount, { preferDecimalDot: isDecimalQty })) || 0;
 
         // Use Manual Price if set, else Live Price
-        const activePrice = manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : currentPrice;
+        const activePrice = manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice, { preferDecimalDot: isUSDPrice })) : currentPrice;
 
         let valIDR = 0;
         let shareCount = qty;
@@ -157,14 +159,16 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
 
     const handleSave = () => {
         setError('');
-        const newAmount = parseFloat(normalizeNumberInput(amount));
-        let newAvgPrice = parseFloat(normalizeNumberInput(avgPrice));
+        const isDecimalQty = type === 'crypto' || type === 'gold' || (type === 'stock' && market === 'US');
+        const isUSDPrice = type === 'crypto' || (type === 'stock' && market === 'US');
+        const newAmount = parseFloat(normalizeNumberInput(amount, { preferDecimalDot: isDecimalQty }));
+        let newAvgPrice = parseFloat(normalizeNumberInput(avgPrice, { preferDecimalDot: isUSDPrice }));
 
         // Ensure we save the correct avgPrice based on market
         if ((market === 'IDX' && type === 'stock') || type === 'gold') {
             newAvgPrice = parseFloat(normalizeNumberInput(avgPriceIDR));
         } else if (type !== 'cash') {
-            newAvgPrice = parseFloat(normalizeNumberInput(avgPriceUSD));
+            newAvgPrice = parseFloat(normalizeNumberInput(avgPriceUSD, { preferDecimalDot: true }));
         }
 
         if (!Number.isFinite(newAmount) || newAmount < 0) {
@@ -183,7 +187,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
         // Construct update object cleanly
         // IMPORTANT: When resetting to market, both useManualPrice and isManual must be false
         const isUsingManualPrice = Boolean(manualCurrentPrice && String(manualCurrentPrice).trim() !== '');
-        const parsedManualPrice = isUsingManualPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : null;
+        const parsedManualPrice = isUsingManualPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice, { preferDecimalDot: isUSDPrice })) : null;
         if (isUsingManualPrice && (!Number.isFinite(parsedManualPrice) || parsedManualPrice <= 0)) {
             setError(t('invalidValue') || 'Harga manual saat ini harus berupa angka positif');
             return;
@@ -394,7 +398,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
                             <div className="flex items-center gap-2">
                                 <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
                                     {(market === 'US' || type === 'crypto')
-                                        ? formatUSD(manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : currentPrice)
+                                        ? formatUSD(manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice, { preferDecimalDot: true })) : currentPrice)
                                         : formatIDR(manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : currentPrice)
                                     }
                                 </span>

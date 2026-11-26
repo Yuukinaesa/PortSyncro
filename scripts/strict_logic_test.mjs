@@ -1,5 +1,5 @@
 
-import { calculatePositionFromTransactions, formatQuantity, formatNumber } from '../lib/utils.js';
+import { calculatePositionFromTransactions, formatQuantity, formatNumber, normalizeNumberInput, formatCsvIDR, escapeCsvCell, calculateSafeGainPercent, formatUsdInput } from '../lib/utils.js';
 import assert from 'assert';
 
 console.log('\x1b[36m%s\x1b[0m', '🚀 STARTING STRICT LOGIC AUDIT (Using Actual Lib Code)');
@@ -193,6 +193,29 @@ runTest('Empty Transaction List', () => {
     const res = calculatePositionFromTransactions(tx, 1000, 15000);
     assert.strictEqual(res.amount, 0);
     assert.strictEqual(res.porto, 0);
+});
+
+// 13. CSV #NAME? & Formula Injection Defense
+runTest('CSV Export Safety (No #NAME? on Negative IDR)', () => {
+    assert.strictEqual(formatCsvIDR(-1764000), 'Rp. -1.764.000');
+    assert.strictEqual(escapeCsvCell(formatCsvIDR(-1764000)), '"Rp. -1.764.000"');
+    assert.strictEqual(escapeCsvCell('-$72.73'), '"-$72.73"');
+    assert.strictEqual(escapeCsvCell('-19.55%'), '"-19.55%"');
+    assert.strictEqual(escapeCsvCell('=CMD|calc'), '"\'=CMD|calc"');
+    assert.strictEqual(escapeCsvCell('-Rp.1.764.000'), '"\'-Rp.1.764.000"');
+});
+
+// 14. Decimal Preservation & Dust Cost-Basis Guard
+runTest('Fractional Decimal Preservation & Dust % Guard', () => {
+    assert.strictEqual(normalizeNumberInput('1.234', { preferDecimalDot: true }), '1.234');
+    assert.strictEqual(normalizeNumberInput('8.500'), '8500');
+    assert.strictEqual(normalizeNumberInput('1.350.000.000'), '1350000000');
+    assert.strictEqual(normalizeNumberInput('0,00240025', { preferDecimalDot: true }), '0.00240025');
+    assert.strictEqual(formatUsdInput(0.0006), '0.0006');
+    // Dust cost basis ($0.000000175 USD vs $140 value) must not return +79850920088.93%
+    assert.strictEqual(calculateSafeGainPercent(140, 0.000000175, { isUSD: true }), 0);
+    // Genuine gain ($100 cost -> $150 profit = 150%) remains intact
+    assert.strictEqual(calculateSafeGainPercent(150, 100, { isUSD: true }), 150);
 });
 
 

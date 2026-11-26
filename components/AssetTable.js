@@ -4,7 +4,7 @@ import { FiEdit2, FiTrash2, FiDollarSign } from 'react-icons/fi';
 import Modal from './Modal';
 import EditAssetModal from './EditAssetModal';
 import ErrorBoundary from './ErrorBoundary';
-import { formatNumber, formatQuantity, formatIDR, formatUSD, normalizeNumberInput } from '../lib/utils';
+import { formatNumber, formatQuantity, formatIDR, formatUSD, normalizeNumberInput, calculateSafeGainPercent } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
 import { secureLogger } from './../lib/security';
 
@@ -312,11 +312,16 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
     setSellingAsset(asset);
     const currentAmount = type === 'stock' ? asset.lots : asset.amount;
     if (asset.isSummary) return;
-    setSellAmount(Math.floor(currentAmount / 2).toString());
+    const isIDX = type === 'stock' && asset.market !== 'US';
+    const defaultHalf = isIDX
+      ? Math.floor(currentAmount / 2)
+      : Number((currentAmount / 2).toFixed(8));
+    setSellAmount(defaultHalf.toString());
   };
 
   const handleSaveSell = (index, asset) => {
-    const normalizedAmount = normalizeNumberInput(sellAmount);
+    const isIDX = type === 'stock' && asset.market !== 'US';
+    const normalizedAmount = normalizeNumberInput(sellAmount, { preferDecimalDot: !isIDX && type !== 'cash' });
     const amountToSell = parseFloat(normalizedAmount);
     const currentAmount = type === 'stock' ? asset.lots : asset.amount;
 
@@ -331,8 +336,6 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       const lookupKey = (type === 'crypto' ? (asset.symbol || '') : (asset.ticker || '')).toUpperCase();
       price = memoizedPrices[lookupKey];
     }
-
-    const isIDX = type === 'stock' && asset.market !== 'US';
 
     if (isNaN(amountToSell) || amountToSell <= 0) {
       handleCancelSell(); // Close Sell Modal
@@ -424,7 +427,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
   const handleSaveAmount = async (index, asset) => {
     try {
-      const normalizedAmount = normalizeNumberInput(newAmount);
+      const normalizedAmount = normalizeNumberInput(newAmount, { preferDecimalDot: type !== 'cash' });
       const amount = parseFloat(normalizedAmount);
 
       if (isNaN(amount) || amount < 0) {
@@ -580,7 +583,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                     gainUSD = exchangeRate ? gainRaw / exchangeRate : 0;
                   }
 
-                  const gainPerc = costBasis > 0 ? (gainRaw / costBasis) * 100 : 0;
+                  const isUSDNative = (type === 'stock' && market === 'US') || type === 'crypto';
+                  const gainPerc = calculateSafeGainPercent(gainRaw, costBasis, { isUSD: isUSDNative });
 
                   // Calculate Modal (Cost Basis) for display
                   let modalIDR = 0, modalUSD = 0;
@@ -882,8 +886,9 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
             const costBasis = asset.avgPrice * amount;
             const currentVal = ((type === 'stock' && market === 'US') || type === 'crypto') ? assetValue.valueUSD : assetValue.valueIDR;
             const gainRaw = currentVal - costBasis;
-            let gainIDR = 0, gainUSD = 0, gainPerc = 0;
-            if (costBasis > 0) gainPerc = (gainRaw / costBasis) * 100;
+            const isUSDNative = (type === 'stock' && market === 'US') || type === 'crypto';
+            let gainIDR = 0, gainUSD = 0;
+            const gainPerc = calculateSafeGainPercent(gainRaw, costBasis, { isUSD: isUSDNative });
 
             if ((type === 'stock' && market === 'US') || type === 'crypto') {
               gainUSD = gainRaw;
@@ -1257,7 +1262,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                   <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">{t('estimatedValue') || 'Estimasi Nilai'}:</p>
                   <p className="text-lg font-bold text-gray-900 dark:text-white font-mono">
                     {(() => {
-                      const amount = parseFloat(normalizeNumberInput(sellAmount));
+                      const isIDX = type === 'stock' && sellingAsset.market !== 'US';
+                      const amount = parseFloat(normalizeNumberInput(sellAmount, { preferDecimalDot: !isIDX && type !== 'cash' }));
                       if (isNaN(amount) || amount <= 0) return '-';
 
                       const priceKey = type === 'stock' || type === 'cash'

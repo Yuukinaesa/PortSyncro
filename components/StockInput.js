@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
-import { normalizeNumberInput, validateIDXLots } from '../lib/utils';
+import { normalizeNumberInput, validateIDXLots, formatUsdInput } from '../lib/utils';
 import { secureLogger } from './../lib/security';
 import { useAuth } from '../lib/authContext';
 
@@ -124,7 +124,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       // If price not found, use user input or 0 (validate numeric inputs)
       let manualAvgPrice = 0;
       if (avgPrice && String(avgPrice).trim() !== '') {
-        const parsedAvg = parseFloat(normalizeNumberInput(avgPrice));
+        const parsedAvg = parseFloat(normalizeNumberInput(avgPrice, { preferDecimalDot: market === 'US' }));
         if (!Number.isFinite(parsedAvg) || parsedAvg < 0) {
           throw new Error(t('invalidValue') || 'Harga beli rata-rata tidak valid');
         }
@@ -140,7 +140,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
       }
 
       const parsedManualCurr = useManualCurrentPrice && manualCurrentPrice && String(manualCurrentPrice).trim() !== ''
-        ? parseFloat(normalizeNumberInput(manualCurrentPrice))
+        ? parseFloat(normalizeNumberInput(manualCurrentPrice, { preferDecimalDot: market === 'US' }))
         : null;
       if (useManualCurrentPrice && manualCurrentPrice && (!Number.isFinite(parsedManualCurr) || parsedManualCurr <= 0)) {
         throw new Error(t('invalidValue') || 'Harga manual saat ini tidak valid');
@@ -309,7 +309,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
                     return;
                   }
 
-                  const numVal = parseFloat(normalizeNumberInput(val));
+                  const numVal = parseFloat(normalizeNumberInput(val, { preferDecimalDot: true }));
                   if (!isNaN(numVal)) {
                     const idrVal = Math.round(numVal * exchangeRate);
                     setAvgPriceIDR(idrVal.toString());
@@ -345,7 +345,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
                   const numVal = parseFloat(normalizeNumberInput(val));
                   if (!isNaN(numVal)) {
                     const usdVal = numVal / exchangeRate;
-                    setAvgPrice(usdVal.toFixed(2));
+                    setAvgPrice(formatUsdInput(usdVal));
                   }
                 }}
                 placeholder="Contoh: 2300000"

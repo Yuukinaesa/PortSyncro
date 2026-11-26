@@ -6,7 +6,7 @@ import MetricsGuideModal from './MetricsGuideModal';
 import { FiRefreshCw, FiPlusCircle, FiDollarSign, FiActivity, FiAlertCircle, FiInfo, FiHelpCircle, FiDownload, FiCreditCard, FiSearch, FiSettings, FiX, FiTrendingUp, FiDisc, FiCamera, FiChevronUp, FiChevronDown, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { fetchExchangeRate } from '../lib/fetchPrices';
-import { formatNumber, formatIDR, formatUSD, formatNumberUSD, formatQuantity } from '../lib/utils';
+import { formatNumber, formatIDR, formatUSD, formatNumberUSD, formatQuantity, escapeCsvCell, formatCsvIDR } from '../lib/utils';
 import { useLanguage } from '../lib/languageContext';
 import { useTheme } from '../lib/themeContext';
 import { secureLogger } from './../lib/security';
@@ -338,10 +338,12 @@ export default function Portfolio({
   const gains = useMemo(() => {
     let stocksGainIDR = 0;
     let stocksGainUSD = 0;
+    let stocksCostIDR = 0;
     let cryptoGainUSD = 0;
     let cryptoGainIDR = 0;
     let goldGainIDR = 0;
     let goldGainUSD = 0;
+    let goldCostIDR = 0;
     let totalCostIDR = 0;
     let totalCostUSD = 0;
 
@@ -372,6 +374,7 @@ export default function Portfolio({
         const gain = currentValue - costBasis;
         stocksGainUSD += gain;
         stocksGainIDR += gain * safeExchangeRate;
+        stocksCostIDR += costBasis * safeExchangeRate;
         totalCostUSD += costBasis;
       } else {
         // IDX: Base IDR
@@ -380,6 +383,7 @@ export default function Portfolio({
 
         const gain = currentValue - costBasis;
         stocksGainIDR += gain;
+        stocksCostIDR += costBasis;
         totalCostIDR += costBasis;
         if (safeExchangeRate > 0) {
           stocksGainUSD += gain / safeExchangeRate;
@@ -419,6 +423,7 @@ export default function Portfolio({
 
       const gain = currentValue - costBasis;
       goldGainIDR += gain;
+      goldCostIDR += costBasis;
       totalCostIDR += costBasis;
 
       if (safeExchangeRate > 0) {
@@ -446,9 +451,9 @@ export default function Portfolio({
       totalCost: totalCostNormalizedIDR,
       totalCostUSD: totalCostNormalizedUSD,
       gainPercent: totalCostNormalizedIDR > 0 ? (totalGainIDR / totalCostNormalizedIDR) * 100 : 0,
-      stocksGainPercent: totalCostIDR > 0 ? (stocksGainIDR / totalCostIDR) * 100 : 0,
+      stocksGainPercent: stocksCostIDR > 0 ? (stocksGainIDR / stocksCostIDR) * 100 : 0,
       cryptoGainPercent: totalCostUSD > 0 ? (cryptoGainUSD / totalCostUSD) * 100 : 0,
-      goldGainPercent: totalCostIDR > 0 ? (goldGainIDR / totalCostIDR) * 100 : 0
+      goldGainPercent: goldCostIDR > 0 ? (goldGainIDR / goldCostIDR) * 100 : 0
     };
   }, [assets, prices, exchangeRate]);
 
@@ -711,22 +716,19 @@ export default function Portfolio({
       const csvRows = [];
       csvRows.push(['PORTFOLIO REPORT']);
       csvRows.push(['Generated At', currentDate]);
-      csvRows.push(['Exchange Rate (1 USD)', formatIDR(exchangeRate)]);
-      csvRows.push(['Total Portfolio Value (IDR)', formatIDR(totals.totalIDR)]);
+      csvRows.push(['Exchange Rate (1 USD)', formatCsvIDR(exchangeRate)]);
+      csvRows.push(['Total Portfolio Value (IDR)', formatCsvIDR(totals.totalIDR)]);
       csvRows.push(['Total Portfolio Value (USD)', formatUSD(totals.totalUSD)]);
-      csvRows.push(['Modal Awal + Kas Sebelum P/L (Porto Utuh)', `${formatIDR(initialPortoIDR)} (${formatUSD(initialPortoUSD)})`]);
-      csvRows.push(['Modal Beli Investasi (Termasuk Stablecoin)', `${formatIDR(gains.totalCost)} (${formatUSD(gains.totalCostUSD)})`]);
+      csvRows.push(['Modal Awal + Kas Sebelum P/L (Porto Utuh)', `${formatCsvIDR(initialPortoIDR)} (${formatUSD(initialPortoUSD)})`]);
+      csvRows.push(['Modal Beli Investasi (Termasuk Stablecoin)', `${formatCsvIDR(gains.totalCost)} (${formatUSD(gains.totalCostUSD)})`]);
       csvRows.push(['   - Return Modal Total', `${(gains.gainPercent || 0).toFixed(2)}%`]);
-      csvRows.push(['Modal Beli Aktif (Tanpa Stablecoin)', `${formatIDR(investedBreakdown.activeCostIDR)} (${formatUSD(investedBreakdown.activeCostUSD)})`]);
+      csvRows.push(['Modal Beli Aktif (Tanpa Stablecoin)', `${formatCsvIDR(investedBreakdown.activeCostIDR)} (${formatUSD(investedBreakdown.activeCostUSD)})`]);
       csvRows.push(['   - Return Modal Aktif', `${(investedBreakdown.activeReturnPercent || 0).toFixed(2)}%`]);
-      csvRows.push(['Standby Stablecoin (Kas USD)', `${formatUSD(investedBreakdown.stablecoinCostUSD)} (~${formatIDR(investedBreakdown.stablecoinCostIDR)})`]);
-      csvRows.push(['Total Untung/Rugi (P&L)', `${formatIDR(gains.totalGainIDR)} (${formatUSD(gains.totalGainUSD)})`]);
+      csvRows.push(['Standby Stablecoin (Kas USD)', `${formatUSD(investedBreakdown.stablecoinCostUSD)} (~${formatCsvIDR(investedBreakdown.stablecoinCostIDR)})`]);
+      csvRows.push(['Total Untung/Rugi (P&L)', `${formatCsvIDR(gains.totalGainIDR)} (${formatUSD(gains.totalGainUSD)})`]);
       csvRows.push([]); // Empty row
 
       // 2. Define Headers
-      // We will create a unified table structure but might separate sections for clarity if requested, 
-      // but a single table is usually better for sorting/filtering in Excel.
-      // Let's stick to a robust single table with clear Type indicator.
       const headers = [
         'Type',
         'Ticker/Name',
@@ -744,30 +746,12 @@ export default function Portfolio({
       ];
       csvRows.push(headers);
 
-      const escape = (str) => {
-        if (str === null || str === undefined) return '""';
-        let s = String(str);
-        if (s.startsWith('=')) s = "'" + s;
-        return `"${s.replace(/"/g, '""')}"`;
-      };
-
-      // Helper to format number for CSV (avoiding currency symbols for easier calculation in Excel if desired, 
-      // but user asked for "enak dilihat" (nice to view), so we might keep formatting or just clean numbers.
-      // Let's use clean numbers for compatibility, but formatted if it's just IDR. 
-      // Actually, standard Excel CSV prefers raw numbers. But "Enak dilihat" might mean formatted. 
-      // Let's provide formatted numbers for "Value" columns for readability.
-
-      const formatVal = (num) => {
-        if (!num && num !== 0) return '0';
-        return Number(num).toFixed(2);
-      };
-
       // Process Stocks
       if ((category === 'all' || category === 'stock') && assets?.stocks) {
         assets.stocks.forEach(stock => {
           const isUS = stock.market === 'US';
-          const avgPriceLabel = isUS ? formatUSD(stock.avgPrice) : formatIDR(stock.avgPrice);
-          const currPriceLabel = isUS ? formatUSD(stock.currentPrice) : formatIDR(stock.currentPrice);
+          const avgPriceLabel = isUS ? formatUSD(stock.avgPrice) : formatCsvIDR(stock.avgPrice);
+          const currPriceLabel = isUS ? formatUSD(stock.currentPrice) : formatCsvIDR(stock.currentPrice);
 
           // Calculate IDR and USD values for uniformity
           let costIDR = 0, costUSD = 0, valueIDR = 0, valueUSD = 0, gainIDR = 0, gainUSD = 0;
@@ -798,11 +782,11 @@ export default function Portfolio({
             stock.lots,
             avgPriceLabel,
             currPriceLabel,
-            formatIDR(costIDR),
+            formatCsvIDR(costIDR),
             formatUSD(costUSD),
-            formatIDR(valueIDR),
+            formatCsvIDR(valueIDR),
             formatUSD(valueUSD),
-            formatIDR(gainIDR),
+            formatCsvIDR(gainIDR),
             formatUSD(gainUSD),
             (stock.gainPercentage || 0).toFixed(2) + '%'
           ]);
@@ -830,11 +814,11 @@ export default function Portfolio({
             crypto.amount,
             formatUSD(crypto.avgPrice),
             formatUSD(crypto.currentPrice),
-            formatIDR(costIDR),
+            formatCsvIDR(costIDR),
             formatUSD(costUSD),
-            formatIDR(valueIDR),
+            formatCsvIDR(valueIDR),
             formatUSD(valueUSD),
-            formatIDR(gainIDR),
+            formatCsvIDR(gainIDR),
             formatUSD(gainUSD),
             (crypto.gainPercentage || 0).toFixed(2) + '%'
           ]);
@@ -855,11 +839,11 @@ export default function Portfolio({
             '-', // Quantity
             '-', // Avg Price
             '-', // Curr Price
-            formatIDR(valIDR), // Cost (same as value)
+            formatCsvIDR(valIDR), // Cost (same as value)
             formatUSD(valUSD),
-            formatIDR(valIDR),
+            formatCsvIDR(valIDR),
             formatUSD(valUSD),
-            formatIDR(0),
+            formatCsvIDR(0),
             formatUSD(0),
             '0%'
           ]);
@@ -885,13 +869,13 @@ export default function Portfolio({
             gold.ticker || 'GOLD', // Name/Ticker
             gold.broker || '-',
             `${gold.amount} gram`, // Quantity
-            formatIDR(gold.avgPrice), // Avg Price
-            formatIDR(gold.currentPrice), // Curr Price
-            formatIDR(costIDR), // Cost IDR
+            formatCsvIDR(gold.avgPrice), // Avg Price
+            formatCsvIDR(gold.currentPrice), // Curr Price
+            formatCsvIDR(costIDR), // Cost IDR
             formatUSD(costUSD), // Cost USD
-            formatIDR(valueIDR),
+            formatCsvIDR(valueIDR),
             formatUSD(valueUSD),
-            formatIDR(gainIDR),
+            formatCsvIDR(gainIDR),
             formatUSD(gainUSD),
             (gold.gainPercentage || 0).toFixed(2) + '%'
           ]);
@@ -902,17 +886,17 @@ export default function Portfolio({
       if (category === 'all') {
         csvRows.push([]);
         csvRows.push(['=== RINGKASAN PORTOFOLIO / PORTFOLIO SUMMARY ===']);
-        csvRows.push(['Total Portofolio (Market Value)', formatIDR(totals.totalIDR), formatUSD(totals.totalUSD)]);
-        csvRows.push(['Total Portofolio Utuh Sebelum P/L (Modal + Kas)', formatIDR(initialPortoIDR), formatUSD(initialPortoUSD)]);
-        csvRows.push(['Versi 1: Total Modal Invested (Termasuk USDT & USDC)', formatIDR(gains.totalCost), formatUSD(gains.totalCostUSD), `Return: ${(gains.gainPercent || 0).toFixed(2)}%`]);
-        csvRows.push(['Versi 2: Modal Invested Aktif (Tanpa USDT & USDC)', formatIDR(investedBreakdown.activeCostIDR), formatUSD(investedBreakdown.activeCostUSD), `Return Aktif: ${(investedBreakdown.activeReturnPercent || 0).toFixed(2)}%`]);
-        csvRows.push(['Standby Stablecoin (USDT + USDC)', formatIDR(investedBreakdown.stablecoinCostIDR), formatUSD(investedBreakdown.stablecoinCostUSD)]);
-        csvRows.push(['Saldo Kas / Bank & E-Wallet', formatIDR(totals.totalCashIDR), formatUSD(totals.totalCashUSD)]);
-        csvRows.push(['Total Untung / Rugi (P&L)', formatIDR(gains.totalGainIDR), formatUSD(gains.totalGainUSD)]);
+        csvRows.push(['Total Portofolio (Market Value)', formatCsvIDR(totals.totalIDR), formatUSD(totals.totalUSD)]);
+        csvRows.push(['Total Portofolio Utuh Sebelum P/L (Modal + Kas)', formatCsvIDR(initialPortoIDR), formatUSD(initialPortoUSD)]);
+        csvRows.push(['Versi 1: Total Modal Invested (Termasuk USDT & USDC)', formatCsvIDR(gains.totalCost), formatUSD(gains.totalCostUSD), `Return: ${(gains.gainPercent || 0).toFixed(2)}%`]);
+        csvRows.push(['Versi 2: Modal Invested Aktif (Tanpa USDT & USDC)', formatCsvIDR(investedBreakdown.activeCostIDR), formatUSD(investedBreakdown.activeCostUSD), `Return Aktif: ${(investedBreakdown.activeReturnPercent || 0).toFixed(2)}%`]);
+        csvRows.push(['Standby Stablecoin (USDT + USDC)', formatCsvIDR(investedBreakdown.stablecoinCostIDR), formatUSD(investedBreakdown.stablecoinCostUSD)]);
+        csvRows.push(['Saldo Kas / Bank & E-Wallet', formatCsvIDR(totals.totalCashIDR), formatUSD(totals.totalCashUSD)]);
+        csvRows.push(['Total Untung / Rugi (P&L)', formatCsvIDR(gains.totalGainIDR), formatUSD(gains.totalGainUSD)]);
       }
 
       const BOM = '\uFEFF';
-      const csvContent = BOM + csvRows.map(row => row.map(escape).join(",")).join("\n");
+      const csvContent = BOM + csvRows.map(row => row.map(escapeCsvCell).join(",")).join("\n");
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

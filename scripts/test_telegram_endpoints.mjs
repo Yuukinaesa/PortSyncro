@@ -4,6 +4,7 @@
 import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
+import { portoRecap } from '../lib/telegramFormatter.js';
 
 console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
 
@@ -86,7 +87,12 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
   assert(content.includes("case '/history':"), 'telegramBot.js must support /history alias');
   assert(content.includes('rawCommandPart.slice(5)'), 'telegramBot.js must preserve case-sensitive txId in /del_');
 
-  console.log('✅ 3. lib/telegramBot.js dynamic API, auto-retry, aliases, txId casing, and autopilot auto-enable verified.');
+  // Verify multi-target Dual-Mode autopilot delivery & plain-text /porto recap (no HTML tag leaks)
+  assert(content.includes('user.telegramLinkedGroups') && content.includes('targetChats'), 'sendDailyReports must deliver to private chat AND linked groups/channels');
+  assert(content.includes('await sendAuthMessage(chatId, uid, recapText, { parseMode: false })'), 'handlePorto must send plain-text recap with parseMode: false');
+  assert(content.includes('normalizeNumberInput('), 'telegramBot.js must normalize locale numbers in buy/sell/edit commands');
+
+  console.log('✅ 3. lib/telegramBot.js dynamic API, auto-retry, aliases, txId casing, Dual-Mode group autopilot, and plain-text recap verified.');
 }
 
 // 4. Verify vercel.json cron entry
@@ -125,6 +131,25 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
   assert(!fs.readFileSync(path.resolve('lib/telegramFormatter.js'), 'utf8').includes('exchangeRate || 1'), 'lib/telegramFormatter.js must not contain (exchangeRate || 1)');
 
   console.log('✅ 5. Zero hardcoded dummy exchange rates or (exchangeRate || 1) multipliers verified.');
+}
+
+// 6. Verify portoRecap runtime output (plain text without &amp;/<b>, and dust cost % guard)
+{
+  const recap = portoRecap(
+    {
+      stocks: [{ type: 'stock', ticker: 'SPY', lots: 1, market: 'US', broker: 'S&P Desk', avgPrice: 500, currentPrice: 550, portoIDR: 8800000, gain: 50, gainPercentage: 10 }],
+      crypto: [{ assetType: 'crypto', symbol: 'BTC', exchange: 'Tokokripto', amount: 0.00240025, avgPrice: 0.000073, currentPrice: 58342, portoIDR: 2573188, gain: 140.03 }],
+      gold: [],
+      cash: [{ ticker: 'BANK & WALLET', amount: 1000000 }]
+    },
+    18375,
+    {}
+  );
+
+  assert(recap.includes('S&P Desk') && !recap.includes('&amp;'), 'portoRecap must output plain text without HTML entities like &amp;');
+  assert(!recap.includes('<b>'), 'portoRecap must not emit raw <b> HTML tags');
+  assert(!recap.includes('79850920'), 'portoRecap must suppress distorted multi-billion % spikes from sub-unit dust cost basis');
+  console.log('✅ 6. portoRecap runtime formatting (plain text + dust % guard) verified.');
 }
 
 console.log('\n🎉 ALL TELEGRAM BOT & CRON TESTS PASSED 100%!');

@@ -6,7 +6,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import ErrorBoundary from './ErrorBoundary';
 import { useLanguage } from '../lib/languageContext';
-import { formatIDR, formatUSD, formatNumber, formatNumberUSD } from '../lib/utils';
+import { formatIDR, formatUSD, formatNumber, formatNumberUSD, escapeCsvCell } from '../lib/utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { secureLogger } from './../lib/security';
 
@@ -293,11 +293,6 @@ export default function TransactionHistory({
       // Add UTF-8 BOM to prevent Excel from showing warning
       const BOM = '\uFEFF';
 
-      const escapeCSV = (str) => {
-        if (str === null || str === undefined) return '""';
-        return `"${String(str).replace(/"/g, '""')}"`;
-      };
-
       // Language-aware CSV headers
       const headers = [
         t('date'),
@@ -310,7 +305,7 @@ export default function TransactionHistory({
         t('usdValue')
       ];
 
-      let csvContent = BOM + headers.map(escapeCSV).join(',') + '\n';
+      let csvContent = BOM + headers.map(escapeCsvCell).join(',') + '\n';
 
       filteredTransactions.forEach(tx => {
         let assetTypeText = '';
@@ -354,7 +349,7 @@ export default function TransactionHistory({
           formatNumberForCSV(values.valueIDR, 'IDR'),
           formatNumberForCSV(values.valueUSD, 'USD')
         ];
-        csvContent += row.map(escapeCSV).join(',') + '\n';
+        csvContent += row.map(escapeCsvCell).join(',') + '\n';
       });
 
       // Create blob with proper MIME type

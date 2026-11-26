@@ -111,19 +111,27 @@ async function handleUnlink(req, res) {
   try {
     // Get current chat ID and any linked groups
     const userData = await firestoreGet('users', uid);
-    const chatId = userData?.telegramChatId;
+    const idsToDelete = new Set();
+    if (userData?.telegramChatId) idsToDelete.add(String(userData.telegramChatId));
+    if (userData?.telegramGroupChatId) idsToDelete.add(String(userData.telegramGroupChatId));
+    if (Array.isArray(userData?.telegramLinkedGroups)) {
+      userData.telegramLinkedGroups.forEach(gid => {
+        if (gid !== null && gid !== undefined && gid !== '') idsToDelete.add(String(gid));
+      });
+    }
 
-    if (chatId) {
-      // Remove link document and autopilot schedule so cronjob stops messaging unlinked user
-      await firestoreDelete('telegram_links', String(chatId));
+    for (const targetLinkId of idsToDelete) {
+      await firestoreDelete('telegram_links', targetLinkId);
     }
     await firestoreDelete('telegram_autopilot', String(uid));
 
-    // Remove telegram fields from user document
+    // Remove all telegram fields from user document
     await firestoreDeleteFields('users', uid, [
       'telegramChatId',
       'telegramUsername',
-      'telegramLinkedAt'
+      'telegramLinkedAt',
+      'telegramGroupChatId',
+      'telegramLinkedGroups'
     ]);
 
     return res.status(200).json({ success: true });
@@ -373,7 +381,15 @@ function parseFirestoreDoc(doc) {
     else if ('timestampValue' in val) result[key] = val.timestampValue;
     else if ('nullValue' in val) result[key] = null;
     else if ('mapValue' in val) result[key] = val.mapValue;
-    else if ('arrayValue' in val) result[key] = val.arrayValue;
+    else if ('arrayValue' in val) {
+      result[key] = (val.arrayValue?.values || []).map(v => {
+        if ('stringValue' in v) return v.stringValue;
+        if ('integerValue' in v) return parseInt(v.integerValue, 10);
+        if ('doubleValue' in v) return v.doubleValue;
+        if ('booleanValue' in v) return v.booleanValue;
+        return null;
+      }).filter(v => v !== null);
+    }
   }
   return result;
 }

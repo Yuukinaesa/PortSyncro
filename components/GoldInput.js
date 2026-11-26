@@ -74,7 +74,7 @@ export default function GoldInput({ onAdd, onComplete }) {
                 throw new Error('Berat emas (gram) diperlukan');
             }
 
-            const weightNum = parseFloat(normalizeNumberInput(weight));
+            const weightNum = parseFloat(normalizeNumberInput(weight, { preferDecimalDot: true }));
             if (isNaN(weightNum) || weightNum <= 0) {
                 throw new Error('Berat emas tidak valid');
             }

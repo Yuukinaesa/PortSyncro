@@ -20,7 +20,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import { formatIDR, formatUSD, formatQuantity } from '../lib/utils';
+import { formatIDR, formatUSD, formatQuantity, formatCsvIDR, escapeCsvCell } from '../lib/utils';
 import { fetchExchangeRate } from '../lib/fetchExchangeRate';
 import { format, subDays, parseISO, isWithinInterval } from 'date-fns';
 import { id, enUS } from 'date-fns/locale';
@@ -636,9 +636,12 @@ export default function Reports() {
         if (!filteredData || filteredData.length === 0) return;
 
         const csvRows = [];
-        const escape = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
-        const fmtIDR = (n) => formatIDR(Math.round(n || 0));
-        const fmtUSD = (n) => '$' + parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const fmtIDR = (n) => formatCsvIDR(Math.round(n || 0));
+        const fmtUSD = (n) => {
+            const val = parseFloat(n || 0);
+            const sign = val < 0 ? '-' : '';
+            return sign + '$' + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
         const fmtQty = (n) => parseFloat(n || 0).toLocaleString('id-ID', { maximumFractionDigits: 7 });
 
         // Format based on selected currency
@@ -692,7 +695,7 @@ export default function Reports() {
             const totalVal = currency === 'IDR' ? fmtIDR(item.totalValueIDR) : fmtUSD(item.totalValueUSD);
             const investedTotalVal = fmtSingleValue(investedTotal, impliedRate);
             const investedActiveVal = fmtSingleValue(investedActive, impliedRate);
-            const profitVal = (profitTotal >= 0 ? '+' : '') + fmtSingleValue(profitTotal, impliedRate);
+            const profitVal = fmtSingleValue(profitTotal, impliedRate);
 
             csvRows.push([dateStr, dayStr, totalVal, initialPortoVal, investedTotalVal, investedActiveVal, profitVal, pctTotal, pctActive, '', '', '', '', '']);
 
@@ -737,7 +740,7 @@ export default function Reports() {
         const filename = `PortSyncro_History_${safeCurrency}_${safeStart}_${safeEnd}.csv`;
 
         const BOM = '\uFEFF';
-        const csv = BOM + csvRows.map(r => r.map(escape).join(',')).join('\n');
+        const csv = BOM + csvRows.map(r => r.map(escapeCsvCell).join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -758,9 +761,12 @@ export default function Reports() {
             return;
         }
 
-        const fmtIDR = (n) => formatIDR(Math.round(n || 0));
-        const fmtUSD = (n) => '$' + parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const escape = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
+        const fmtIDR = (n) => formatCsvIDR(Math.round(n || 0));
+        const fmtUSD = (n) => {
+            const val = parseFloat(n || 0);
+            const sign = val < 0 ? '-' : '';
+            return sign + '$' + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
 
         // Format function based on selected currency
         const fmtCurrency = (n) => currency === 'IDR' ? fmtIDR(n) : fmtUSD(n);
@@ -802,8 +808,8 @@ export default function Reports() {
         csvRows.push(['Modal Awal + Kas (Porto Utuh)', fmtCurrency(initialPortoVal), '🌱']);
         csvRows.push(['Current Portfolio', fmtCurrency(endVal), '💰']);
         csvRows.push(['Total Invested', fmtCurrency(invested), '📦']);
-        csvRows.push(['Net Change', (netChange >= 0 ? '+' : '') + fmtCurrency(netChange), (netChange >= 0 ? '+' : '') + netChangePct.toFixed(1) + '%']);
-        csvRows.push(['Total Profit', (totalProfit >= 0 ? '+' : '') + fmtCurrency(totalProfit), totalProfitPct.toFixed(1) + '%']);
+        csvRows.push(['Net Change', fmtCurrency(netChange), (netChange >= 0 ? '+' : '') + netChangePct.toFixed(1) + '%']);
+        csvRows.push(['Total Profit', fmtCurrency(totalProfit), totalProfitPct.toFixed(1) + '%']);
         csvRows.push(['Highest (ATH)', fmtCurrency(high), '🏆']);
         csvRows.push(['Lowest (ATL)', fmtCurrency(low), '📉']);
 
@@ -813,7 +819,7 @@ export default function Reports() {
         const filename = `PortSyncro_Stats_${safeCurrency}_${safeStart}_${safeEnd}.csv`;
 
         const BOM = '\uFEFF';
-        const csv = BOM + csvRows.map(r => r.map(escape).join(',')).join('\n');
+        const csv = BOM + csvRows.map(r => r.map(escapeCsvCell).join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
