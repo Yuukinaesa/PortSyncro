@@ -268,7 +268,7 @@ export default function Reports() {
             let fetchedPrices = {};
             let fetchedExchangeRate = 16000;
 
-            if (stockTickers.length > 0 || cryptoSymbols.length > 0) {
+            if (stockTickers.length > 0 || cryptoSymbols.length > 0 || gold.length > 0) {
                 const token = await user.getIdToken();
                 const response = await fetch('/api/prices', {
                     method: 'POST',
@@ -400,18 +400,16 @@ export default function Reports() {
             let goldInvestedIDR = 0;
             const enrichedGold = gold.map(g => {
                 const price = g.currentPrice || 0;
-                const amount = parseFloat(g.weight) || 0;
-                const avgPrice = g.avgPrice || g.entryPrice || 0;
-                const amountGram = parseFloat(g.amountGram || g.amount || 0);
-                const buyPricePerGram = parseFloat(g.buyPricePerGram || g.buyPrice || 0);
-                const goldPrices = currentPrices.gold || {};
+                const amountGram = parseFloat(g.amountGram || g.weight || g.amount || 0);
+                const buyPricePerGram = parseFloat(g.buyPricePerGram || g.buyPrice || g.avgPrice || g.entryPrice || 0);
+                const goldPrices = prices.gold || {};
 
-                let currentPrice = buyPricePerGram;
+                let currentPrice = price || buyPricePerGram;
                 if (g.subtype === 'digital') {
-                    currentPrice = goldPrices.digital?.price || buyPricePerGram;
+                    currentPrice = goldPrices.digital?.sellPrice || goldPrices.digital?.price || price || buyPricePerGram;
                 } else if (g.brand && goldPrices.physical) {
                     const brandKey = g.brand.toLowerCase();
-                    currentPrice = goldPrices.physical[brandKey]?.price || buyPricePerGram;
+                    currentPrice = goldPrices.physical[brandKey]?.price || goldPrices.digital?.sellPrice || price || buyPricePerGram;
                 }
 
                 const currentValIDR = amountGram * currentPrice;
@@ -427,11 +425,15 @@ export default function Reports() {
                     currentPrice,
                     porto: currentValIDR,
                     portoIDR: Math.round(currentValIDR),
-                    portoUSD: Math.round(portoUSD * 100) / 100
+                    portoUSD: Math.round(portoUSD * 100) / 100,
+                    totalCost: Math.round(investedValIDR),
+                    totalCostIDR: Math.round(investedValIDR)
                 };
             });
 
             // Cash
+            let cashValueIDR = 0;
+            let cashValueUSD = 0;
             const enrichedCash = cash.map(c => {
                 const amount = parseFloat(c.amount || 0);
                 let portoIDR = 0, portoUSD = 0;

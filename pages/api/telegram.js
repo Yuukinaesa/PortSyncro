@@ -29,8 +29,8 @@ function checkWebhookRateLimit(chatId) {
   timestamps.push(now);
   webhookRateLimit.set(key, timestamps);
   
-  // Lazy cleanup (1% chance)
-  if (Math.random() < 0.01) {
+  // Deterministic lazy cleanup when map grows (no Math.random in security-sensitive code)
+  if (webhookRateLimit.size > 100) {
     const cutoff = now - WEBHOOK_RATE_LIMIT_WINDOW * 10;
     for (const [id, times] of webhookRateLimit.entries()) {
       const valid = times.filter(t => t > cutoff);
@@ -46,6 +46,7 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
+  const cronSecret = process.env.CRON_SECRET || webhookSecret;
 
   // ═══════════════════════════════════════════════════════════════
   // 1. GET: Diagnostics & 1-Click Auto Setup
@@ -61,29 +62,39 @@ export default async function handler(req, res) {
 
     const rawHost = (req.headers.host || '').toLowerCase().trim();
     const isProduction = process.env.NODE_ENV === 'production';
-    
-    // Strict host validation to prevent Host Header Injection / Webhook hijacking
-    const isAllowedHost = rawHost === 'portsyncro.arfan.biz.id' || 
-                          rawHost.endsWith('.vercel.app') || 
-                          rawHost.startsWith('localhost') || 
-                          rawHost.startsWith('127.0.0.1');
+    const hostParts = rawHost.split(':');
+    const portNum = hostParts.length === 2 ? Number(hostParts[1]) : null;
+    const isLocalHost = (hostParts[0] === 'localhost' || hostParts[0] === '127.0.0.1') &&
+                        (hostParts.length === 1 || (portNum !== null && Number.isInteger(portNum) && portNum > 0 && portNum <= 65535));
+    const isProductionDomain = rawHost === 'portsyncro.arfan.biz.id' || rawHost === 'www.portsyncro.arfan.biz.id';
+    const isAllowedHost = isProduction ? isProductionDomain : (isProductionDomain || isLocalHost);
 
-    // Canonical deployment URL pinned strictly to trusted domains
-    let targetBaseUrl = 'https://portsyncro.arfan.biz.id';
-    if (!isProduction && (rawHost.startsWith('localhost') || rawHost.startsWith('127.0.0.1'))) {
-      targetBaseUrl = `http://${rawHost}`;
-    } else if (rawHost.endsWith('.vercel.app')) {
-      targetBaseUrl = `https://${rawHost}`;
-    }
+    // Canonical deployment URL pinned strictly to production domain (prevents Host Header webhook hijacking)
+    const targetBaseUrl = (!isProduction && isLocalHost)
+      ? `http://${rawHost}`
+      : 'https://portsyncro.arfan.biz.id';
     const currentWebhookUrl = `${targetBaseUrl}/api/telegram`;
 
-    // 1-Click Setup: Register webhook & bot commands
+    // 1-Click Setup: Register webhook & bot commands (requires secret when configured in production)
     if (req.query.setup === 'true' || req.query.setWebhook === 'true') {
       if (!isAllowedHost) {
         return res.status(403).json({
           ok: false,
           error: 'Forbidden: Untrusted host header detected.'
         });
+      }
+
+      if (isProduction && cronSecret) {
+        const authHeader = req.headers.authorization;
+        const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
+        const querySecret = typeof req.query.secret === 'string' ? req.query.secret : '';
+        const hasValidSecret = timingSafeCompare(bearerToken, cronSecret) || timingSafeCompare(querySecret, cronSecret);
+        if (!hasValidSecret) {
+          return res.status(401).json({
+            ok: false,
+            error: 'Unauthorized: Valid secret token required to modify webhook.'
+          });
+        }
       }
 
       try {
@@ -102,11 +113,12 @@ export default async function handler(req, res) {
         });
         const setResult = await setResp.json();
 
-        // Also register bot commands menu in Telegram
+        // Also register complete bot commands menu in Telegram
         const commands = [
           { command: 'start', description: 'Mulai bot & menu utama' },
           { command: 'status', description: 'Cek status koneksi akun' },
           { command: 'link', description: 'Hubungkan akun PortSyncro (/link KODE)' },
+          { command: 'unlink', description: 'Putuskan koneksi Telegram' },
           { command: 'porto', description: 'Rekap ringkas portfolio (format chat)' },
           { command: 'portfolio', description: 'Lihat ringkasan portfolio lengkap' },
           { command: 'pnl', description: 'Lihat ringkasan untung/rugi (P/L)' },
@@ -115,8 +127,16 @@ export default async function handler(req, res) {
           { command: 'emas', description: 'Daftar kepemilikan emas' },
           { command: 'cash', description: 'Daftar saldo bank & kas' },
           { command: 'hargaporto', description: 'Harga terkini aset di portfolio' },
+          { command: 'harga', description: 'Cek harga ticker spesifik' },
+          { command: 'beli', description: 'Catat transaksi beli aset' },
+          { command: 'jual', description: 'Catat transaksi jual aset' },
+          { command: 'addcash', description: 'Tambah saldo bank / kas' },
+          { command: 'setcash', description: 'Set nominal saldo bank mutlak' },
+          { command: 'addgold', description: 'Catat pembelian emas' },
+          { command: 'hapus', description: 'Hapus aset dari portofolio' },
           { command: 'riwayat', description: 'Riwayat transaksi terakhir' },
           { command: 'autopilot', description: 'Atur jadwal kirim rekap harian' },
+          { command: 'setname', description: 'Ganti identitas tampilan di grup' },
           { command: 'help', description: 'Panduan lengkap perintah' }
         ];
 

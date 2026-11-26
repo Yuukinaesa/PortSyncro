@@ -10,7 +10,7 @@ import { useTheme } from '../lib/themeContext';
 import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { secureLogger } from './../lib/security';
+import { secureLogger, validateInput } from './../lib/security';
 import { FiLock, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 
 
@@ -70,8 +70,8 @@ export default function ConfirmResetPassword() {
       setError(t('passwordMismatch'));
       return;
     }
-    if (newPassword.length < 6) {
-      setError(t('passwordTooShort'));
+    if (!validateInput.password(newPassword)) {
+      setError(newPassword.length < 8 ? t('passwordTooShort') : t('strictPasswordRequirements'));
       return;
     }
     setLoading(true);

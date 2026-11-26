@@ -17,6 +17,7 @@ export default [
   ...nextConfig,
   {
     rules: {
+      "no-undef": "error",
       "react-hooks/set-state-in-effect": "off",
       "import/no-anonymous-default-export": "off",
       "security/detect-object-injection": "off"

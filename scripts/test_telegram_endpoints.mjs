@@ -23,7 +23,11 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
   // Verify permissive security (no 500 when TELEGRAM_WEBHOOK_SECRET is not set)
   assert(!content.includes("isProduction && !webhookSecret) {\n    secureLogger.error('[Telegram Webhook] TELEGRAM_WEBHOOK_SECRET not set in production');\n    return res.status(500)"), 'Must not return 500 when secret is not configured');
 
-  console.log('✅ 1. pages/api/telegram.js GET diagnostics and 1-click setup verified.');
+  // Verify host header pinning & setup secret check
+  assert(!content.includes('else if (rawHost.endsWith(\'.vercel.app\'))'), 'Must not trust arbitrary .vercel.app Host header for production setWebhook');
+  assert(content.includes('timingSafeCompare(querySecret, cronSecret)'), 'Setup endpoint must validate secret in production');
+
+  console.log('✅ 1. pages/api/telegram.js GET diagnostics, security pinning, and 1-click setup verified.');
 }
 
 // 2. Verify pages/api/telegram-daily.js
@@ -62,7 +66,14 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
   assert(content.includes('export async function sendDailyReports(options = {})'), 'sendDailyReports must accept options parameter');
   assert(content.includes('forceSend = options.forceSend === true'), 'sendDailyReports must parse options.forceSend');
 
-  console.log('✅ 3. lib/telegramBot.js dynamic API, auto-retry, and autopilot auto-enable verified.');
+  // Verify English + Indonesian command aliases & case-preserving txId extraction
+  assert(content.includes("case '/buy':"), 'telegramBot.js must support /buy alias');
+  assert(content.includes("case '/sell':"), 'telegramBot.js must support /sell alias');
+  assert(content.includes("case '/price':"), 'telegramBot.js must support /price alias');
+  assert(content.includes("case '/history':"), 'telegramBot.js must support /history alias');
+  assert(content.includes('rawCommandPart.slice(5)'), 'telegramBot.js must preserve case-sensitive txId in /del_');
+
+  console.log('✅ 3. lib/telegramBot.js dynamic API, auto-retry, aliases, txId casing, and autopilot auto-enable verified.');
 }
 
 // 4. Verify vercel.json cron entry

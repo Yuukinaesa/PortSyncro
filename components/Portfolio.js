@@ -1641,7 +1641,6 @@ export default function Portfolio({
                   type="button"
                   onClick={() => {
                     setCryptoTableFilter('all');
-                    setCryptoCardView('all');
                   }}
                   className="mt-2 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline"
                 >

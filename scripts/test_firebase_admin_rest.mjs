@@ -22,20 +22,30 @@ console.log('🧪 RUNNING FIRESTORE REST CLIENT UNIT TESTS...\n');
   console.log('✅ 1. FieldValue sentinels verified.');
 }
 
-// 2. Verify Document & Subcollection Reference Chaining
+// 2. Verify Document & Subcollection Reference Chaining + Collection.add()
 {
   const doc = new FirestoreDocument('users/test_uid_123');
   assert.strictEqual(doc.id, 'test_uid_123');
   assert.strictEqual(doc.path, 'users/test_uid_123');
+  assert.strictEqual(doc.ref, doc);
 
   const subCol = doc.collection('transactions');
   assert.strictEqual(subCol.path, 'users/test_uid_123/transactions');
+  assert.strictEqual(typeof subCol.add, 'function', 'FirestoreCollection must implement .add()');
 
   const subDoc = subCol.doc('tx_999');
   assert.strictEqual(subDoc.id, 'tx_999');
   assert.strictEqual(subDoc.path, 'users/test_uid_123/transactions/tx_999');
 
-  console.log('✅ 2. Document & Subcollection path resolution verified.');
+  const autoDoc = subCol.doc();
+  assert(/^[A-Za-z0-9]{20}$/.test(autoDoc.id), 'Auto-generated Firestore ID must be 20 alphanumeric chars');
+
+  // Verify Path Traversal Guard blocks '..', '?', '#', whitespace
+  assert.throws(() => new FirestoreDocument('users/../secret'), /Invalid Firestore path/);
+  assert.throws(() => subCol.doc('abc?admin=true'), /Invalid Firestore path/);
+  assert.throws(() => subCol.doc('abc#frag'), /Invalid Firestore path/);
+
+  console.log('✅ 2. Document, Subcollection, .add(), and Path Traversal defense verified.');
 }
 
 // 3. Verify Query Builder

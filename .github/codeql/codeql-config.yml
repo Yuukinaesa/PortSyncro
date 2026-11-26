@@ -1,0 +1,10 @@
+name: "PortSyncro CodeQL Config"
+
+queries:
+  - uses: security-and-quality
+
+paths-ignore:
+  - public
+  - .next
+  - out
+  - node_modules

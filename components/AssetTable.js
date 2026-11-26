@@ -28,7 +28,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
   // Mobile Expanded State
   const [expandedGroups, setExpandedGroups] = useState({});
 
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const getMasked = (val) => {
     if (hideBalance) return '•••••••';

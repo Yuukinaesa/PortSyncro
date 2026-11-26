@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../lib/authContext';
 import { useLanguage } from '../lib/languageContext';
+import { secureLogger } from '../lib/security';
 import { FiLink, FiCopy, FiCheck, FiRefreshCw } from 'react-icons/fi';
 import { FaUnlink } from 'react-icons/fa';
 

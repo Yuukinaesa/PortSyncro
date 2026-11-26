@@ -46,7 +46,7 @@ const cleanUndefinedValues = (obj) => {
 };
 
 // Simplified function to build assets from transactions
-function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [], gold: [], cash: [] }) {
+function buildAssetsFromTransactions(transactions, prices, currentAssets = { stocks: [], crypto: [], gold: [], cash: [] }, exchangeRate = null) {
   secureLogger.log('buildAssetsFromTransactions called with:', {
     transactionsLength: transactions?.length || 0,
     pricesKeys: Object.keys(prices || {}),
