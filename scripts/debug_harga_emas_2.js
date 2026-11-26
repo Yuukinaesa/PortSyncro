@@ -31,6 +31,11 @@ const req = https.get(url, options, (res) => {
     });
 });
 
+req.setTimeout(5000, () => {
+    console.warn('[Debug Gold Logic] Network request timed out gracefully after 5s.');
+    req.destroy();
+});
+
 req.on('error', (err) => {
     console.warn('[Debug Gold Logic] Network request failed gracefully:', err.message);
 });

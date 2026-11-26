@@ -91,4 +91,25 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
   console.log('✅ 4. vercel.json cron configuration verified.');
 }
 
+// 5. Verify zero hardcoded dummy exchange rates in runtime source files
+{
+  const sourceFiles = [
+    'lib/telegramBot.js',
+    'lib/fetchExchangeRate.js',
+    'pages/index.js',
+    'pages/reports.js',
+    'pages/api/exchange-rate.js',
+    'components/Portfolio.js',
+    'components/AssetAllocationModal.js'
+  ];
+
+  const dummyRatePattern = /\b(14000|16000|16500)\b/;
+  for (const relPath of sourceFiles) {
+    const content = fs.readFileSync(path.resolve(relPath), 'utf8');
+    assert(!dummyRatePattern.test(content), `${relPath} must not contain hardcoded dummy exchange rate fallbacks`);
+  }
+
+  console.log('✅ 5. Zero hardcoded dummy exchange rates verified across portfolio, bot, and exchange-rate modules.');
+}
+
 console.log('\n🎉 ALL TELEGRAM BOT & CRON TESTS PASSED 100%!');

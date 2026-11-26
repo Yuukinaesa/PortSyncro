@@ -46,10 +46,11 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
             let valueIDR = 0;
             const amount = isStock ? (market === 'US' ? parseFloat(asset.lots) : parseFloat(asset.lots) * 100) : parseFloat(asset.amount);
 
+            const safeRate = (exchangeRate && exchangeRate > 0) ? exchangeRate : 0;
             if (isStock && market === 'US') {
-                valueIDR = price * amount * (exchangeRate || 16000);
+                valueIDR = price * amount * safeRate;
             } else if (type === 'crypto') {
-                valueIDR = price * amount * (exchangeRate || 16000);
+                valueIDR = price * amount * safeRate;
             } else {
                 // IDR based (IDX Stock, Cash, Gold)
                 valueIDR = price * amount;

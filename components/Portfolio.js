@@ -770,20 +770,21 @@ export default function Portfolio({
           // Calculate IDR and USD values for uniformity
           let costIDR = 0, costUSD = 0, valueIDR = 0, valueUSD = 0, gainIDR = 0, gainUSD = 0;
 
+          const safeRate = (exchangeRate && exchangeRate > 0) ? exchangeRate : 0;
           if (isUS) {
             const shares = stock.lots;
             valueUSD = (stock.currentPrice * shares);
-            valueIDR = valueUSD * exchangeRate;
+            valueIDR = safeRate > 0 ? valueUSD * safeRate : 0;
             costUSD = (stock.avgPrice * shares);
-            costIDR = costUSD * exchangeRate;
+            costIDR = safeRate > 0 ? costUSD * safeRate : 0;
             gainUSD = valueUSD - costUSD;
             gainIDR = valueIDR - costIDR;
           } else {
             const shares = stock.lots * 100;
             valueIDR = (stock.currentPrice * shares);
-            valueUSD = valueIDR / (exchangeRate || 14000);
+            valueUSD = safeRate > 0 ? valueIDR / safeRate : 0;
             costIDR = stock.avgPrice * shares;
-            costUSD = costIDR / (exchangeRate || 14000);
+            costUSD = safeRate > 0 ? costIDR / safeRate : 0;
             gainIDR = valueIDR - costIDR;
             gainUSD = valueUSD - costUSD;
           }

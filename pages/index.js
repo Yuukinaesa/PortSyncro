@@ -990,7 +990,21 @@ export default function Home() {
 
       // CRITICAL: Calculate values using LIVE PRICES, exactly like Portfolio.js does!
       // This ensures snapshot matches what user sees in Portfolio
-      const safeExchangeRate = exchangeRate && exchangeRate > 0 ? exchangeRate : 16000;
+      const safeExchangeRate = exchangeRate && exchangeRate > 0 ? exchangeRate : 0;
+      if (safeExchangeRate <= 0) {
+        secureLogger.warn('Skipping daily snapshot: live exchange rate unavailable');
+        if (force) {
+          setConfirmModal({
+            isOpen: true,
+            title: t('error') || 'Gagal',
+            message: language === 'en' ? 'Live USD/IDR exchange rate is unavailable. Please try again shortly.' : 'Kurs USD/IDR live belum tersedia. Coba sesaat lagi.',
+            type: 'warning',
+            confirmText: t('ok') || 'OK',
+            onConfirm: () => setConfirmModal(null)
+          });
+        }
+        return;
+      }
 
       const stocks = assets.stocks || [];
       const crypto = assets.crypto || [];
@@ -1655,7 +1669,7 @@ export default function Home() {
         avgPrice: purchasePrice, // Store purchase price explicitly
         currentPrice: currentMarketPrice, // Store current market price separately
         valueIDR: purchasePrice * gold.weight, // Cost = purchase price × weight
-        valueUSD: (purchasePrice * gold.weight) / (exchangeRate || 16500),
+        valueUSD: (exchangeRate && exchangeRate > 0) ? (purchasePrice * gold.weight) / exchangeRate : 0,
         date: new Date().toLocaleString('id-ID'),
         timestamp: serverTimestamp(),
         currency: 'IDR',
@@ -1971,7 +1985,7 @@ export default function Home() {
       amount: parseFloat(updatedGold.amount), // Grams
       price: updatedGold.avgPrice, // Costs per gram
       valueIDR: parseFloat(updatedGold.amount) * updatedGold.avgPrice,
-      valueUSD: (parseFloat(updatedGold.amount) * updatedGold.avgPrice) / (exchangeRate || 16500),
+      valueUSD: (exchangeRate && exchangeRate > 0) ? (parseFloat(updatedGold.amount) * updatedGold.avgPrice) / exchangeRate : 0,
       date: new Date().toLocaleString('id-ID'),
       timestamp: serverTimestamp(),
       currency: 'IDR',
@@ -2573,7 +2587,7 @@ export default function Home() {
       if (!currentPrice || currentPrice <= 0) throw new Error('Harga emas tidak tersedia');
 
       const valueIDR = currentPrice * amountToSell;
-      const valueUSD = valueIDR / (exchangeRate || 16500);
+      const valueUSD = (exchangeRate && exchangeRate > 0) ? valueIDR / exchangeRate : 0;
 
       const now = new Date();
       const formattedDate = now.toLocaleString('id-ID', {
@@ -2953,7 +2967,7 @@ export default function Home() {
         version: '2.1',
         exportedAt: new Date().toISOString(),
         metadata: {
-          exchangeRate: exchangeRate || 16000,
+          exchangeRate: (exchangeRate && exchangeRate > 0) ? exchangeRate : null,
           generatedBy: 'PortSyncro',
           schema: 'full_portfolio_and_transactions'
         },
@@ -3088,22 +3102,22 @@ export default function Home() {
         }
       }
 
-      // Ensure we have a valid exchange rate before processing
-      let currentExchangeRate = exchangeRate;
-      if (!currentExchangeRate || currentExchangeRate <= 0) {
-        secureLogger.log('Restore: Exchange rate missing, fetching...');
+      // Ensure we have a valid live (or backup metadata) exchange rate before processing
+      let currentExchangeRate = exchangeRate && exchangeRate > 0 ? exchangeRate : 0;
+      if (currentExchangeRate <= 0) {
+        secureLogger.log('Restore: Exchange rate missing, fetching live rate...');
         try {
           const rateData = await fetchExchangeRate();
-          if (rateData && rateData.rate) {
+          if (rateData && rateData.rate > 0) {
             currentExchangeRate = rateData.rate;
             updateExchangeRate(currentExchangeRate); // Update state too
-          } else {
-            secureLogger.warn('Restore: Failed to fetch exchange rate, using fallback 16000');
-            currentExchangeRate = 16000; // Fallback to reasonable default for IDR/USD
           }
         } catch (e) {
-          secureLogger.error('Restore: Error fetching exchange rate', e);
-          currentExchangeRate = 16000;
+          secureLogger.error('Restore: Error fetching live exchange rate', e);
+        }
+        if (currentExchangeRate <= 0 && data?.metadata?.exchangeRate > 0) {
+          currentExchangeRate = data.metadata.exchangeRate;
+          secureLogger.log('Restore: Using exchange rate stored in backup metadata');
         }
       }
       secureLogger.log('Restore: Using exchange rate:', currentExchangeRate);
@@ -3178,7 +3192,7 @@ export default function Home() {
               if (avgPriceUsd > 0) {
                 // Use explicit USD price if available
                 txPrice = avgPriceUsd;
-              } else if (legacyPriceIsIDR && exchangeRate && exchangeRate > 0) {
+              } else if (legacyPriceIsIDR && currentExchangeRate && currentExchangeRate > 0) {
                 // Convert IDR price to USD
                 txPrice = avgPrice / currentExchangeRate;
               } else {

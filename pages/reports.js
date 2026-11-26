@@ -21,10 +21,22 @@ import {
     Filler
 } from 'chart.js';
 import { formatIDR, formatUSD, formatQuantity } from '../lib/utils';
+import { fetchExchangeRate } from '../lib/fetchExchangeRate';
 import { format, subDays, parseISO, isWithinInterval } from 'date-fns';
 import { id, enUS } from 'date-fns/locale';
 import { secureLogger } from '../lib/security';
 import Modal from '../components/Modal';
+
+// Resolve real exchange rate recorded on a snapshot (zero dummy fallback)
+const resolveItemRate = (item) => {
+    if (Number.isFinite(item?.exchangeRate) && item.exchangeRate > 0) {
+        return item.exchangeRate;
+    }
+    if (item?.totalValueIDR > 0 && item?.totalValueUSD > 0) {
+        return item.totalValueIDR / item.totalValueUSD;
+    }
+    return 0;
+};
 
 // Register ChartJS components
 ChartJS.register(
@@ -266,7 +278,7 @@ export default function Reports() {
                 .map(c => c.symbol);
 
             let fetchedPrices = {};
-            let fetchedExchangeRate = 16000;
+            let fetchedExchangeRate = 0;
 
             if (stockTickers.length > 0 || cryptoSymbols.length > 0 || gold.length > 0) {
                 const token = await user.getIdToken();
@@ -294,15 +306,13 @@ export default function Reports() {
                 }
             }
 
-            // Fetch Exchange Rate
-            try {
-                const rateRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-                if (rateRes.ok) {
-                    const rateData = await rateRes.json();
-                    fetchedExchangeRate = rateData.rates.IDR || 16000;
-                }
-            } catch (e) {
-                console.error("Error fetching rate:", e);
+            // Fetch live USD/IDR exchange rate via resilient multi-provider service (no dummy rate)
+            const rateResult = await fetchExchangeRate();
+            fetchedExchangeRate = Number(rateResult?.rate) || 0;
+            if (!Number.isFinite(fetchedExchangeRate) || fetchedExchangeRate <= 0) {
+                throw new Error(language === 'en'
+                    ? 'Live USD/IDR exchange rate is currently unavailable. Please retry.'
+                    : 'Kurs USD/IDR live sedang tidak tersedia. Silakan coba lagi.');
             }
 
             const safeExchangeRate = fetchedExchangeRate;
@@ -477,6 +487,7 @@ export default function Reports() {
                 totalValueIDR: Math.round(totalValueIDR),
                 totalValueUSD: totalValueUSD,
                 totalInvestedIDR: Math.round(totalInvestedIDR),
+                exchangeRate: safeExchangeRate,
                 timestamp: serverTimestamp(),
                 portfolio: cleanUndefinedValues(enrichedPortfolio)
             };
@@ -626,9 +637,9 @@ export default function Reports() {
 
         // Format based on selected currency
         const fmtValue = (idrVal, usdVal) => currency === 'IDR' ? fmtIDR(idrVal) : fmtUSD(usdVal);
-        const fmtSingleValue = (idrVal, exchangeRate = 16000) => {
+        const fmtSingleValue = (idrVal, exchangeRate = 0) => {
             if (currency === 'IDR') return fmtIDR(idrVal);
-            return fmtUSD(idrVal / exchangeRate);
+            return exchangeRate > 0 ? fmtUSD(idrVal / exchangeRate) : '-';
         };
 
         // Header - show selected currency with both versions of invested capital
@@ -664,10 +675,8 @@ export default function Reports() {
             const pctTotal = investedTotal > 0 ? ((profitTotal / investedTotal) * 100).toFixed(1) + '%' : '0%';
             const pctActive = investedActive > 0 ? ((profitActive / investedActive) * 100).toFixed(1) + '%' : '0%';
 
-            // Calculate implied exchange rate from item
-            const impliedRate = (item.totalValueIDR > 0 && item.totalValueUSD > 0)
-                ? (item.totalValueIDR / item.totalValueUSD)
-                : 16000;
+            // Calculate implied exchange rate from item (or stored exchangeRate)
+            const impliedRate = resolveItemRate(item);
 
             const cashVal = item.portfolio?.cash?.reduce((sum, c) => sum + (c.portoIDR || c.porto || 0), 0) || 0;
             const initialPorto = item.initialPortoIDR || (investedTotal + cashVal);
@@ -698,11 +707,11 @@ export default function Reports() {
                         qty = `${fmtQty(a.amount || a.weight)}g`;
                     } else {
                         // Cash - format amount based on currency
-                        qty = currency === 'IDR' ? fmtIDR(a.amount) : fmtUSD(a.amount / impliedRate);
+                        qty = currency === 'IDR' ? fmtIDR(a.amount) : (impliedRate > 0 ? fmtUSD(a.amount / impliedRate) : '-');
                     }
 
                     // Format value based on selected currency
-                    const assetVal = currency === 'IDR' ? fmtIDR(a.portoIDR) : fmtUSD(a.portoUSD || (a.portoIDR / impliedRate));
+                    const assetVal = currency === 'IDR' ? fmtIDR(a.portoIDR) : fmtUSD(a.portoUSD || (impliedRate > 0 ? (a.portoIDR / impliedRate) : 0));
 
                     csvRows.push(['', '', '', '', '', '', type.toUpperCase(), name, platform, qty, assetVal]);
                 });
@@ -760,15 +769,13 @@ export default function Reports() {
         const latest = filteredData[filteredData.length - 1];
 
         // Calculate invested and profit based on selected currency
-        const impliedRate = (latest.totalValueIDR > 0 && latest.totalValueUSD > 0)
-            ? (latest.totalValueIDR / latest.totalValueUSD)
-            : 16000;
+        const impliedRate = resolveItemRate(latest);
 
         const investedIDR = calculateInvestedExcludingCash(latest);
         const valueExclIDR = calculateValueExcludingCash(latest);
 
-        const invested = currency === 'IDR' ? investedIDR : (investedIDR / impliedRate);
-        const valueExcl = currency === 'IDR' ? valueExclIDR : (valueExclIDR / impliedRate);
+        const invested = currency === 'IDR' ? investedIDR : (impliedRate > 0 ? (investedIDR / impliedRate) : 0);
+        const valueExcl = currency === 'IDR' ? valueExclIDR : (impliedRate > 0 ? (valueExclIDR / impliedRate) : 0);
         const totalProfit = valueExcl - invested;
         const totalProfitPct = invested > 0 ? (totalProfit / invested) * 100 : 0;
 
@@ -783,7 +790,7 @@ export default function Reports() {
         csvRows.push(['Snapshots', filteredData.length]);
         csvRows.push([]);
         const initialPorto = latest.initialPortoIDR || (investedIDR + (latest.portfolio?.cash?.reduce((s, c) => s + (c.portoIDR || c.porto || 0), 0) || 0));
-        const initialPortoVal = currency === 'IDR' ? initialPorto : (initialPorto / impliedRate);
+        const initialPortoVal = currency === 'IDR' ? initialPorto : (impliedRate > 0 ? (initialPorto / impliedRate) : 0);
 
         csvRows.push(['Metric', `Value (${currencyLabel})`, 'Percentage']);
         csvRows.push(['Modal Awal + Kas (Porto Utuh)', fmtCurrency(initialPortoVal), '🌱']);
@@ -828,11 +835,9 @@ export default function Reports() {
                 invested = investedIDR;
                 valueForPL = valueExclCashIDR;
             } else {
-                const implicitRate = (item.totalValueIDR > 0 && item.totalValueUSD > 0)
-                    ? (item.totalValueIDR / item.totalValueUSD)
-                    : 16000;
-                invested = investedIDR > 0 ? (investedIDR / implicitRate) : 0;
-                valueForPL = valueExclCashIDR > 0 ? (valueExclCashIDR / implicitRate) : 0;
+                const implicitRate = resolveItemRate(item);
+                invested = (investedIDR > 0 && implicitRate > 0) ? (investedIDR / implicitRate) : 0;
+                valueForPL = (valueExclCashIDR > 0 && implicitRate > 0) ? (valueExclCashIDR / implicitRate) : 0;
             }
 
             // P/L = (Value without cash) - (Invested without cash)
@@ -840,7 +845,8 @@ export default function Reports() {
             const grossChangePct = invested > 0 ? (grossChange / invested) * 100 : 0;
             const singleCashIDR = item.portfolio?.cash?.reduce((s, c) => s + (c.portoIDR || c.porto || 0), 0) || 0;
             const singleInitialPortoIDR = item.initialPortoIDR || (investedIDR + singleCashIDR);
-            const singleInitialPorto = currency === 'IDR' ? singleInitialPortoIDR : (singleInitialPortoIDR / implicitRate);
+            const singleRate = resolveItemRate(item);
+            const singleInitialPorto = currency === 'IDR' ? singleInitialPortoIDR : (singleRate > 0 ? (singleInitialPortoIDR / singleRate) : 0);
 
             return {
                 change: 0,
@@ -880,17 +886,15 @@ export default function Reports() {
 
         let latestInvested = 0;
         let latestValueForPL = 0;
-        const implicitRate = (latest.totalValueIDR > 0 && latest.totalValueUSD > 0)
-            ? (latest.totalValueIDR / latest.totalValueUSD)
-            : 16000;
+        const implicitRate = resolveItemRate(latest);
 
         if (currency === 'IDR') {
             latestInvested = latestInvestedIDR;
             latestValueForPL = latestValueExclCashIDR;
         } else {
             // USD conversion
-            latestInvested = latestInvestedIDR > 0 ? (latestInvestedIDR / implicitRate) : 0;
-            latestValueForPL = latestValueExclCashIDR > 0 ? (latestValueExclCashIDR / implicitRate) : 0;
+            latestInvested = (latestInvestedIDR > 0 && implicitRate > 0) ? (latestInvestedIDR / implicitRate) : 0;
+            latestValueForPL = (latestValueExclCashIDR > 0 && implicitRate > 0) ? (latestValueExclCashIDR / implicitRate) : 0;
         }
 
         // P/L = (Value without cash) - (Invested without cash)
@@ -899,7 +903,7 @@ export default function Reports() {
 
         const latestCashIDR = latest.portfolio?.cash?.reduce((s, c) => s + (c.portoIDR || c.porto || 0), 0) || 0;
         const latestInitialPortoIDR = latest.initialPortoIDR || (latestInvestedIDR + latestCashIDR);
-        const latestInitialPorto = currency === 'IDR' ? latestInitialPortoIDR : (latestInitialPortoIDR / implicitRate);
+        const latestInitialPorto = currency === 'IDR' ? latestInitialPortoIDR : (implicitRate > 0 ? (latestInitialPortoIDR / implicitRate) : 0);
 
         return {
             change,
@@ -1412,13 +1416,14 @@ function MobileHistoryCard({ item, currency, language }) {
     const investedIDR = calculateInvestedExcludingCash(item);
 
     // For display, we show totalValue (including cash), but P/L is calculated without cash
+    const itemRate = resolveItemRate(item);
     const totalValue = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
     const invested = currency === 'IDR' ? investedIDR :
-        (investedIDR > 0 ? investedIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000) : 0);
+        (investedIDR > 0 && itemRate > 0 ? investedIDR / itemRate : 0);
 
     // P/L uses value excluding cash
     const valueForPL = currency === 'IDR' ? valueExclCashIDR :
-        (valueExclCashIDR > 0 ? valueExclCashIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000) : 0);
+        (valueExclCashIDR > 0 && itemRate > 0 ? valueExclCashIDR / itemRate : 0);
     const profit = valueForPL - invested;
     const profitPct = invested > 0 ? (profit / invested) * 100 : 0;
 
@@ -1646,13 +1651,14 @@ function HistoryRow({ item, currency, language, isDarkMode }) {
     const investedIDR = calculateInvestedExcludingCash(item);
 
     // For display, we show totalValue (including cash), but P/L is calculated without cash
+    const itemRate = resolveItemRate(item);
     const totalValue = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
     const invested = currency === 'IDR' ? investedIDR :
-        (investedIDR > 0 ? investedIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000) : 0);
+        (investedIDR > 0 && itemRate > 0 ? investedIDR / itemRate : 0);
 
     // P/L uses value excluding cash
     const valueForPL = currency === 'IDR' ? valueExclCashIDR :
-        (valueExclCashIDR > 0 ? valueExclCashIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000) : 0);
+        (valueExclCashIDR > 0 && itemRate > 0 ? valueExclCashIDR / itemRate : 0);
     const profit = valueForPL - invested;
     const profitPct = invested > 0 ? (profit / invested) * 100 : 0;
 
@@ -1812,8 +1818,8 @@ function HistoryRow({ item, currency, language, isDarkMode }) {
                     {currency === 'IDR' ? (
                         item.totalInvestedIDR > 0 ? formatIDR(item.totalInvestedIDR, 0) : '-'
                     ) : (
-                        item.totalInvestedIDR > 0
-                            ? formatUSD(item.totalInvestedIDR / (item.totalValueIDR > 0 && item.totalValueUSD > 0 ? (item.totalValueIDR / item.totalValueUSD) : 16000))
+                        item.totalInvestedIDR > 0 && resolveItemRate(item) > 0
+                            ? formatUSD(item.totalInvestedIDR / resolveItemRate(item))
                             : '-'
                     )}
                 </td>
