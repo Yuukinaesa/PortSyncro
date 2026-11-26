@@ -138,7 +138,9 @@ export default function Portfolio({
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('portsyncro_invested_mode', mode);
-      } catch {}
+      } catch (storageErr) {
+        secureLogger.warn('Unable to persist investedMode preference:', storageErr?.message || storageErr);
+      }
     }
   }, []);
   const [internalHeaderCollapsed, setInternalHeaderCollapsed] = useState(false);

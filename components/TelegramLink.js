@@ -17,6 +17,7 @@ export default function TelegramLink() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const copyTimerRef = useRef(null);
 
@@ -157,8 +158,7 @@ export default function TelegramLink() {
   };
 
   const handleUnlink = async () => {
-    if (!confirm(t('unlinkConfirm'))) return;
-
+    setError(null);
     setLoading(true);
     try {
       const token = await user.getIdToken();
@@ -170,6 +170,9 @@ export default function TelegramLink() {
       if (res.ok) {
         setLinkStatus({ linked: false });
         setLinkCode(null);
+        setConfirmUnlink(false);
+      } else {
+        setError(language === 'en' ? `Failed to unlink (${res.status}). Try again.` : `Gagal memutuskan (${res.status}). Coba lagi.`);
       }
     } catch (err) {
       setError(language === 'en' ? 'Failed to unlink. Try again.' : 'Gagal memutuskan. Coba lagi.');
@@ -229,15 +232,42 @@ export default function TelegramLink() {
           {language === 'en' ? 'Retry' : 'Coba Lagi'}
         </button>
       ) : linkStatus?.linked ? (
-        <button
-          type="button"
-          onClick={handleUnlink}
-          disabled={loading}
-          className="telegram-btn telegram-btn-danger"
-        >
-          <FaUnlink size={16} />
-          {t('unlinkTelegram')}
-        </button>
+        confirmUnlink ? (
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 space-y-2.5">
+            <p className="text-xs font-medium text-red-600 dark:text-red-400 text-center">
+              {t('unlinkConfirm')}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmUnlink(false)}
+                disabled={loading}
+                className="telegram-btn telegram-btn-secondary flex-1"
+              >
+                {language === 'en' ? 'Cancel' : 'Batal'}
+              </button>
+              <button
+                type="button"
+                onClick={handleUnlink}
+                disabled={loading}
+                className="telegram-btn telegram-btn-danger flex-1"
+              >
+                {loading ? <FiRefreshCw size={14} className="spin" /> : <FaUnlink size={14} />}
+                {language === 'en' ? 'Yes, Unlink' : 'Ya, Putuskan'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmUnlink(true)}
+            disabled={loading}
+            className="telegram-btn telegram-btn-danger"
+          >
+            <FaUnlink size={16} />
+            {t('unlinkTelegram')}
+          </button>
+        )
       ) : (
         <div className="telegram-link-actions">
           {!linkCode ? (

@@ -184,7 +184,11 @@ export default function Reports() {
     const handleSetInvestedMode = useCallback((mode) => {
         setInvestedMode(mode);
         if (typeof window !== 'undefined') {
-            try { localStorage.setItem('portsyncro_invested_mode', mode); } catch {}
+            try {
+                localStorage.setItem('portsyncro_invested_mode', mode);
+            } catch (storageErr) {
+                secureLogger.warn('Unable to persist investedMode preference:', storageErr?.message || storageErr);
+            }
         }
     }, []);
     const [snapshotLoading, setSnapshotLoading] = useState(false);

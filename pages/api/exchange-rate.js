@@ -64,7 +64,7 @@ export default async function handler(req, res) {
 
     return res.status(502).json({
       error: 'Seluruh provider kurs real-time tidak dapat diakses',
-      message: error?.message || 'Exchange rate fetch failed',
+      ...(process.env.NODE_ENV !== 'production' && { message: error?.message || 'Exchange rate fetch failed' }),
       success: false
     });
   }

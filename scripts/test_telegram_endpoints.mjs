@@ -46,12 +46,16 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
   console.log('✅ 2. pages/api/telegram-daily.js Vercel Cron detection & forceSend security guard verified.');
 }
 
-// 2b. Verify pages/api/telegram-link.js unlink cleanup
+  // 2b. Verify pages/api/telegram-link.js unlink cleanup
 {
   const content = fs.readFileSync(path.resolve('pages/api/telegram-link.js'), 'utf8');
   assert(content.includes("firestoreDelete('telegram_autopilot'"), 'telegram-link.js handleUnlink must delete telegram_autopilot');
   assert(content.includes('encodeURIComponent(docId)'), 'telegram-link.js must URL-encode Firestore document IDs');
-  console.log('✅ 2b. pages/api/telegram-link.js autopilot cleanup & URI encoding verified.');
+  const csrfContent = fs.readFileSync(path.resolve('lib/csrf.js'), 'utf8');
+  assert(csrfContent.includes('MAX_CSRF_TOKENS'), 'lib/csrf.js must enforce bounded token storage');
+  const tgLinkUi = fs.readFileSync(path.resolve('components/TelegramLink.js'), 'utf8');
+  assert(!tgLinkUi.includes('confirm(t('), 'components/TelegramLink.js must use non-blocking inline confirmation instead of native confirm()');
+  console.log('✅ 2b. pages/api/telegram-link.js autopilot cleanup, URI encoding, bounded CSRF, and inline unlink confirm verified.');
 }
 
 // 3. Verify lib/telegramBot.js enhancements

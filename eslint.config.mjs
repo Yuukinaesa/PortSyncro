@@ -21,6 +21,7 @@ export default [
       "no-dupe-keys": "error",
       "no-unreachable": "error",
       "no-constant-condition": "error",
+      "no-empty": ["error", { "allowEmptyCatch": false }],
       "react-hooks/set-state-in-effect": "off",
       "import/no-anonymous-default-export": "off",
       "security/detect-object-injection": "off"

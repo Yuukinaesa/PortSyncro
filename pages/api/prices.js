@@ -252,9 +252,9 @@ export default async function handler(req, res) {
       goldResult = (goldPrices.status === 'fulfilled' && goldPrices.value) ? goldPrices.value : {};
     } else {
       secureLogger.warn('/api/prices reached 6.0s timeout guard. Returning best available prices.');
-      try { stockResult = (await Promise.race([stockPromise, Promise.resolve({})])) || {}; } catch {}
-      try { cryptoResult = (await Promise.race([cryptoPromise, Promise.resolve({})])) || {}; } catch {}
-      try { goldResult = (await Promise.race([goldPromise, Promise.resolve({})])) || {}; } catch {}
+      try { stockResult = (await Promise.race([stockPromise, Promise.resolve({})])) || {}; } catch (e) { secureLogger.warn('Timeout fallback stock error:', e?.message || e); }
+      try { cryptoResult = (await Promise.race([cryptoPromise, Promise.resolve({})])) || {}; } catch (e) { secureLogger.warn('Timeout fallback crypto error:', e?.message || e); }
+      try { goldResult = (await Promise.race([goldPromise, Promise.resolve({})])) || {}; } catch (e) { secureLogger.warn('Timeout fallback gold error:', e?.message || e); }
     }
 
     const prices = {
