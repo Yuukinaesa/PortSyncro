@@ -49,17 +49,9 @@ export default async function handler(req, res) {
   const cronSecret = process.env.CRON_SECRET || webhookSecret;
 
   // ═══════════════════════════════════════════════════════════════
-  // 1. GET: Diagnostics & 1-Click Auto Setup
+  // 1. GET: Diagnostics & 1-Click Auto Setup (Admin Secret Protected)
   // ═══════════════════════════════════════════════════════════════
   if (req.method === 'GET') {
-    if (!botToken) {
-      return res.status(200).json({
-        ok: false,
-        error: 'TELEGRAM_BOT_TOKEN environment variable is not configured',
-        hint: 'Please set TELEGRAM_BOT_TOKEN in Vercel Project Settings > Environment Variables, then redeploy.'
-      });
-    }
-
     const rawHost = (req.headers.host || '').toLowerCase().trim();
     const isProduction = process.env.NODE_ENV === 'production';
     const hostParts = rawHost.split(':');
@@ -69,13 +61,36 @@ export default async function handler(req, res) {
     const isProductionDomain = rawHost === 'portsyncro.arfan.biz.id' || rawHost === 'www.portsyncro.arfan.biz.id';
     const isAllowedHost = isProduction ? isProductionDomain : (isProductionDomain || isLocalHost);
 
+    // Fail-closed in production: require valid CRON_SECRET / TELEGRAM_WEBHOOK_SECRET before leaking diagnostics or calling Telegram API
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    const querySecret = typeof req.query.secret === 'string' ? req.query.secret : '';
+    const hasValidSecret = Boolean(cronSecret) && (
+      timingSafeCompare(bearerToken, cronSecret) || timingSafeCompare(querySecret, cronSecret)
+    );
+
+    if (isProduction && !hasValidSecret) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Unauthorized'
+      });
+    }
+
+    if (!botToken) {
+      return res.status(200).json({
+        ok: false,
+        error: 'TELEGRAM_BOT_TOKEN environment variable is not configured',
+        hint: 'Please set TELEGRAM_BOT_TOKEN in Vercel Project Settings > Environment Variables, then redeploy.'
+      });
+    }
+
     // Canonical deployment URL pinned strictly to production domain (prevents Host Header webhook hijacking)
     const targetBaseUrl = (!isProduction && isLocalHost)
       ? `http://${rawHost}`
       : 'https://portsyncro.arfan.biz.id';
     const currentWebhookUrl = `${targetBaseUrl}/api/telegram`;
 
-    // 1-Click Setup: Register webhook & bot commands (requires secret when configured in production)
+    // 1-Click Setup: Register webhook & bot commands
     if (req.query.setup === 'true' || req.query.setWebhook === 'true') {
       if (!isAllowedHost) {
         return res.status(403).json({
@@ -84,22 +99,17 @@ export default async function handler(req, res) {
         });
       }
 
-      if (isProduction && cronSecret) {
-        const authHeader = req.headers.authorization;
-        const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
-        const querySecret = typeof req.query.secret === 'string' ? req.query.secret : '';
-        const hasValidSecret = timingSafeCompare(bearerToken, cronSecret) || timingSafeCompare(querySecret, cronSecret);
-        if (!hasValidSecret) {
-          return res.status(401).json({
-            ok: false,
-            error: 'Unauthorized: Valid secret token required to modify webhook.'
-          });
-        }
+      if (isProduction && (!cronSecret || !hasValidSecret)) {
+        return res.status(401).json({
+          ok: false,
+          error: 'Unauthorized: Valid secret token required to modify webhook.'
+        });
       }
 
       try {
         const setupPayload = {
           url: currentWebhookUrl,
+          allowed_updates: ['message', 'channel_post', 'callback_query'],
           drop_pending_updates: true
         };
         if (webhookSecret) {
@@ -233,17 +243,14 @@ export default async function handler(req, res) {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // 2. SECURITY: Verify Telegram webhook secret token
+  // 2. SECURITY: Strict Telegram webhook secret verification
   // ═══════════════════════════════════════════════════════════════
   if (webhookSecret) {
-    const requestSecret = req.headers['x-telegram-bot-api-secret-token'];
-    if (requestSecret) {
-      if (!timingSafeCompare(requestSecret, webhookSecret)) {
-        secureLogger.warn('[Telegram Webhook] Invalid secret token detected - Rejecting request.');
-        return res.status(401).json({ error: 'Unauthorized payload' });
-      }
-    } else {
-      secureLogger.warn('[Telegram Webhook] Notice: Webhook update received without x-telegram-bot-api-secret-token. Proceeding in permissive mode.');
+    const rawHeader = req.headers['x-telegram-bot-api-secret-token'];
+    const requestSecret = typeof rawHeader === 'string' ? rawHeader : '';
+    if (!requestSecret || !timingSafeCompare(requestSecret, webhookSecret)) {
+      secureLogger.warn('[Telegram Webhook] Missing or invalid secret token detected - Rejecting request.');
+      return res.status(401).json({ error: 'Unauthorized payload' });
     }
   }
 

@@ -3,7 +3,9 @@
 // Does NOT import firebase-admin to avoid gRPC hanging on Vercel serverless (504 errors)
 
 import crypto from 'crypto';
-import { secureLogger } from '../../lib/security.js';
+import { secureLogger, RateLimiter } from '../../lib/security.js';
+
+const telegramLinkLimiter = new RateLimiter(60000, 20);
 
 // ═══════════════════════════════════════════════════════════════
 // ACCESS TOKEN CACHE (persists across warm invocations)
@@ -67,6 +69,10 @@ async function handleCheckStatus(req, res) {
 async function handleGenerateCode(req, res) {
   const uid = await verifyUserToken(req);
   if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+  if (!telegramLinkLimiter.isAllowed(`gen:${uid}`)) {
+    return res.status(429).json({ error: 'Too many code generation attempts. Please wait a minute.' });
+  }
 
   try {
     const code = generateLinkCode(6);

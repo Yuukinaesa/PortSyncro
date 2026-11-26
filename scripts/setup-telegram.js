@@ -123,7 +123,7 @@ async function setupWebhook() {
 
   const body = {
     url: webhookUrl,
-    allowed_updates: ['message', 'callback_query'],
+    allowed_updates: ['message', 'channel_post', 'callback_query'],
     drop_pending_updates: true, // Don't process old messages
     max_connections: 40
   };

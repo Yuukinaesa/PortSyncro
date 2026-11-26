@@ -8,13 +8,21 @@
 //   - Manual / Test run: GET /api/telegram-daily?secret=YOUR_CRON_SECRET&force=true
 
 import { sendDailyReports } from '../../lib/telegramBot.js';
-import { secureLogger, timingSafeCompare } from '../../lib/security.js';
+import { secureLogger, timingSafeCompare, RateLimiter } from '../../lib/security.js';
+
+const cronInvocationLimiter = new RateLimiter(60000, 3);
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const hasExplicitCronSecret = Boolean(process.env.CRON_SECRET);
   const cronSecret = process.env.CRON_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET;
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // 1. Detect Vercel Cron invocation header
+  // 1. Detect Vercel Cron invocation header (Vercel sends Authorization: Bearer <CRON_SECRET> when CRON_SECRET is set)
   const isVercelCron = req.headers['x-vercel-cron'] === '1' || req.headers['user-agent']?.includes('vercel-cron');
 
   // 2. Detect secret in Authorization header or query parameter
@@ -22,13 +30,19 @@ export default async function handler(req, res) {
   const isBearerAuth = Boolean(cronSecret && authHeader && authHeader.startsWith('Bearer ') && timingSafeCompare(authHeader.slice(7), cronSecret));
   const isQuerySecret = Boolean(cronSecret && typeof req.query.secret === 'string' && timingSafeCompare(req.query.secret, cronSecret));
 
-  // Determine authorization
+  // Determine authorization (strictly require secret when CRON_SECRET is configured to defeat UA spoofing)
   const hasSecretAuth = isBearerAuth || isQuerySecret;
-  const isAuthorized = isVercelCron || hasSecretAuth || !isProduction;
+  const isAuthorized = hasExplicitCronSecret
+    ? (hasSecretAuth || !isProduction)
+    : (isVercelCron || hasSecretAuth || !isProduction);
 
   if (isProduction && !isAuthorized) {
     secureLogger.warn('[Cron] Unauthorized cron invocation attempt');
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (isProduction && !hasSecretAuth && !cronInvocationLimiter.isAllowed('cron-header-only')) {
+    return res.status(429).json({ error: 'Too many cron trigger attempts' });
   }
 
   // Force send parameter for manual testing or ad-hoc runs (requires explicit secret in production)
@@ -57,7 +71,7 @@ export default async function handler(req, res) {
     secureLogger.error('[Cron] Daily report error:', error);
     return res.status(500).json({
       ok: false,
-      error: error.message
+      error: isProduction ? 'Internal cron error' : error.message
     });
   }
 }
