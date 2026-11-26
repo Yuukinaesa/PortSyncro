@@ -92,6 +92,7 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
 
   // Verify multi-target Dual-Mode autopilot delivery & plain-text /porto recap (no HTML tag leaks)
   assert(content.includes('user.telegramLinkedGroups') && content.includes('targetChats'), 'sendDailyReports must deliver to private chat AND linked groups/channels');
+  assert(content.includes('isCanonical = doc.id === docUid'), 'sendDailyReports must prefer canonical doc.id === uid over legacy chatId-keyed autopilot docs');
   assert(content.includes('await sendAuthMessage(chatId, uid, recapText, { parseMode: false })'), 'handlePorto must send plain-text recap with parseMode: false');
   assert(content.includes('normalizeNumberInput('), 'telegramBot.js must normalize locale numbers in buy/sell/edit commands');
 

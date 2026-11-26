@@ -128,6 +128,7 @@ async function handleUnlink(req, res) {
 
     for (const targetLinkId of idsToDelete) {
       await firestoreDelete('telegram_links', targetLinkId);
+      await firestoreDelete('telegram_autopilot', targetLinkId);
     }
     await firestoreDelete('telegram_autopilot', String(uid));
 
