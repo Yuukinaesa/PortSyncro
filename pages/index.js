@@ -1068,12 +1068,24 @@ export default function Home() {
         cryptoInvestedIDR += avgPrice * amount * safeExchangeRate;
       });
 
-      // Calculate GOLD
+      // Calculate GOLD (using live gold prices when available)
+      const goldPrices = prices.gold || {};
       let goldValueIDR = 0;
       let goldValueUSD = 0;
       let goldInvestedIDR = 0;
       gold.forEach(g => {
-        const price = g.currentPrice || 0;
+        let price = g.currentPrice || 0;
+        const subtype = g.subtype || 'digital';
+        const brand = (g.brand || '').toLowerCase();
+        if (!g.useManualPrice) {
+          if (subtype === 'digital' && (goldPrices.digital?.sellPrice || goldPrices.digital?.price)) {
+            price = goldPrices.digital.sellPrice || goldPrices.digital.price;
+          } else if (brand && goldPrices.physical?.[brand]?.price) {
+            price = goldPrices.physical[brand].price;
+          } else if (goldPrices.digital?.sellPrice) {
+            price = goldPrices.digital.sellPrice;
+          }
+        }
         const amount = parseFloat(g.weight) || 0;
         const valIDR = price * amount;
 
@@ -1204,7 +1216,18 @@ export default function Home() {
           };
         }),
         gold: gold.map(g => {
-          const price = g.currentPrice || 0;
+          let price = g.currentPrice || 0;
+          const subtype = g.subtype || 'digital';
+          const brand = (g.brand || '').toLowerCase();
+          if (!g.useManualPrice) {
+            if (subtype === 'digital' && (goldPrices.digital?.sellPrice || goldPrices.digital?.price)) {
+              price = goldPrices.digital.sellPrice || goldPrices.digital.price;
+            } else if (brand && goldPrices.physical?.[brand]?.price) {
+              price = goldPrices.physical[brand].price;
+            } else if (goldPrices.digital?.sellPrice) {
+              price = goldPrices.digital.sellPrice;
+            }
+          }
           const amount = parseFloat(g.weight) || 0;
           const avgPrice = g.avgPrice || g.entryPrice || 0;
 
@@ -1213,6 +1236,7 @@ export default function Home() {
 
           return {
             ...g,
+            currentPrice: price,
             porto: valIDR,
             portoIDR: Math.round(valIDR),
             portoUSD: Math.round((valIDR / safeExchangeRate) * 100) / 100,
@@ -1252,6 +1276,7 @@ export default function Home() {
         initialPortoIDR: Math.round(initialPortoIDR),
         initialPortoUSD: Math.round(initialPortoUSD * 100) / 100,
         stablecoinValueUSD: Math.round(stablecoinValueUSD * 100) / 100,
+        exchangeRate: safeExchangeRate,
         timestamp: serverTimestamp(),
         portfolio: cleanUndefinedValues(enrichedPortfolio)
       };
@@ -1453,7 +1478,7 @@ export default function Home() {
 
           if (response.ok) {
             const data = await response.json();
-            const newPrices = { ...prices, ...data.prices };
+            const newPrices = { ...pricesRef.current, ...data.prices };
             updatePrices(newPrices);
             rebuildPortfolio();
           }
@@ -1808,6 +1833,7 @@ export default function Home() {
       date: new Date().toLocaleString('id-ID'),
       timestamp: serverTimestamp(),
       currency: isUS ? 'USD' : 'IDR',
+      market: isUS ? 'US' : 'IDX',
       status: 'completed',
       userId: user.uid,
       description: 'Average price updated by user',
@@ -2076,8 +2102,8 @@ export default function Home() {
     try {
       secureLogger.log('DELETE stock:', ticker, asset);
 
-      // Check if stock exists
-      const stock = getAsset('stock', ticker);
+      // Check if stock exists (prefer specific passed holding over first-match)
+      const stock = asset || getAsset('stock', ticker);
       if (!stock) {
         secureLogger.error('Stock not found:', ticker);
         return;
@@ -2141,8 +2167,8 @@ export default function Home() {
     try {
       secureLogger.log('DELETE crypto:', symbol, asset);
 
-      // Check if crypto exists
-      const crypto = getAsset('crypto', symbol);
+      // Check if crypto exists (prefer specific passed holding)
+      const crypto = asset || getAsset('crypto', symbol);
       if (!crypto) {
         secureLogger.error('Crypto not found:', symbol);
         return;
@@ -2203,7 +2229,7 @@ export default function Home() {
   const deleteGold = async (ticker, asset) => {
     try {
       secureLogger.log('DELETE gold:', ticker, asset);
-      const gold = getAsset('gold', ticker);
+      const gold = asset || getAsset('gold', ticker);
       if (!gold) {
         secureLogger.error('Gold not found:', ticker);
         return;
@@ -2260,25 +2286,23 @@ export default function Home() {
     try {
       setSellingLoading(true);
 
-      // Find the stock index by ticker
-      const stockIndex = assets?.stocks?.findIndex(stock => stock.ticker === ticker);
-      if (stockIndex === -1) {
+      // Match stock by ticker AND broker when available
+      const stock = asset || assets?.stocks?.find(s => s.ticker === ticker);
+      if (!stock) {
         secureLogger.error('Stock not found:', ticker);
         return;
       }
 
-      const stock = assets?.stocks?.[stockIndex];
-
-      // Get current price from prices state using correct ticker format
-      const tickerKey = `${asset.ticker}.JK`;
+      const isUS = stock.market === 'US';
+      // Get current price from prices state using market-aware ticker key
+      const tickerKey = isUS ? stock.ticker : `${stock.ticker}.JK`;
 
       let priceData = prices[tickerKey];
       if (!priceData) {
         // Try to fetch fresh price data before selling
         secureLogger.log('Price data not available, attempting to fetch fresh data...');
 
-        // Fetch fresh prices immediately without debounce
-        const stockTickers = [`${asset.ticker}.JK`];
+        const stockTickers = [tickerKey];
         const requestData = {
           stocks: stockTickers,
           crypto: [],
@@ -2286,10 +2310,12 @@ export default function Home() {
         };
 
         try {
+          const token = user ? await user.getIdToken() : null;
           const response = await fetch('/api/prices', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` })
             },
             body: JSON.stringify({
               ...requestData,
@@ -2299,14 +2325,11 @@ export default function Home() {
 
           if (response.ok) {
             const data = await response.json();
-            // Update prices state with fresh data
             updatePrices(data.prices);
-            // Get the fresh price data
             priceData = data.prices[tickerKey];
           } else if (response.status === 429) {
             secureLogger.warn('Rate limit hit when fetching fresh price data for selling');
-            // Don't throw error, just use existing price data if available
-            priceData = asset.currentPrice ? { price: asset.currentPrice, currency: asset.currency || 'IDR' } : null;
+            priceData = stock.currentPrice ? { price: stock.currentPrice, currency: stock.currency || (isUS ? 'USD' : 'IDR') } : null;
           } else {
             secureLogger.warn(`API error when fetching fresh price data: ${response.status}`);
           }
@@ -2320,7 +2343,7 @@ export default function Home() {
         }
       }
 
-      const shareCount = amountToSell * 100;
+      const shareCount = isUS ? amountToSell : amountToSell * 100;
       let valueIDR, valueUSD;
 
       if (priceData.currency === 'IDR') {
@@ -2346,19 +2369,20 @@ export default function Home() {
 
       const transactionData = {
         type: 'sell',
-        ticker: asset.ticker,
+        ticker: stock.ticker,
         amount: shareCount, // Store amount in shares, not lots
         price: priceData.price,
-        avgPrice: asset.avgPrice,
+        avgPrice: stock.avgPrice,
         valueIDR,
         valueUSD,
         timestamp: serverTimestamp(), // Use serverTimestamp for consistency
         assetType: 'stock',
-        currency: priceData.currency,
+        market: stock.market || 'IDX',
+        currency: priceData.currency || (isUS ? 'USD' : 'IDR'),
         date: formattedDate,
         userId: user ? user.uid : null,
         status: 'completed',
-        broker: asset.broker || null // Add broker to identify specific holding
+        broker: stock.broker || null // Add broker to identify specific holding
       };
 
       // Save transaction to Firestore
@@ -2403,15 +2427,12 @@ export default function Home() {
     try {
       setSellingLoading(true);
 
-      // Find the crypto index by symbol
-      const cryptoIndex = assets?.crypto?.findIndex(crypto => crypto.symbol === symbol);
-      if (cryptoIndex === -1) {
+      // Match crypto holding directly (preserves exchange-specific avgPrice)
+      const crypto = asset || assets?.crypto?.find(c => c.symbol === symbol);
+      if (!crypto) {
         secureLogger.error('Crypto not found:', symbol);
         return;
       }
-
-      const crypto = assets?.crypto?.[cryptoIndex];
-      if (!crypto) return;
 
       // Get current price
       let priceData = prices[crypto.symbol];
@@ -2428,10 +2449,12 @@ export default function Home() {
         };
 
         try {
+          const token = user ? await user.getIdToken() : null;
           const response = await fetch('/api/prices', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` })
             },
             body: JSON.stringify({
               ...requestData,
@@ -2901,6 +2924,8 @@ export default function Home() {
 
     } catch (error) {
       secureLogger.error('Error resetting portfolio:', error);
+      setResetProgress(0);
+      setResetStatus('');
       setConfirmModal({
         isOpen: true,
         title: t('error') || 'Error',
@@ -4006,8 +4031,9 @@ export default function Home() {
               </p>
               <button
                 onClick={() => {
-                  if (confirmModal?.onConfirm) confirmModal.onConfirm();
+                  const cb = confirmModal?.onConfirm;
                   setConfirmModal(null);
+                  if (cb) cb();
                 }}
                 className="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-lg shadow-green-600/20 transition-all"
               >
@@ -4023,8 +4049,9 @@ export default function Home() {
                 {confirmModal?.onConfirm && (
                   <button
                     onClick={() => {
-                      if (confirmModal?.onConfirm) confirmModal.onConfirm();
+                      const cb = confirmModal?.onConfirm;
                       setConfirmModal(null);
+                      if (cb) cb();
                     }}
                     className={`px-6 py-2.5 font-bold rounded-xl transition-all duration-200 shadow-lg ${confirmModal?.type === 'error'
                       ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/20'

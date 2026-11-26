@@ -98,8 +98,13 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         if (response.status === 429) {
           throw new Error(t('rateLimitExceeded'));
         }
-        const errorText = await response.text();
-        throw new Error(t('failedToFetchStockPrice', { status: response.status, error: errorText }));
+        let errDetail = response.statusText || `HTTP ${response.status}`;
+        try {
+          const rawText = await response.text();
+          const parsed = JSON.parse(rawText);
+          errDetail = parsed.message || parsed.error || errDetail;
+        } catch { /* non-JSON error body */ }
+        throw new Error(t('failedToFetchStockPrice', { status: response.status, error: errDetail }));
       }
 
       const data = await response.json();
@@ -116,8 +121,15 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         }
       }
 
-      // If price not found, use user input or 0
-      let manualAvgPrice = avgPrice ? parseFloat(normalizeNumberInput(avgPrice)) : 0;
+      // If price not found, use user input or 0 (validate numeric inputs)
+      let manualAvgPrice = 0;
+      if (avgPrice && String(avgPrice).trim() !== '') {
+        const parsedAvg = parseFloat(normalizeNumberInput(avgPrice));
+        if (!Number.isFinite(parsedAvg) || parsedAvg < 0) {
+          throw new Error(t('invalidValue') || 'Harga beli rata-rata tidak valid');
+        }
+        manualAvgPrice = parsedAvg;
+      }
 
       // Handle IDR manual price for US Stocks
       if (market === 'US' && !manualAvgPrice && avgPriceIDR && exchangeRate && exchangeRate > 0) {
@@ -127,11 +139,16 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         }
       }
 
+      const parsedManualCurr = useManualCurrentPrice && manualCurrentPrice && String(manualCurrentPrice).trim() !== ''
+        ? parseFloat(normalizeNumberInput(manualCurrentPrice))
+        : null;
+      if (useManualCurrentPrice && manualCurrentPrice && (!Number.isFinite(parsedManualCurr) || parsedManualCurr <= 0)) {
+        throw new Error(t('invalidValue') || 'Harga manual saat ini tidak valid');
+      }
+
       if (!stockPrice) {
         // Fallback: Check Manual Current Price first, then Manual Avg Price
-        const manualCurr = useManualCurrentPrice && manualCurrentPrice
-          ? parseFloat(normalizeNumberInput(manualCurrentPrice))
-          : 0;
+        const manualCurr = parsedManualCurr || 0;
 
         if (manualCurr > 0) {
           stockPrice = {
@@ -171,8 +188,8 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
         addedAt: new Date().toISOString(),
         broker: broker.trim(), // Include Broker
         isManual: isManualAsset, // Flag for manual assets
-        useManualPrice: useManualCurrentPrice,
-        manualPrice: useManualCurrentPrice && manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : null,
+        useManualPrice: Boolean(useManualCurrentPrice && parsedManualCurr > 0),
+        manualPrice: parsedManualCurr,
       };
 
       secureLogger.log('Adding stock:', stock);
@@ -230,15 +247,15 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
             onChange={(e) => setTicker(e.target.value.toUpperCase())}
             placeholder={market === 'IDX' ? t('stockCodePlaceholder') : "AAPL"}
             className="w-full px-4 py-3.5 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600 transition-all font-medium"
-            maxLength={market === 'IDX' ? 4 : 8}
+            maxLength={12}
             required
             aria-label={market === 'IDX' ? (t('stockCode') || 'Stock Code') : 'Ticker Symbol'}
             aria-required="true"
-            aria-describedby="ticker-help"
+            aria-describedby={market === 'IDX' ? 'ticker-help' : undefined}
           />
         </div>
         {market === 'IDX' && (
-          <p className="text-xs text-gray-500 mt-2 ml-1">
+          <p id="ticker-help" className="text-xs text-gray-500 mt-2 ml-1">
             {t('stockCodeHelp')}
           </p>
         )}
@@ -263,7 +280,7 @@ export default function StockInput({ onAdd, onComplete, exchangeRate }) {
             aria-describedby="amount-help"
           />
         </div>
-        <p className="text-xs text-gray-500 mt-2 ml-1">
+        <p id="amount-help" className="text-xs text-gray-500 mt-2 ml-1">
           {market === 'IDX' ? (t('lotAmountHelp') || '1 lot = 100 lembar') : 'Masukkan jumlah lembar saham yang dibeli'}
         </p>
       </div>

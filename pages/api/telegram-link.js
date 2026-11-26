@@ -57,7 +57,10 @@ async function handleCheckStatus(req, res) {
     return res.status(200).json({ linked: false });
   } catch (error) {
     secureLogger.error('[TelegramLink] Check status error:', error);
-    return res.status(500).json({ error: 'Failed to check status', detail: error.message });
+    return res.status(500).json({
+      error: 'Failed to check status',
+      ...(process.env.NODE_ENV !== 'production' && { detail: error.message })
+    });
   }
 }
 
@@ -94,7 +97,10 @@ async function handleGenerateCode(req, res) {
     });
   } catch (error) {
     secureLogger.error('[TelegramLink] Generate code error:', error);
-    return res.status(500).json({ error: 'Failed to generate link code', detail: error.message });
+    return res.status(500).json({
+      error: 'Failed to generate link code',
+      ...(process.env.NODE_ENV !== 'production' && { detail: error.message })
+    });
   }
 }
 
@@ -103,26 +109,30 @@ async function handleUnlink(req, res) {
   if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
-    // Get current chat ID
+    // Get current chat ID and any linked groups
     const userData = await firestoreGet('users', uid);
     const chatId = userData?.telegramChatId;
 
     if (chatId) {
-      // Remove link document
+      // Remove link document and autopilot schedule so cronjob stops messaging unlinked user
       await firestoreDelete('telegram_links', String(chatId));
     }
+    await firestoreDelete('telegram_autopilot', String(uid));
 
     // Remove telegram fields from user document
     await firestoreDeleteFields('users', uid, [
       'telegramChatId',
-      'telegramUsername', 
+      'telegramUsername',
       'telegramLinkedAt'
     ]);
 
     return res.status(200).json({ success: true });
   } catch (error) {
     secureLogger.error('[TelegramLink] Unlink error:', error);
-    return res.status(500).json({ error: 'Failed to unlink', detail: error.message });
+    return res.status(500).json({
+      error: 'Failed to unlink',
+      ...(process.env.NODE_ENV !== 'production' && { detail: error.message })
+    });
   }
 }
 
@@ -135,28 +145,37 @@ async function verifyUserToken(req) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
 
   const idToken = authHeader.split('Bearer ')[1];
+  if (!idToken || !idToken.trim()) return null;
 
   try {
     const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    if (!apiKey) {
+      secureLogger.error('[TelegramLink] NEXT_PUBLIC_FIREBASE_API_KEY missing');
+      return null;
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const res = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-        signal: controller.signal
-      }
-    );
-    clearTimeout(timeoutId);
+    try {
+      const res = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+          signal: controller.signal
+        }
+      );
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.users?.length > 0) return data.users[0].localId;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.users?.length > 0) return data.users[0].localId;
+      }
+      return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
-    return null;
   } catch (error) {
     secureLogger.error('[TelegramLink] Auth error:', error.name === 'AbortError' ? 'Timeout' : error);
     return null;
@@ -251,10 +270,11 @@ async function getServiceAccountToken() {
 
 // Read a single document
 async function firestoreGet(collection, docId) {
+  if (!PROJECT_ID) throw new Error('Firebase project ID not configured');
   const token = await getServiceAccountToken();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6000);
-  const res = await fetch(`${FIRESTORE_BASE}/${collection}/${docId}`, {
+  const res = await fetch(`${FIRESTORE_BASE}/${encodeURIComponent(collection)}/${encodeURIComponent(docId)}`, {
     headers: { 'Authorization': `Bearer ${token}` },
     signal: controller.signal
   }).finally(() => clearTimeout(timeout));
@@ -265,10 +285,11 @@ async function firestoreGet(collection, docId) {
 
 // Create a document with auto-generated ID
 async function firestoreAdd(collection, fields) {
+  if (!PROJECT_ID) throw new Error('Firebase project ID not configured');
   const token = await getServiceAccountToken();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6000);
-  const res = await fetch(`${FIRESTORE_BASE}/${collection}`, {
+  const res = await fetch(`${FIRESTORE_BASE}/${encodeURIComponent(collection)}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -282,10 +303,11 @@ async function firestoreAdd(collection, fields) {
 
 // Delete a document
 async function firestoreDelete(collection, docId) {
+  if (!PROJECT_ID) throw new Error('Firebase project ID not configured');
   const token = await getServiceAccountToken();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6000);
-  const res = await fetch(`${FIRESTORE_BASE}/${collection}/${docId}`, {
+  const res = await fetch(`${FIRESTORE_BASE}/${encodeURIComponent(collection)}/${encodeURIComponent(docId)}`, {
     method: 'DELETE',
     headers: { 'Authorization': `Bearer ${token}` },
     signal: controller.signal
@@ -298,11 +320,12 @@ async function firestoreDelete(collection, docId) {
 
 // Delete specific fields from a document (equivalent to FieldValue.delete())
 async function firestoreDeleteFields(collection, docId, fieldNames) {
+  if (!PROJECT_ID) throw new Error('Firebase project ID not configured');
   const token = await getServiceAccountToken();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6000);
   const params = fieldNames.map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join('&');
-  const res = await fetch(`${FIRESTORE_BASE}/${collection}/${docId}?${params}`, {
+  const res = await fetch(`${FIRESTORE_BASE}/${encodeURIComponent(collection)}/${encodeURIComponent(docId)}?${params}`, {
     method: 'PATCH',
     headers: {
       'Authorization': `Bearer ${token}`,

@@ -2,7 +2,7 @@
 // Component for linking/unlinking Telegram account in Settings
 // Shows link status, generates verification codes, and handles unlinking
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../lib/authContext';
 import { useLanguage } from '../lib/languageContext';
 import { secureLogger } from '../lib/security';
@@ -18,6 +18,13 @@ export default function TelegramLink() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(0);
+  const copyTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
 
   const t = useCallback((id) => {
     const texts = {
@@ -141,7 +148,8 @@ export default function TelegramLink() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(copyText);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
       }
     } catch (err) {
       secureLogger.error('Failed to copy to clipboard', err);
@@ -212,6 +220,7 @@ export default function TelegramLink() {
       {/* Actions */}
       {linkStatus?.error ? (
         <button
+          type="button"
           onClick={checkStatus}
           disabled={loading}
           className="telegram-btn telegram-btn-secondary"
@@ -221,6 +230,7 @@ export default function TelegramLink() {
         </button>
       ) : linkStatus?.linked ? (
         <button
+          type="button"
           onClick={handleUnlink}
           disabled={loading}
           className="telegram-btn telegram-btn-danger"
@@ -232,6 +242,7 @@ export default function TelegramLink() {
         <div className="telegram-link-actions">
           {!linkCode ? (
             <button
+              type="button"
               onClick={generateCode}
               disabled={loading}
               className="telegram-btn telegram-btn-primary"
@@ -245,7 +256,7 @@ export default function TelegramLink() {
               
               <div className="telegram-code-box" onClick={handleCopy}>
                 <code className="telegram-code-text">/link {linkCode.code}</code>
-                <button className="telegram-copy-btn" title="Copy">
+                <button type="button" className="telegram-copy-btn" title="Copy" aria-label="Copy link command">
                   {copied ? <FiCheck size={16} color="#22c55e" /> : <FiCopy size={16} />}
                 </button>
               </div>
@@ -257,6 +268,7 @@ export default function TelegramLink() {
               </p>
 
               <button
+                type="button"
                 onClick={generateCode}
                 disabled={loading}
                 className="telegram-btn telegram-btn-secondary"

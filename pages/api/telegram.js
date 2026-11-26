@@ -165,7 +165,9 @@ export default async function handler(req, res) {
         secureLogger.error('[Telegram Webhook Setup] Error:', err);
         return res.status(500).json({
           ok: false,
-          error: 'Failed to configure webhook: ' + err.message
+          error: process.env.NODE_ENV === 'production'
+            ? 'Failed to configure webhook'
+            : 'Failed to configure webhook: ' + err.message
         });
       }
     }
@@ -194,7 +196,7 @@ export default async function handler(req, res) {
         dbStatus = db ? 'ready' : 'missing_credentials';
       } catch (e) {
         dbStatus = 'init_error';
-        dbError = e.message;
+        dbError = process.env.NODE_ENV === 'production' ? 'Database initialization error' : e.message;
       }
 
       return res.status(200).json({
@@ -215,9 +217,12 @@ export default async function handler(req, res) {
         }
       });
     } catch (err) {
+      secureLogger.error('[Telegram Webhook Diagnostics] Error:', err);
       return res.status(500).json({
         ok: false,
-        error: 'Failed to query Telegram API: ' + err.message
+        error: process.env.NODE_ENV === 'production'
+          ? 'Failed to query Telegram API'
+          : 'Failed to query Telegram API: ' + err.message
       });
     }
   }

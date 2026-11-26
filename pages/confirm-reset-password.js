@@ -25,19 +25,13 @@ export default function ConfirmResetPassword() {
   const router = useRouter();
   const { t } = useLanguage();
   const { isDarkMode } = useTheme();
+  const redirectTimerRef = useState(null);
 
-  const verifyCode = async () => {
-    try {
-      const email = await verifyPasswordResetCode(auth, oobCode);
-      setEmail(email);
-      setError('');
-    } catch (error) {
-      secureLogger.error("Error verifying reset code:", error);
-      setError(t('invalidOrExpiredResetCode'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef[0]) clearTimeout(redirectTimerRef[0]);
+    };
+  }, [redirectTimerRef]);
 
   useEffect(() => {
     if (router.query.oobCode) {
@@ -79,9 +73,10 @@ export default function ConfirmResetPassword() {
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
       setMessage(t('passwordChangedSuccessfully'));
-      setTimeout(() => {
+      const setTimer = redirectTimerRef[1];
+      setTimer(setTimeout(() => {
         router.push('/login');
-      }, 3000);
+      }, 3000));
     } catch (error) {
       secureLogger.error("Error resetting password:", error);
       setError(t('passwordChangeFailed'));

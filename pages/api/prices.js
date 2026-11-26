@@ -76,7 +76,10 @@ export default async function handler(req, res) {
 
   try {
     // Track API access for security monitoring
-    const clientIP = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const clientIP = (typeof forwardedFor === 'string' && forwardedFor.split(',')[0].trim())
+      || req.socket?.remoteAddress
+      || 'unknown';
 
     secureLogger.log('API /prices called with method:', req.method, 'IP:', clientIP);
 
@@ -110,7 +113,7 @@ export default async function handler(req, res) {
           const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '';
 
           if (apiKey) {
-            const verifyResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+            const verifyResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ idToken: token }),
@@ -228,10 +231,15 @@ export default async function handler(req, res) {
       : Promise.resolve({});
 
     // Timeout guard: 6.0 seconds max so serverless functions never hit 10s gateway timeout (504)
-    const timeoutGuard = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 6000));
+    let timeoutGuardId;
+    const timeoutGuard = new Promise(resolve => {
+      timeoutGuardId = setTimeout(() => resolve('TIMEOUT'), 6000);
+    });
     const allFetches = Promise.allSettled([stockPromise, cryptoPromise, goldPromise]);
 
-    const raceOutcome = await Promise.race([allFetches, timeoutGuard]);
+    const raceOutcome = await Promise.race([allFetches, timeoutGuard]).finally(() => {
+      if (timeoutGuardId) clearTimeout(timeoutGuardId);
+    });
 
     let stockResult = {};
     let cryptoResult = {};
@@ -243,7 +251,7 @@ export default async function handler(req, res) {
       cryptoResult = (cryptoPrices.status === 'fulfilled' && cryptoPrices.value) ? cryptoPrices.value : {};
       goldResult = (goldPrices.status === 'fulfilled' && goldPrices.value) ? goldPrices.value : {};
     } else {
-      secureLogger.warn('/api/prices reached 8.5s timeout guard. Returning best available prices.');
+      secureLogger.warn('/api/prices reached 6.0s timeout guard. Returning best available prices.');
       try { stockResult = (await Promise.race([stockPromise, Promise.resolve({})])) || {}; } catch {}
       try { cryptoResult = (await Promise.race([cryptoPromise, Promise.resolve({})])) || {}; } catch {}
       try { goldResult = (await Promise.race([goldPromise, Promise.resolve({})])) || {}; } catch {}

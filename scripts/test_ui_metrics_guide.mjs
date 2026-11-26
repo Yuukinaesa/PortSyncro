@@ -47,7 +47,9 @@ requiredKeys.forEach(key => {
   assert(idSection.includes(`${key}:`), `Missing key '${key}' in Indonesian translations`);
   assert(enSection.includes(`${key}:`), `Missing key '${key}' in English translations`);
 });
-console.log('✅ 1. All 18 bilingual metric keys present in both ID and EN dictionaries.');
+assert(idSection.includes("stockSuccessfullySold: 'Berhasil menjual {amount} lot {ticker}'"), 'ID stockSuccessfullySold must keep template params');
+assert(enSection.includes("stockSuccessfullySold: 'Successfully sold {amount} lots of {ticker}'"), 'EN stockSuccessfullySold must keep template params');
+console.log('✅ 1. All 18 bilingual metric keys & critical templates present in both ID and EN dictionaries.');
 
 // 2. Verify MetricsGuideModal.js exists and exports default function
 const modalPath = path.resolve('components/MetricsGuideModal.js');
@@ -61,7 +63,8 @@ const portfolioPath = path.resolve('components/Portfolio.js');
 const portfolioContent = fs.readFileSync(portfolioPath, 'utf8');
 assert(portfolioContent.includes('import MetricsGuideModal from \'./MetricsGuideModal\';'), 'Portfolio.js must import MetricsGuideModal');
 assert(portfolioContent.includes('<MetricsGuideModal'), 'Portfolio.js must render <MetricsGuideModal');
-console.log('✅ 3. Portfolio.js cleanly integrates and renders MetricsGuideModal.');
+assert(portfolioContent.includes('notification={{ ...notification, isOpen: true }}'), 'Portfolio.js must pass notification object with isOpen: true to Notification');
+console.log('✅ 3. Portfolio.js cleanly integrates MetricsGuideModal and Notification.');
 
 // 4. Mathematical Formula Integrity Verification
 // Rule: (Current Portfolio) - (Pre-P/L Portfolio) == Total P/L

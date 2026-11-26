@@ -293,7 +293,7 @@ export default function AssetAllocationModal({ isOpen, onClose, assets, prices, 
                             <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
                                 <div
                                     className={`h-full rounded-full ${item.type === 'stock' ? 'bg-blue-500' : item.type === 'crypto' ? 'bg-purple-500' : item.type === 'gold' ? 'bg-yellow-500' : 'bg-green-500'}`}
-                                    style={{ width: `${(item.percentage / (calculationBasis === 'total' && activeTab === 'all' ? Math.max(1, allocationData.items[0]?.percentage) : maxPercentage)) * 100}%` }}
+                                    style={{ width: `${Math.min(100, Math.max(0, ((item.percentage || 0) / (calculationBasis === 'total' && activeTab === 'all' ? Math.max(1, allocationData.items[0]?.percentage || 0) : Math.max(0.01, maxPercentage || 0))) * 100))}%` }}
                                 ></div>
                             </div>
                         </div>

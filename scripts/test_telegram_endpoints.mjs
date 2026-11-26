@@ -36,15 +36,22 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
   assert(fs.existsSync(filePath), 'pages/api/telegram-daily.js must exist');
   const content = fs.readFileSync(filePath, 'utf8');
 
-  // Verify Vercel Cron header detection
+  // Verify Vercel Cron header detection & forceSend secret guard
   assert(content.includes("req.headers['x-vercel-cron'] === '1'"), 'telegram-daily.js must support x-vercel-cron header');
   assert(content.includes("req.headers['user-agent']?.includes('vercel-cron')"), 'telegram-daily.js must support vercel-cron user agent');
-
-  // Verify forceSend support
   assert(content.includes("req.query.force === 'true'"), 'telegram-daily.js must support force send query parameter');
+  assert(content.includes('isProduction && !hasSecretAuth'), 'telegram-daily.js must require secret for forceSend in production');
   assert(content.includes('sendDailyReports({ forceSend })'), 'telegram-daily.js must pass forceSend to sendDailyReports');
 
-  console.log('✅ 2. pages/api/telegram-daily.js Vercel Cron detection & forceSend verified.');
+  console.log('✅ 2. pages/api/telegram-daily.js Vercel Cron detection & forceSend security guard verified.');
+}
+
+// 2b. Verify pages/api/telegram-link.js unlink cleanup
+{
+  const content = fs.readFileSync(path.resolve('pages/api/telegram-link.js'), 'utf8');
+  assert(content.includes("firestoreDelete('telegram_autopilot'"), 'telegram-link.js handleUnlink must delete telegram_autopilot');
+  assert(content.includes('encodeURIComponent(docId)'), 'telegram-link.js must URL-encode Firestore document IDs');
+  console.log('✅ 2b. pages/api/telegram-link.js autopilot cleanup & URI encoding verified.');
 }
 
 // 3. Verify lib/telegramBot.js enhancements
@@ -107,9 +114,11 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
   for (const relPath of sourceFiles) {
     const content = fs.readFileSync(path.resolve(relPath), 'utf8');
     assert(!dummyRatePattern.test(content), `${relPath} must not contain hardcoded dummy exchange rate fallbacks`);
+    assert(!content.includes('exchangeRate || 1'), `${relPath} must not contain (exchangeRate || 1) fake currency multiplier`);
   }
+  assert(!fs.readFileSync(path.resolve('lib/telegramFormatter.js'), 'utf8').includes('exchangeRate || 1'), 'lib/telegramFormatter.js must not contain (exchangeRate || 1)');
 
-  console.log('✅ 5. Zero hardcoded dummy exchange rates verified across portfolio, bot, and exchange-rate modules.');
+  console.log('✅ 5. Zero hardcoded dummy exchange rates or (exchangeRate || 1) multipliers verified.');
 }
 
 console.log('\n🎉 ALL TELEGRAM BOT & CRON TESTS PASSED 100%!');

@@ -21,6 +21,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
     const [manualCurrentPriceIDR, setManualCurrentPriceIDR] = useState('');
     const [manualCurrentPriceUSD, setManualCurrentPriceUSD] = useState('');
     const [inputCurrency, setInputCurrency] = useState('NATIVE');
+    const [error, setError] = useState('');
 
     // Derived State for Display
     const [totalValueIDR, setTotalValueIDR] = useState(0);
@@ -28,6 +29,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
     // Initialize form when asset changes
     useEffect(() => {
         if (asset && isOpen) {
+            setError('');
             setTicker((type === 'stock' || type === 'cash' || type === 'gold') ? asset.ticker : asset.symbol);
             setBroker((type === 'stock' || type === 'gold') ? (asset.broker || '') : (type === 'crypto' ? (asset.exchange || '') : ''));
             setMarket(asset.market || 'IDX');
@@ -44,7 +46,7 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
 
             if (isUSD) {
                 setAvgPriceUSD(price.toString());
-                setAvgPriceIDR((price * exchangeRate).toString());
+                setAvgPriceIDR(exchangeRate ? (price * exchangeRate).toString() : '0');
             } else {
                 setAvgPriceIDR(price.toString());
                 setAvgPriceUSD(exchangeRate ? (price / exchangeRate).toString() : '0');
@@ -154,21 +156,39 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
     }, [amount, currentPrice, manualCurrentPrice, market, type, exchangeRate, asset]);
 
     const handleSave = () => {
+        setError('');
         const newAmount = parseFloat(normalizeNumberInput(amount));
         let newAvgPrice = parseFloat(normalizeNumberInput(avgPrice));
 
         // Ensure we save the correct avgPrice based on market
         if ((market === 'IDX' && type === 'stock') || type === 'gold') {
             newAvgPrice = parseFloat(normalizeNumberInput(avgPriceIDR));
-        } else {
+        } else if (type !== 'cash') {
             newAvgPrice = parseFloat(normalizeNumberInput(avgPriceUSD));
         }
 
-        if (isNaN(newAmount) || newAmount < 0) return;
+        if (!Number.isFinite(newAmount) || newAmount < 0) {
+            setError(t('invalidAmount') || 'Jumlah aset tidak valid');
+            return;
+        }
+        if (type === 'stock' && market !== 'US' && !Number.isInteger(newAmount)) {
+            setError(t('invalidLotAmount') || 'Jumlah lot saham IDX wajib bilangan bulat');
+            return;
+        }
+        if (type !== 'cash' && (!Number.isFinite(newAvgPrice) || newAvgPrice < 0)) {
+            setError(t('invalidValue') || 'Harga rata-rata beli tidak valid');
+            return;
+        }
 
         // Construct update object cleanly
         // IMPORTANT: When resetting to market, both useManualPrice and isManual must be false
-        const isUsingManualPrice = manualCurrentPrice ? true : false;
+        const isUsingManualPrice = Boolean(manualCurrentPrice && String(manualCurrentPrice).trim() !== '');
+        const parsedManualPrice = isUsingManualPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : null;
+        if (isUsingManualPrice && (!Number.isFinite(parsedManualPrice) || parsedManualPrice <= 0)) {
+            setError(t('invalidValue') || 'Harga manual saat ini harus berupa angka positif');
+            return;
+        }
+
         const updatedAsset = {
             ...asset,
             lots: type === 'stock' ? newAmount : (asset.lots || 0),
@@ -179,8 +199,8 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
             // Save manual price settings - both flags must be consistent
             useManualPrice: isUsingManualPrice,
             isManual: isUsingManualPrice, // Reset isManual when resetting to market price
-            manualPrice: isUsingManualPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : null,
-            currentPrice: isUsingManualPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : asset.currentPrice
+            manualPrice: parsedManualPrice,
+            currentPrice: isUsingManualPrice ? parsedManualPrice : asset.currentPrice
         };
 
         // Clean up undefined/stock specific fields for crypto if strictly needed, 
@@ -391,8 +411,16 @@ export default function EditAssetModal({ isOpen, onClose, asset, onSave, type, e
                     </div>
                 </div>
 
+                {/* Inline Validation Error */}
+                {error && (
+                    <div role="alert" className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs font-medium">
+                        {error}
+                    </div>
+                )}
+
                 {/* Save Button */}
                 <button
+                    type="button"
                     onClick={handleSave}
                     className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98] flex items-center justify-center gap-2"
                 >

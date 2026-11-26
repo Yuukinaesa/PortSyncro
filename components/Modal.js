@@ -24,7 +24,7 @@ export default function Modal({ isOpen, onClose, title, children, type = 'info' 
         const lastElement = focusableElements[focusableElements.length - 1];
 
         // Focus the first element when modal opens
-        setTimeout(() => firstElement.focus(), 50);
+        const focusTimer = setTimeout(() => firstElement.focus(), 50);
 
         const handleTab = (e) => {
           if (e.key === 'Tab') {
@@ -45,6 +45,7 @@ export default function Modal({ isOpen, onClose, title, children, type = 'info' 
         const currentModal = modalRef.current;
         currentModal.addEventListener('keydown', handleTab);
         return () => {
+          clearTimeout(focusTimer);
           if (currentModal) currentModal.removeEventListener('keydown', handleTab);
         };
       }
@@ -99,7 +100,7 @@ export default function Modal({ isOpen, onClose, title, children, type = 'info' 
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800 shrink-0">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
+          <h3 id="modal-title" className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
             {title}
           </h3>
           <button

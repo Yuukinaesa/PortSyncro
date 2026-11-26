@@ -233,9 +233,11 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
 
       const assetValue = calculateAssetValue(summary, sampleAsset.currency, memoizedExchangeRate);
 
-      // Calculate sorting values for the summary
+      // Calculate sorting values for the summary (normalize USD assets to IDR for consistent sorting)
       const costBasis = summary.avgPrice * totalShares;
-      const gainLoss = assetValue.price ? Math.round((assetValue.price * totalShares) - costBasis) : 0;
+      const rawGain = assetValue.price ? ((assetValue.price * totalShares) - costBasis) : 0;
+      const isUSDNative = (type === 'stock' && sampleAsset.market === 'US') || type === 'crypto';
+      const gainLoss = Math.round(isUSDNative ? (memoizedExchangeRate ? rawGain * memoizedExchangeRate : rawGain) : rawGain);
 
       // Calculate modas
       let modalIDR, modalUSD;
@@ -330,7 +332,7 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       price = memoizedPrices[lookupKey];
     }
 
-    const isIDX = type === 'stock' && price && price.currency === 'IDR';
+    const isIDX = type === 'stock' && asset.market !== 'US';
 
     if (isNaN(amountToSell) || amountToSell <= 0) {
       handleCancelSell(); // Close Sell Modal
@@ -495,23 +497,6 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
       setSortField(field);
       setSortDirection('asc');
     }
-  };
-
-  // CSV Export logic
-  const exportToCSV = () => {
-    try {
-      const BOM = '\uFEFF';
-      const headers = [
-        'ITEM', 'JUMLAH', 'HARGA MARKET', 'NILAI IDR', 'NILAI USD', 'RATA-RATA', 'MODAL (IDR)', 'MODAL (USD)', 'UNTUNG/RUGI'
-      ];
-      let csvContent = BOM + headers.join(';') + '\n';
-      sortedGroups.forEach(group => {
-        group.assets.forEach(asset => {
-          // ... (simplified for brevity in this tool call, but keeps existing CSV logic mostly)
-        });
-      });
-      // ... (Rest of export logic)
-    } catch (e) { console.error(e); }
   };
 
   return (
@@ -1278,7 +1263,8 @@ export default function AssetTable({ assets, prices, exchangeRate, type, onUpdat
                       const priceKey = type === 'stock' || type === 'cash'
                         ? (sellingAsset.market === 'US' ? (sellingAsset.ticker || '').toUpperCase() : `${(sellingAsset.ticker || '').toUpperCase()}.JK`)
                         : (sellingAsset.symbol || '').toUpperCase();
-                      const price = prices && prices[priceKey]?.price || sellingAsset.currentPrice || 1;
+                      const price = type === 'cash' ? 1 : (prices && prices[priceKey]?.price || sellingAsset.currentPrice || 0);
+                      if (!price || price <= 0) return '-';
                       const multiplier = type === 'stock' && sellingAsset.market !== 'US' ? 100 : 1;
                       const totalValue = amount * multiplier * price;
 

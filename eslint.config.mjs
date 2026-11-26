@@ -18,6 +18,9 @@ export default [
   {
     rules: {
       "no-undef": "error",
+      "no-dupe-keys": "error",
+      "no-unreachable": "error",
+      "no-constant-condition": "error",
       "react-hooks/set-state-in-effect": "off",
       "import/no-anonymous-default-export": "off",
       "security/detect-object-injection": "off"

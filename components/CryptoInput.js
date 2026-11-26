@@ -101,7 +101,14 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
         secureLogger.warn('Could not fetch crypto price, using 0 or manual', e);
       }
 
-      let manualAvgPrice = avgPrice ? parseFloat(normalizeNumberInput(avgPrice)) : 0;
+      let manualAvgPrice = 0;
+      if (avgPrice && String(avgPrice).trim() !== '') {
+        const parsedAvg = parseFloat(normalizeNumberInput(avgPrice));
+        if (!Number.isFinite(parsedAvg) || parsedAvg < 0) {
+          throw new Error(t('invalidValue') || 'Harga beli rata-rata tidak valid');
+        }
+        manualAvgPrice = parsedAvg;
+      }
 
       // If avgPriceIDR is provided and valid, calculate manualAvgPrice (USD)
       if (!manualAvgPrice && avgPriceIDR && exchangeRate && exchangeRate > 0) {
@@ -111,11 +118,16 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
         }
       }
 
+      const parsedManualCurr = useManualCurrentPrice && manualCurrentPrice && String(manualCurrentPrice).trim() !== ''
+        ? parseFloat(normalizeNumberInput(manualCurrentPrice))
+        : null;
+      if (useManualCurrentPrice && manualCurrentPrice && (!Number.isFinite(parsedManualCurr) || parsedManualCurr <= 0)) {
+        throw new Error(t('invalidValue') || 'Harga manual saat ini tidak valid');
+      }
+
       // Logic for Manual Asset fallback
       if (!price || price === 0) {
-        const manualCurr = useManualCurrentPrice && manualCurrentPrice
-          ? parseFloat(normalizeNumberInput(manualCurrentPrice))
-          : 0;
+        const manualCurr = parsedManualCurr || 0;
 
         if (manualCurr > 0) {
           price = manualCurr;
@@ -143,8 +155,8 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
         exchange: exchangeName.trim(), // Include Exchange
         isManual: isManualAsset, // Flag for manual assets
         addedAt: new Date().toISOString(),
-        useManualPrice: useManualCurrentPrice,
-        manualPrice: useManualCurrentPrice && manualCurrentPrice ? parseFloat(normalizeNumberInput(manualCurrentPrice)) : null,
+        useManualPrice: Boolean(useManualCurrentPrice && parsedManualCurr > 0),
+        manualPrice: parsedManualCurr,
       };
 
       secureLogger.log('Adding crypto with current price:', crypto);
@@ -189,7 +201,7 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
             aria-describedby="symbol-help"
           />
         </div>
-        <p className="text-xs text-gray-500 mt-2 ml-1">
+        <p id="symbol-help" className="text-xs text-gray-500 mt-2 ml-1">
           {t('cryptoSymbolHelp')}
         </p>
       </div>
@@ -213,7 +225,7 @@ export default function CryptoInput({ onAdd, onComplete, exchangeRate }) {
             aria-describedby="amount-help"
           />
         </div>
-        <p className="text-xs text-gray-500 mt-2 ml-1">
+        <p id="amount-help" className="text-xs text-gray-500 mt-2 ml-1">
           {t('amountHelp')}
         </p>
       </div>

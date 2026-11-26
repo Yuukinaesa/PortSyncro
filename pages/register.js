@@ -1,9 +1,8 @@
 // pages/register.js
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { auth, db } from '../lib/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useTheme } from '../lib/themeContext';
@@ -11,7 +10,6 @@ import { useLanguage } from '../lib/languageContext';
 import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { isDemoAccountAvailable } from '../lib/utils';
 import { secureLogger, validateInput, timingSafeCompare } from './../lib/security';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUserPlus, FiActivity } from 'react-icons/fi';
 
@@ -60,32 +58,6 @@ export default function Register() {
         setError(t('weakPassword'));
       } else {
         setError(t('registrationFailed'));
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    setError('');
-    setLoading(true);
-
-    try {
-      const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL;
-      const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
-
-      if (!demoEmail || !demoPassword) {
-        throw new Error('Demo account credentials not configured');
-      }
-
-      await signInWithEmailAndPassword(auth, demoEmail, demoPassword);
-      router.push('/');
-    } catch (error) {
-      secureLogger.error('Demo login error:', error);
-      if (error.message === 'Demo account credentials not configured') {
-        setError(t('demoAccountNotAvailable'));
-      } else {
-        setError(t('demoLoginFailed'));
       }
     } finally {
       setLoading(false);

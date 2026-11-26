@@ -13,7 +13,8 @@ export default function PortfolioDistributionChart({ data = [], title, totalRefe
     const totalValue = totalReference || data.reduce((acc, curr) => acc + curr.value, 0);
 
     const formatPercent = (val) => {
-        let formatted = val.toFixed(2);
+        const safeVal = Number.isFinite(val) ? val : 0;
+        let formatted = safeVal.toFixed(2);
         // Remove trailing zeros and decimal point if whole number
         formatted = formatted.replace(/\.?0+$/, '');
         return formatted;

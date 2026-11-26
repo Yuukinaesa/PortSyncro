@@ -809,11 +809,12 @@ export default function Portfolio({
 
       // Process Crypto
       if ((category === 'all' || category === 'crypto') && assets?.crypto) {
+        const safeRate = exchangeRate && exchangeRate > 0 ? exchangeRate : 0;
         assets.crypto.forEach(crypto => {
           const valueUSD = crypto.portoUSD || (crypto.amount * crypto.currentPrice);
-          const valueIDR = valueUSD * exchangeRate;
+          const valueIDR = valueUSD * safeRate;
           const costUSD = (crypto.avgPrice * crypto.amount);
-          const costIDR = costUSD * exchangeRate;
+          const costIDR = costUSD * safeRate;
           const gainUSD = valueUSD - costUSD;
           const gainIDR = valueIDR - costIDR;
 
@@ -840,9 +841,10 @@ export default function Portfolio({
 
       // Process Cash
       if ((category === 'all' || category === 'cash') && assets?.cash) {
+        const safeRate = exchangeRate && exchangeRate > 0 ? exchangeRate : 0;
         assets.cash.forEach(cash => {
           const valIDR = cash.amount;
-          const valUSD = valIDR / (exchangeRate || 1);
+          const valUSD = safeRate > 0 ? (valIDR / safeRate) : 0;
 
           csvRows.push([
             'Cash',
@@ -864,11 +866,12 @@ export default function Portfolio({
 
       // Process Gold
       if ((category === 'all' || category === 'gold') && assets?.gold) {
+        const safeRate = exchangeRate && exchangeRate > 0 ? exchangeRate : 0;
         assets.gold.forEach(gold => {
           const valueIDR = gold.portoIDR || (gold.currentPrice * gold.amount);
-          const valueUSD = valueIDR / (exchangeRate || 1);
+          const valueUSD = safeRate > 0 ? (valueIDR / safeRate) : 0;
           const costIDR = gold.totalCostIDR || (gold.avgPrice * gold.amount);
-          const costUSD = costIDR / (exchangeRate || 1);
+          const costUSD = safeRate > 0 ? (costIDR / safeRate) : 0;
           const gainIDR = valueIDR - costIDR;
           const gainUSD = valueUSD - costUSD;
 
@@ -917,6 +920,7 @@ export default function Portfolio({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
 
       setNotification({ type: 'success', title: 'Export Berhasil', message: `Laporan ${category} berhasil diunduh.` });
     } catch (error) {
@@ -1712,9 +1716,7 @@ export default function Portfolio({
 
       {notification && (
         <Notification
-          type={notification.type}
-          title={notification.title}
-          message={notification.message}
+          notification={{ ...notification, isOpen: true }}
           onClose={() => setNotification(null)}
         />
       )}

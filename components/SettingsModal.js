@@ -6,7 +6,7 @@ import { FiMoon, FiSun, FiEye, FiEyeOff, FiGlobe, FiActivity, FiTrash2, FiAlertT
 import { FaDownload, FaApple, FaTimes } from 'react-icons/fa';
 import { useLanguage } from '../lib/languageContext';
 import { usePWA } from '../lib/pwaContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import { secureLogger } from '../lib/security';
 
@@ -21,7 +21,24 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
     const [showManualPrompt, setShowManualPrompt] = useState(false);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [resetInput, setResetInput] = useState('');
+    const [resetError, setResetError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if (!showResetConfirm && !showIOSPrompt && !showMacOSPrompt && !showManualPrompt) return;
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                setShowResetConfirm(false);
+                setResetInput('');
+                setResetError('');
+                setShowIOSPrompt(false);
+                setShowMacOSPrompt(false);
+                setShowManualPrompt(false);
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [showResetConfirm, showIOSPrompt, showMacOSPrompt, showManualPrompt]);
 
     const handleInstallClick = async () => {
         const result = await installPWA();
@@ -362,17 +379,21 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
 
                             <div className="flex gap-3">
                                 <button
+                                    type="button"
                                     onClick={() => {
                                         setShowResetConfirm(false);
                                         setResetInput('');
+                                        setResetError('');
                                     }}
                                     className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={async () => {
                                         if (resetInput.toLowerCase() === 'yes') {
+                                            setResetError('');
                                             setIsLoading(true);
                                             try {
                                                 if (onResetPortfolio) await onResetPortfolio();
@@ -381,6 +402,7 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                                                 onClose();
                                             } catch (error) {
                                                 secureLogger.error("Reset failed:", error);
+                                                setResetError(t('portfolioResetFailed') || 'Gagal mereset portofolio. Coba lagi.');
                                             } finally {
                                                 setIsLoading(false);
                                             }
@@ -399,6 +421,9 @@ export default function SettingsModal({ isOpen, onClose, hideBalance, onToggleHi
                                     )}
                                 </button>
                             </div>
+                            {resetError && (
+                                <p role="alert" className="text-xs font-medium text-red-500 mt-2">{resetError}</p>
+                            )}
                         </div>
                     </div>
                 </div>

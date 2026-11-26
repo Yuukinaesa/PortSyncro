@@ -201,7 +201,7 @@ export default function Reports() {
                     const portfolio = await getUserPortfolio();
                     initializePortfolio(portfolio);
                 } catch (err) {
-                    console.error("Error initializing portfolio state:", err);
+                    secureLogger.error("Error initializing portfolio state:", err);
                 }
             }
         };
@@ -302,7 +302,7 @@ export default function Reports() {
                     // Update local state primarily, but we use fetchedPrices variable for calculation to be safe
                     updatePrices(fetchedPrices);
                 } else {
-                    console.warn('[MANUAL SNAPSHOT] Failed to fetch prices, using stored/empty values');
+                    secureLogger.warn('[MANUAL SNAPSHOT] Failed to fetch prices, using stored/empty values');
                 }
             }
 
@@ -529,6 +529,8 @@ export default function Reports() {
                 return item.date >= dateRange.start && item.date <= dateRange.end;
             });
             setFilteredData(filtered);
+        } else {
+            setFilteredData([]);
         }
     }, [historyData, dateRange]);
 
@@ -700,7 +702,7 @@ export default function Reports() {
                     // Format quantity based on type
                     let qty;
                     if (type === 'stock') {
-                        qty = `${fmtQty(a.lots)} lot`;
+                        qty = `${fmtQty(a.lots)} ${a.market === 'US' ? 'shr' : 'lot'}`;
                     } else if (type === 'crypto') {
                         qty = `${fmtQty(a.amount)} unit`;
                     } else if (type === 'gold') {
@@ -713,7 +715,7 @@ export default function Reports() {
                     // Format value based on selected currency
                     const assetVal = currency === 'IDR' ? fmtIDR(a.portoIDR) : fmtUSD(a.portoUSD || (impliedRate > 0 ? (a.portoIDR / impliedRate) : 0));
 
-                    csvRows.push(['', '', '', '', '', '', type.toUpperCase(), name, platform, qty, assetVal]);
+                    csvRows.push(['', '', '', '', '', '', '', '', '', type.toUpperCase(), name, platform, qty, assetVal]);
                 });
             };
 
@@ -738,7 +740,7 @@ export default function Reports() {
         link.href = url;
         link.download = filename;
         link.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
 
     // Download Stats Summary CSV (Log button)
@@ -814,7 +816,7 @@ export default function Reports() {
         link.href = url;
         link.download = filename;
         link.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
 
     // Stats Calculation - EXCLUDE cash from BOTH value and invested for P/L (matches Portfolio main)
@@ -825,9 +827,14 @@ export default function Reports() {
             const item = filteredData[0];
             const val = currency === 'IDR' ? item.totalValueIDR : item.totalValueUSD;
 
-            // Calculate invested and value for single item - Exclude cash for P/L calculation
-            const investedIDR = calculateInvestedExcludingCash(item);
-            const valueExclCashIDR = calculateValueExcludingCash(item);
+            // Calculate invested and value for single item respecting investedMode
+            const isModeActive = investedMode === 'active';
+            const investedIDR = isModeActive
+                ? calculateInvestedExcludingStablecoins(item)
+                : calculateInvestedExcludingCash(item);
+            const valueExclCashIDR = isModeActive
+                ? calculateValueExcludingStablecoins(item)
+                : calculateValueExcludingCash(item);
 
             let invested = 0;
             let valueForPL = 0;

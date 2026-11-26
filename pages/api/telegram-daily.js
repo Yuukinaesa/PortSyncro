@@ -23,15 +23,21 @@ export default async function handler(req, res) {
   const isQuerySecret = Boolean(cronSecret && typeof req.query.secret === 'string' && timingSafeCompare(req.query.secret, cronSecret));
 
   // Determine authorization
-  const isAuthorized = isVercelCron || isBearerAuth || isQuerySecret || !isProduction;
+  const hasSecretAuth = isBearerAuth || isQuerySecret;
+  const isAuthorized = isVercelCron || hasSecretAuth || !isProduction;
 
-  if (cronSecret && !isAuthorized) {
+  if (isProduction && !isAuthorized) {
     secureLogger.warn('[Cron] Unauthorized cron invocation attempt');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // Force send parameter for manual testing or ad-hoc runs
-  const forceSend = req.query.force === 'true' || req.query.test === 'true';
+  // Force send parameter for manual testing or ad-hoc runs (requires explicit secret in production)
+  const requestedForce = req.query.force === 'true' || req.query.test === 'true';
+  if (requestedForce && isProduction && !hasSecretAuth) {
+    secureLogger.warn('[Cron] Unauthorized force-send attempt rejected');
+    return res.status(401).json({ error: 'Unauthorized: secret required for force send' });
+  }
+  const forceSend = requestedForce;
 
   secureLogger.log(`[Cron] Starting daily report process (force: ${forceSend}, trigger: ${isVercelCron ? 'vercel-cron' : 'external/manual'})...`);
 

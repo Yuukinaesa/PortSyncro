@@ -7,7 +7,7 @@ import PropTypes from 'prop-types';
 import ErrorBoundary from './ErrorBoundary';
 import { useLanguage } from '../lib/languageContext';
 import { formatIDR, formatUSD, formatNumber, formatNumberUSD } from '../lib/utils';
-import { doc, deleteDoc, collection, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { secureLogger } from './../lib/security';
 
 export default function TransactionHistory({
@@ -22,12 +22,6 @@ export default function TransactionHistory({
   const [filter, setFilter] = useState('all'); // all, buy, sell
   const [assetTypeFilter, setAssetTypeFilter] = useState('all'); // all, stock, crypto
   const [confirmModal, setConfirmModal] = useState(null);
-  const [loadingStates, setLoadingStates] = useState({
-    exchangeRate: false,
-    stockPrices: false,
-    cryptoPrices: false,
-    transactions: false
-  });
   const { t, language } = useLanguage();
 
   // Debug logging
@@ -40,6 +34,10 @@ export default function TransactionHistory({
   // Delete transaction function
   const deleteTransaction = async (transactionId) => {
     try {
+      if (!user?.uid) {
+        throw new Error('User not authenticated');
+      }
+
       // Find the transaction to get its details
       const transaction = transactions.find(tx => tx.id === transactionId);
 
@@ -50,16 +48,10 @@ export default function TransactionHistory({
       // Show confirmation dialog
       setConfirmModal({
         title: t('confirmDelete'),
-        message: (
-          <div className="space-y-4">
-            <p className="text-gray-700 dark:text-gray-300">
-              {t('confirmDeleteTransactionHistory', {
-                type: transaction.type === 'buy' ? t('buy') : t('sell'),
-                asset: transaction.ticker || transaction.symbol
-              })}
-            </p>
-          </div>
-        ),
+        message: t('confirmDeleteTransactionHistory', {
+          type: transaction.type === 'buy' ? t('buy') : t('sell'),
+          asset: transaction.ticker || transaction.symbol
+        }),
         confirmText: t('delete'),
         cancelText: t('cancel'),
         onConfirm: async () => {
@@ -374,8 +366,8 @@ export default function TransactionHistory({
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
 
-      // Language-aware filename
-      const currentDate = new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US');
+      // Language-aware safe ISO filename
+      const currentDate = new Date().toISOString().split('T')[0];
       const filename = language === 'id'
         ? `transaksi_${currentDate}.csv`
         : `transactions_${currentDate}.csv`;
@@ -580,7 +572,7 @@ export default function TransactionHistory({
                 filteredTransactions.map((tx, index) => {
                   const values = calculateValue(tx);
                   return (
-                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
+                    <tr key={tx.id || index} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
                         {formatDate(tx.timestamp)}
                       </td>
@@ -646,23 +638,27 @@ export default function TransactionHistory({
         {confirmModal && (
           <Modal
             isOpen={!!confirmModal}
-            onClose={confirmModal.onCancel}
+            onClose={confirmModal.onCancel || (() => setConfirmModal(null))}
             title={confirmModal.title}
-            type="warning"
+            type={confirmModal.type || 'warning'}
           >
-            <p className="text-gray-700 dark:text-gray-300 mb-6">{confirmModal.message}</p>
+            <div className="text-gray-700 dark:text-gray-300 mb-6">{confirmModal.message}</div>
             <div className="flex justify-end gap-3">
+              {confirmModal.onCancel && (
+                <button
+                  type="button"
+                  onClick={confirmModal.onCancel}
+                  className="px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                >
+                  {confirmModal.cancelText || t('cancel') || 'Batal'}
+                </button>
+              )}
               <button
-                onClick={confirmModal.onCancel}
-                className="px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              >
-                {t('cancel') || 'Batal'}
-              </button>
-              <button
+                type="button"
                 onClick={confirmModal.onConfirm}
                 className="px-6 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-xl shadow-lg shadow-red-500/20 transition-all active:scale-95"
               >
-                {t('delete') || 'Hapus'}
+                {confirmModal.confirmText || t('delete') || 'Hapus'}
               </button>
             </div>
           </Modal>
