@@ -47,7 +47,7 @@ async function handleCheckStatus(req, res) {
     const userData = await firestoreGet('users', uid);
     if (!userData) return res.status(200).json({ linked: false });
 
-    if (userData.telegramChatId) {
+    if (userData.telegramChatId || userData.telegramGroupChatId) {
       return res.status(200).json({
         linked: true,
         username: userData.telegramUsername || null,

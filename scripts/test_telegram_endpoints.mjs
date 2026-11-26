@@ -55,6 +55,8 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
   assert(csrfContent.includes('MAX_CSRF_TOKENS'), 'lib/csrf.js must enforce bounded token storage');
   const tgLinkUi = fs.readFileSync(path.resolve('components/TelegramLink.js'), 'utf8');
   assert(!tgLinkUi.includes('confirm(t('), 'components/TelegramLink.js must use non-blocking inline confirmation instead of native confirm()');
+  assert(tgLinkUi.includes('onSnapshot'), 'components/TelegramLink.js must attach Firestore onSnapshot listener for real-time link status');
+  assert(tgLinkUi.includes('visibilitychange') && tgLinkUi.includes('setInterval'), 'components/TelegramLink.js must support visibility/focus re-sync and active code polling fallback');
   console.log('✅ 2b. pages/api/telegram-link.js autopilot cleanup, URI encoding, bounded CSRF, and inline unlink confirm verified.');
 }
 

@@ -3,6 +3,8 @@
 // Shows link status, generates verification codes, and handles unlinking
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useAuth } from '../lib/authContext';
 import { useLanguage } from '../lib/languageContext';
 import { secureLogger } from '../lib/security';
@@ -20,6 +22,8 @@ export default function TelegramLink() {
   const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const copyTimerRef = useRef(null);
+  const isCheckingRef = useRef(false);
+  const hasSnapshotSyncRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -34,6 +38,7 @@ export default function TelegramLink() {
       unlinkTelegram: language === 'en' ? 'Unlink Telegram' : 'Putuskan Telegram',
       linked: language === 'en' ? 'Connected' : 'Terhubung',
       notLinked: language === 'en' ? 'Not connected' : 'Belum terhubung',
+      checkingStatus: language === 'en' ? 'Checking status...' : 'Memeriksa status...',
       generateCode: language === 'en' ? 'Generate Link Code' : 'Buat Kode Link',
       codeInstructions: language === 'en'
         ? 'Send this command to the PortSyncro Telegram Bot:'
@@ -52,12 +57,30 @@ export default function TelegramLink() {
     return texts[id] || id;
   }, [language]);
 
-  const checkStatus = useCallback(async () => {
-    if (!user) return;
+  const applyLinkedData = useCallback((data) => {
+    if (data?.telegramChatId || data?.telegramGroupChatId || data?.linked) {
+      setLinkStatus({
+        linked: true,
+        username: data.telegramUsername ?? data.username ?? null,
+        linkedAt: data.telegramLinkedAt ?? data.linkedAt ?? null,
+      });
+      setLinkCode(null);
+      setCountdown(0);
+      setConfirmUnlink(false);
+      setError(null);
+    } else {
+      setLinkStatus({ linked: false });
+    }
+  }, []);
+
+  const checkStatus = useCallback(async ({ silent = false } = {}) => {
+    if (!user || isCheckingRef.current) return;
+    isCheckingRef.current = true;
     try {
       const token = await user.getIdToken();
       const res = await fetch('/api/telegram-link', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       });
 
       // Handle non-OK responses but try to read JSON error details
@@ -66,49 +89,115 @@ export default function TelegramLink() {
         try {
           const errData = await res.json();
           errorDetail = errData.detail || errData.error || errorDetail;
-        } catch { /* response wasn't JSON */ }
+        } catch (parseErr) {
+          secureLogger.warn('Failed to parse Telegram status error response:', parseErr?.message || parseErr);
+        }
         secureLogger.warn('Telegram status check failed:', res.status, errorDetail);
-        setLinkStatus({ error: true, message: errorDetail });
+        if (!silent && !hasSnapshotSyncRef.current) {
+          setLinkStatus({ error: true, message: errorDetail });
+        }
         return;
       }
 
       const data = await res.json();
       if (data.error) {
-        setLinkStatus({ error: true, message: data.error });
+        if (!silent && !hasSnapshotSyncRef.current) {
+          setLinkStatus({ error: true, message: data.error });
+        }
       } else {
-        setLinkStatus(data);
+        applyLinkedData(data);
       }
     } catch (err) {
       secureLogger.error('Error checking Telegram status:', err);
-      setLinkStatus({ error: true, message: 'Network error. Coba lagi.' });
+      if (!silent && !hasSnapshotSyncRef.current) {
+        setLinkStatus({ error: true, message: 'Network error. Coba lagi.' });
+      }
+    } finally {
+      isCheckingRef.current = false;
     }
-  }, [user]);
+  }, [user, applyLinkedData]);
 
-  // Check link status on mount
+  // Initial sync + real-time Firestore listener on user document
   useEffect(() => {
-    if (!user) return;
+    hasSnapshotSyncRef.current = false;
+    if (!user?.uid) return undefined;
+
     checkStatus();
-  }, [user, checkStatus]);
 
-  // Countdown timer for link code
+    if (!db) return undefined;
+
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(
+      userDocRef,
+      (snapshot) => {
+        hasSnapshotSyncRef.current = true;
+        const data = snapshot.exists() ? (snapshot.data() || {}) : {};
+        applyLinkedData(data);
+      },
+      (snapshotErr) => {
+        secureLogger.warn('Telegram real-time snapshot listener fallback:', snapshotErr?.code || snapshotErr?.message);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user?.uid, checkStatus, applyLinkedData]);
+
+  // Instant re-check on window focus / tab return + 3s poll fallback while waiting for /link verification
   useEffect(() => {
-    if (!linkCode || countdown <= 0) return;
+    if (!user || linkStatus?.linked) return undefined;
 
+    const handleResume = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        checkStatus({ silent: true });
+      }
+    };
+
+    window.addEventListener('focus', handleResume);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleResume);
+    }
+
+    const pollInterval = linkCode
+      ? setInterval(() => {
+          checkStatus({ silent: true });
+        }, 3000)
+      : null;
+
+    return () => {
+      window.removeEventListener('focus', handleResume);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleResume);
+      }
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [user, linkCode, linkStatus?.linked, checkStatus]);
+
+  // Countdown timer synced to expiresAt wall clock so backgrounded tabs remain accurate
+  useEffect(() => {
+    if (!linkCode) return undefined;
+
+    const expiresMs = linkCode.expiresAt ? new Date(linkCode.expiresAt).getTime() : NaN;
+    if (!Number.isFinite(expiresMs)) return undefined;
+
+    const updateRemaining = () => {
+      const remainingSecs = Math.max(0, Math.floor((expiresMs - Date.now()) / 1000));
+      setCountdown(remainingSecs);
+      if (remainingSecs <= 0) {
+        setLinkCode(null);
+      }
+      return remainingSecs;
+    };
+
+    updateRemaining();
     const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          setLinkCode(null);
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
+      updateRemaining();
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [linkCode, countdown]);
+  }, [linkCode]);
 
   const generateCode = async () => {
+    if (!user) return;
     setLoading(true);
     setError(null);
     setCopied(false);
@@ -158,6 +247,7 @@ export default function TelegramLink() {
   };
 
   const handleUnlink = async () => {
+    if (!user) return;
     setError(null);
     setLoading(true);
     try {
@@ -200,7 +290,12 @@ export default function TelegramLink() {
       {/* Status Badge */}
       <div className="telegram-link-status">
         <span className={`status-badge ${linkStatus?.linked ? 'status-linked' : 'status-unlinked'}`}>
-          {linkStatus?.error ? (
+          {linkStatus === null ? (
+            <>
+              <FiRefreshCw size={14} className="spin" />
+              {t('checkingStatus')}
+            </>
+          ) : linkStatus?.error ? (
             <>
               <FiRefreshCw size={14} />
               {language === 'en' ? 'Connection Error' : 'Gagal Memuat Status'}
@@ -221,10 +316,10 @@ export default function TelegramLink() {
       </div>
 
       {/* Actions */}
-      {linkStatus?.error ? (
+      {linkStatus === null ? null : linkStatus?.error ? (
         <button
           type="button"
-          onClick={checkStatus}
+          onClick={() => checkStatus()}
           disabled={loading}
           className="telegram-btn telegram-btn-secondary"
         >
