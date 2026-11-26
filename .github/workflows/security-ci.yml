@@ -42,7 +42,7 @@ jobs:
         run: npx audit-ci --moderate
 
       - name: SAST Code Security Scan (eslint-plugin-security)
-        run: npx eslint . --max-warnings=50
+        run: npx eslint . --max-warnings=0
 
       - name: Red-Team & OWASP Vulnerability Verification
         run: node scripts/run_vulnerability_audit.js

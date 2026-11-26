@@ -122,7 +122,7 @@ export default function Login() {
             </div>
 
             {error && (
-              <div className="mb-6 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-shake">
+              <div role="alert" aria-live="polite" className="mb-6 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-shake">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
                 <span>{error || 'An error occurred'}</span>
               </div>
@@ -181,6 +181,7 @@ export default function Login() {
                   />
                   <button
                     type="button"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
                   >

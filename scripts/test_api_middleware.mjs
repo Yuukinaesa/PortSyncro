@@ -151,7 +151,50 @@ async function runTests() {
         assertStatus('Method GET', res, 405);
     }
 
+    // --- TEST 5: Security Helper & RateLimiter Bounded Memory ---
+    {
+        const { RateLimiter, secureErrorHandler, getClientIp } = await import('../lib/security.js');
+        assert.strictEqual(getClientIp({ headers: { 'x-forwarded-for': '203.0.113.5, 10.0.0.1' } }), '203.0.113.5');
+        assert.strictEqual(getClientIp({ headers: {}, socket: { remoteAddress: '127.0.0.9' } }), '127.0.0.9');
+        const safeHandled = secureErrorHandler.handle(null, 'test');
+        assert.strictEqual(safeHandled.code, 'UNKNOWN_ERROR');
+        assert.strictEqual(secureErrorHandler.isSensitiveError(null), false);
+        const boundedLimiter = new RateLimiter(60000, 5, 1100);
+        for (let i = 0; i < 1200; i++) boundedLimiter.isAllowed(`ip_${i}`);
+        assert(boundedLimiter.requests.size <= 1100, `Expected <= 1100 keys, got ${boundedLimiter.requests.size}`);
+        console.log('\x1b[32m✅ PASS: Security Helpers & Bounded RateLimiter\x1b[0m');
+        passed++;
+    }
+
+    // --- TEST 6: Exchange Rate Single-Flight Coalescing ---
+    {
+        const { default: exchangeRateHandler } = await import('../pages/api/exchange-rate.js');
+        let upstreamCalls = 0;
+        global.fetch = async (url) => {
+            if (url.includes('frankfurter.app')) {
+                upstreamCalls++;
+                await new Promise(r => setTimeout(r, 30));
+                return { ok: true, json: async () => ({ rates: { IDR: 16250 } }) };
+            }
+            return { ok: false };
+        };
+        const r1 = new MockRes(), r2 = new MockRes(), r3 = new MockRes();
+        await Promise.all([
+            exchangeRateHandler({ method: 'GET', headers: { 'x-forwarded-for': '198.51.100.1' } }, r1),
+            exchangeRateHandler({ method: 'GET', headers: { 'x-forwarded-for': '198.51.100.2' } }, r2),
+            exchangeRateHandler({ method: 'GET', headers: { 'x-forwarded-for': '198.51.100.3' } }, r3),
+        ]);
+        assertStatus('Exchange Rate Coalesced Status', r1, 200);
+        assert.strictEqual(r1.body?.rate, 16250);
+        assert.strictEqual(r2.body?.rate, 16250);
+        assert.strictEqual(r3.body?.rate, 16250);
+        assert.strictEqual(upstreamCalls, 1, `Expected 1 upstream FX fetch, got ${upstreamCalls}`);
+        console.log('\x1b[32m✅ PASS: Exchange Rate Single-Flight Coalescing (1 upstream fetch for 3 concurrent misses)\x1b[0m');
+        passed++;
+    }
+
     // --- REPORT ---
+    global.fetch = originalFetch;
     console.log('\n==================================================');
     if (failed === 0) {
         console.log(`\x1b[32m🎉 ALL ${passed} MIDDLEWARE TESTS PASSED\x1b[0m`);

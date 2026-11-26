@@ -1,9 +1,20 @@
 import { fetchExchangeRateServerSide } from '../../lib/fetchExchangeRate.js';
-import { secureLogger } from '../../lib/security.js';
+import { secureLogger, RateLimiter, getClientIp } from '../../lib/security.js';
 
 let cachedRate = null;
 let lastFetchTime = 0;
+let inFlightRatePromise = null;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache on server for real rate
+const exchangeRateLimiter = new RateLimiter(60000, 60);
+
+async function resolveFreshExchangeRate() {
+  if (!inFlightRatePromise) {
+    inFlightRatePromise = fetchExchangeRateServerSide().finally(() => {
+      inFlightRatePromise = null;
+    });
+  }
+  return inFlightRatePromise;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -11,6 +22,14 @@ export default async function handler(req, res) {
   }
 
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+  const clientIp = getClientIp(req);
+  if (!exchangeRateLimiter.isAllowed(clientIp)) {
+    return res.status(429).json({
+      error: 'Too many exchange rate requests. Please try again later.',
+      success: false
+    });
+  }
 
   try {
     const now = Date.now();
@@ -23,7 +42,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const result = await fetchExchangeRateServerSide();
+    const result = await resolveFreshExchangeRate();
     if (result && typeof result.rate === 'number' && result.rate > 0) {
       cachedRate = result.rate;
       lastFetchTime = Date.now();

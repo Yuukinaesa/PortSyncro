@@ -17,9 +17,11 @@ class ErrorBoundary extends React.Component {
     secureLogger.error('ErrorBoundary caught an error:', error, errorInfo);
     
     // Log additional context for debugging
-    if (error.message.includes('Cannot read properties of undefined')) {
+    if (error?.message?.includes('Cannot read properties of undefined')) {
       secureLogger.error('This appears to be a null/undefined reference error');
-      secureLogger.error('Error location:', errorInfo.componentStack);
+      if (errorInfo?.componentStack) {
+        secureLogger.error('Error location:', errorInfo.componentStack);
+      }
     }
     
     // Update state with error details
@@ -86,7 +88,7 @@ class ErrorBoundary extends React.Component {
                   </div>
                   <div>
                     <strong>Stack:</strong>
-                    <pre className="whitespace-pre-wrap">{this.state.errorInfo.componentStack}</pre>
+                    <pre className="whitespace-pre-wrap">{this.state.errorInfo?.componentStack || 'Unavailable'}</pre>
                   </div>
                 </div>
               </details>

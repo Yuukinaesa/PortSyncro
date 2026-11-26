@@ -1,5 +1,6 @@
 // pages/api/prices.js
 import { fetchStockPrices, fetchCryptoPrices, fetchGoldPrices } from '../../lib/fetchPrices.js';
+import { getClientIp } from '../../lib/security.js';
 import { secureLogger } from '../../lib/securityMonitoring.js';
 import { enhancedSecurityMonitor } from '../../lib/enhancedSecurity.js';
 
@@ -7,6 +8,7 @@ import { enhancedSecurityMonitor } from '../../lib/enhancedSecurity.js';
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 30; // Reduced from 100 to 30 requests per minute for better protection
+const MAX_RATE_LIMIT_KEYS = 5000;
 
 let lastCleanupTime = Date.now();
 
@@ -24,6 +26,11 @@ function checkRateLimit(identifier) {
       } else {
         rateLimitMap.set(id, validReqs);
       }
+    }
+    while (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS) {
+      const oldestKey = rateLimitMap.keys().next().value;
+      if (oldestKey === undefined) break;
+      rateLimitMap.delete(oldestKey);
     }
   }
 
@@ -76,10 +83,7 @@ export default async function handler(req, res) {
 
   try {
     // Track API access for security monitoring
-    const forwardedFor = req.headers['x-forwarded-for'];
-    const clientIP = (typeof forwardedFor === 'string' && forwardedFor.split(',')[0].trim())
-      || req.socket?.remoteAddress
-      || 'unknown';
+    const clientIP = getClientIp(req);
 
     secureLogger.log('API /prices called with method:', req.method, 'IP:', clientIP);
 
@@ -108,8 +112,6 @@ export default async function handler(req, res) {
       const token = authHeader.split('Bearer ')[1];
       if (token && token !== 'null' && token !== 'undefined') {
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
           const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '';
 
           if (apiKey) {
@@ -117,8 +119,8 @@ export default async function handler(req, res) {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ idToken: token }),
-              signal: controller.signal
-            }).finally(() => clearTimeout(timeoutId));
+              signal: AbortSignal.timeout(5000)
+            });
 
             if (verifyResponse.ok) {
               const verifyData = await verifyResponse.json();
@@ -130,7 +132,8 @@ export default async function handler(req, res) {
             }
           }
         } catch (verifyErr) {
-          secureLogger.error('Error verifying token:', verifyErr.name === 'AbortError' ? 'Timeout' : verifyErr);
+          const isTimeout = verifyErr?.name === 'AbortError' || verifyErr?.name === 'TimeoutError';
+          secureLogger.error('Error verifying token:', isTimeout ? 'Timeout' : verifyErr);
         }
       }
     }

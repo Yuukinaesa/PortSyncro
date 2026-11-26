@@ -1,5 +1,5 @@
 // pages/confirm-reset-password.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { auth } from '../lib/firebase';
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { useRouter } from 'next/router';
@@ -25,38 +25,36 @@ export default function ConfirmResetPassword() {
   const router = useRouter();
   const { t } = useLanguage();
   const { isDarkMode } = useTheme();
-  const redirectTimerRef = useState(null);
+  const redirectTimerRef = useRef(null);
 
   useEffect(() => {
     return () => {
-      if (redirectTimerRef[0]) clearTimeout(redirectTimerRef[0]);
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
     };
-  }, [redirectTimerRef]);
+  }, []);
 
   useEffect(() => {
-    if (router.query.oobCode) {
-      setOobCode(router.query.oobCode);
+    const rawCode = router.query.oobCode;
+    const code = Array.isArray(rawCode) ? rawCode[0] : rawCode;
+    if (typeof code === 'string' && code) {
+      setOobCode(code);
       setLoading(true);
-
-      const code = router.query.oobCode;
-      if (code) {
-        verifyPasswordResetCode(auth, code)
-          .then((email) => {
-            setEmail(email);
-            setError('');
-          })
-          .catch((error) => {
-            secureLogger.error("Error verifying reset code:", error);
-            setError(t('invalidOrExpiredResetCode'));
-          })
-          .finally(() => {
-            setLoading(false);
-          });
-      }
-    } else {
+      verifyPasswordResetCode(auth, code)
+        .then((email) => {
+          setEmail(email);
+          setError('');
+        })
+        .catch((error) => {
+          secureLogger.error("Error verifying reset code:", error);
+          setError(t('invalidOrExpiredResetCode'));
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else if (router.isReady) {
       setLoading(false);
     }
-  }, [router.query, t]);
+  }, [router.isReady, router.query.oobCode, t]);
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
@@ -73,10 +71,10 @@ export default function ConfirmResetPassword() {
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
       setMessage(t('passwordChangedSuccessfully'));
-      const setTimer = redirectTimerRef[1];
-      setTimer(setTimeout(() => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = setTimeout(() => {
         router.push('/login');
-      }, 3000));
+      }, 3000);
     } catch (error) {
       secureLogger.error("Error resetting password:", error);
       setError(t('passwordChangeFailed'));
@@ -127,14 +125,14 @@ export default function ConfirmResetPassword() {
               </div>
 
               {error && (
-                <div className="mb-6 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-shake">
+                <div role="alert" aria-live="polite" className="mb-6 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-shake">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
                   <span>{error || 'An error occurred'}</span>
                 </div>
               )}
 
               {message && (
-                <div className="mb-6 bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-800 text-green-700 dark:text-green-200 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                <div role="status" aria-live="polite" className="mb-6 bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-800 text-green-700 dark:text-green-200 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                   <span>{message}</span>
                 </div>
