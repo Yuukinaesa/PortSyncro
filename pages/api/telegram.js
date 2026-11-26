@@ -2,9 +2,9 @@
 // Telegram Bot Webhook & Diagnostics Endpoint for PortSyncro
 // Handles webhook updates from Telegram and provides 1-click self-healing diagnostics
 
-import { handleUpdate, handleCallbackQuery, getTelegramApi } from '../../lib/telegramBot';
-import { getAdminDb } from '../../lib/firebaseAdmin';
-import { secureLogger, timingSafeCompare } from '../../lib/security';
+import { handleUpdate, handleCallbackQuery, getTelegramApi } from '../../lib/telegramBot.js';
+import { getAdminDb } from '../../lib/firebaseAdmin.js';
+import { secureLogger, timingSafeCompare } from '../../lib/security.js';
 
 // Rate limiting for webhook (prevent abuse)
 const webhookRateLimit = new Map();

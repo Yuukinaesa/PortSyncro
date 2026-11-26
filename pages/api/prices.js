@@ -1,7 +1,7 @@
 // pages/api/prices.js
-import { fetchStockPrices, fetchCryptoPrices, fetchGoldPrices } from '../../lib/fetchPrices';
-import { secureLogger } from '../../lib/securityMonitoring';
-import { enhancedSecurityMonitor } from '../../lib/enhancedSecurity';
+import { fetchStockPrices, fetchCryptoPrices, fetchGoldPrices } from '../../lib/fetchPrices.js';
+import { secureLogger } from '../../lib/securityMonitoring.js';
+import { enhancedSecurityMonitor } from '../../lib/enhancedSecurity.js';
 
 // Enhanced rate limiting with user-based tracking
 const rateLimitMap = new Map();

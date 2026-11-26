@@ -7,8 +7,8 @@
 //   - External cron: GET /api/telegram-daily?secret=YOUR_CRON_SECRET
 //   - Manual / Test run: GET /api/telegram-daily?secret=YOUR_CRON_SECRET&force=true
 
-import { sendDailyReports } from '../../lib/telegramBot';
-import { secureLogger, timingSafeCompare } from '../../lib/security';
+import { sendDailyReports } from '../../lib/telegramBot.js';
+import { secureLogger, timingSafeCompare } from '../../lib/security.js';
 
 export default async function handler(req, res) {
   const cronSecret = process.env.CRON_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET;

@@ -3,7 +3,7 @@
 // Does NOT import firebase-admin to avoid gRPC hanging on Vercel serverless (504 errors)
 
 import crypto from 'crypto';
-import { secureLogger } from '../../lib/security';
+import { secureLogger } from '../../lib/security.js';
 
 // ═══════════════════════════════════════════════════════════════
 // ACCESS TOKEN CACHE (persists across warm invocations)

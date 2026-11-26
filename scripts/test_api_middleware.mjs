@@ -8,6 +8,9 @@ import handler from '../pages/api/prices.js';
 
 // SETUP MOCKS
 const originalFetch = global.fetch;
+if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY = 'mock-firebase-api-key-for-unit-test';
+}
 
 console.log('\x1b[36m%s\x1b[0m', '🛡️  TEST: API Middleware & Auth (Mocked)');
 console.log('==================================================');
