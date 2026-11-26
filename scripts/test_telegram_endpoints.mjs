@@ -28,6 +28,7 @@ console.log('🤖 RUNNING TELEGRAM BOT & CRON ENDPOINT TESTS...\n');
   assert(!content.includes('else if (rawHost.endsWith(\'.vercel.app\'))'), 'Must not trust arbitrary .vercel.app Host header for production setWebhook');
   assert(content.includes('timingSafeCompare(querySecret, cronSecret)'), 'Setup endpoint must validate secret in production');
   assert(content.includes('isProduction && !hasValidSecret'), 'GET /api/telegram diagnostics must require auth secret in production');
+  assert(content.includes("process.env.NODE_ENV === 'production' && !webhookSecret") && content.includes('timingSafeCompare(requestSecret, webhookSecret)'), 'POST /api/telegram must fail closed on missing/invalid secret token in production');
   assert(!content.includes('Proceeding in permissive mode'), 'POST /api/telegram must reject missing secret token when TELEGRAM_WEBHOOK_SECRET is configured');
 
   console.log('✅ 1. pages/api/telegram.js GET diagnostics, security pinning, and 1-click setup verified.');

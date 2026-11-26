@@ -37,9 +37,28 @@ function checkWebhookRateLimit(chatId) {
       if (valid.length === 0) webhookRateLimit.delete(id);
       else webhookRateLimit.set(id, valid);
     }
+    if (webhookRateLimit.size > 1000) {
+      const oldestKey = webhookRateLimit.keys().next().value;
+      if (oldestKey !== undefined) webhookRateLimit.delete(oldestKey);
+    }
   }
   
   return true;
+}
+
+const TELEGRAM_API_TIMEOUT_MS = 8000;
+
+function callTelegramBotApi(botToken, method, payload = null) {
+  const url = `https://api.telegram.org/bot${botToken}/${method}`;
+  if (!payload) {
+    return fetch(url, { signal: AbortSignal.timeout(TELEGRAM_API_TIMEOUT_MS) });
+  }
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(TELEGRAM_API_TIMEOUT_MS)
+  });
 }
 
 export default async function handler(req, res) {
@@ -116,11 +135,7 @@ export default async function handler(req, res) {
           setupPayload.secret_token = webhookSecret;
         }
 
-        const setResp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(setupPayload)
-        });
+        const setResp = await callTelegramBotApi(botToken, 'setWebhook', setupPayload);
         const setResult = await setResp.json();
 
         // Also register complete bot commands menu in Telegram
@@ -150,14 +165,10 @@ export default async function handler(req, res) {
           { command: 'help', description: 'Panduan lengkap perintah' }
         ];
 
-        await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ commands })
-        });
+        await callTelegramBotApi(botToken, 'setMyCommands', { commands });
 
         // Query fresh webhook info after setup
-        const infoResp = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
+        const infoResp = await callTelegramBotApi(botToken, 'getWebhookInfo');
         const infoResult = await infoResp.json();
         if (infoResult.result && infoResult.result.ip_address) {
           delete infoResult.result.ip_address; // Prevent exposing server egress IP
@@ -185,8 +196,8 @@ export default async function handler(req, res) {
     // Regular GET: Diagnostic inspection
     try {
       const [meResp, infoResp] = await Promise.all([
-        fetch(`https://api.telegram.org/bot${botToken}/getMe`),
-        fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`)
+        callTelegramBotApi(botToken, 'getMe'),
+        callTelegramBotApi(botToken, 'getWebhookInfo')
       ]);
       const meData = await meResp.json();
       const infoData = await infoResp.json();
@@ -243,15 +254,13 @@ export default async function handler(req, res) {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // 2. SECURITY: Strict Telegram webhook secret verification
+  // 2. SECURITY: Strict Telegram webhook secret verification (fail-closed in production)
   // ═══════════════════════════════════════════════════════════════
-  if (webhookSecret) {
-    const rawHeader = req.headers['x-telegram-bot-api-secret-token'];
-    const requestSecret = typeof rawHeader === 'string' ? rawHeader : '';
-    if (!requestSecret || !timingSafeCompare(requestSecret, webhookSecret)) {
-      secureLogger.warn('[Telegram Webhook] Missing or invalid secret token detected - Rejecting request.');
-      return res.status(401).json({ error: 'Unauthorized payload' });
-    }
+  const rawHeader = req.headers['x-telegram-bot-api-secret-token'];
+  const requestSecret = typeof rawHeader === 'string' ? rawHeader : '';
+  if ((process.env.NODE_ENV === 'production' && !webhookSecret) || (webhookSecret && (!requestSecret || !timingSafeCompare(requestSecret, webhookSecret)))) {
+    secureLogger.warn('[Telegram Webhook] Missing or invalid secret token detected - Rejecting request.');
+    return res.status(401).json({ error: 'Unauthorized payload' });
   }
 
   if (!botToken) {

@@ -116,6 +116,7 @@ export default function ConnectionStatus() {
         if (!mounted) return;
 
         pingIntervalRef.current = setInterval(async () => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
             if (navigator.onLine) {
                 const quality = await checkConnectionQuality();
                 if (quality === 'slow' && !showModal) {
@@ -151,6 +152,10 @@ export default function ConnectionStatus() {
         setRetrying(false);
 
         // Auto-retry with exponential backoff (max 60 seconds)
+        if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current);
+            retryTimeoutRef.current = null;
+        }
         if (retryCount < 5) {
             const delay = Math.min(5000 * Math.pow(2, retryCount), 60000);
             retryTimeoutRef.current = setTimeout(() => {
